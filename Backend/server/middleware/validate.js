@@ -5,6 +5,10 @@ import {
   adjudicateRequestSchema,
   enforceRequestSchema,
   brokerRequestSchema,
+  batchScanSchema,
+  batchAdjudicateSchema,
+  batchEnforceSchema,
+  batchBrokerSchema,
 } from "../schemas/Schema.js";
 
 const runValidation = (schema, data) => {
@@ -34,5 +38,25 @@ export const validateEnforceRequest = (req, _res, next) => {
 
 export const validateBrokerRequest = (req, _res, next) => {
   runValidation(brokerRequestSchema, req.body);
+  next();
+};
+
+export const validateBatchScan = (req, _res, next) => {
+  runValidation(batchScanSchema, req.body);
+  next();
+};
+
+export const validateBatchAdjudicate = (req, _res, next) => {
+  runValidation(batchAdjudicateSchema, req.body);
+  next();
+};
+
+export const validateBatchEnforce = (req, _res, next) => {
+  runValidation(batchEnforceSchema, req.body);
+  next();
+};
+
+export const validateBatchBroker = (req, _res, next) => {
+  runValidation(batchBrokerSchema, req.body);
   next();
 };

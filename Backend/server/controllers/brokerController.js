@@ -2,7 +2,7 @@ import axios from "axios";
 import ContractRecord from "../models/ContractRecord.js";
 import Incident from "../models/Incident.js";
 import { getIO } from "../config/socket.js";
-import { generateHash, generateTxHash } from "../utils/blockchain.js";
+import { generateHash } from "../utils/blockchain.js";
 import ExpressError from "../utils/ExpressError.js";
 
 const FASTAPI = process.env.FASTAPI_URL || "http://127.0.0.1:8001";

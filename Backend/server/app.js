@@ -8,6 +8,8 @@ import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import redis, { isRedisAvailable } from "./config/redis.js";
 import { initSocket } from "./config/socket.js";
+import axios from "axios";
+import mongoose from "mongoose";
 import huntRouter from "./routes/hunt.js";
 import ingestRouter from "./routes/ingest.js";
 import scanRouter from "./routes/scan.js";
@@ -36,6 +38,18 @@ app.get("/", (_req, res) => {
   res.json({
     status: "MediaGuard API is Online and Listening.",
     redis: isRedisAvailable() ? "connected" : "unavailable",
+  });
+});
+
+app.get("/api/health", async (_req, res) => {
+  const fastapiOk = await axios.get(`${process.env.FASTAPI_URL || "http://127.0.0.1:8001"}/`)
+    .then(() => true).catch(() => false);
+
+  res.json({
+    node:    "ok",
+    redis:   isRedisAvailable() ? "ok" : "unavailable",
+    fastapi: fastapiOk ? "ok" : "unavailable",
+    mongo:   mongoose.connection.readyState === 1 ? "ok" : "unavailable",
   });
 });
 

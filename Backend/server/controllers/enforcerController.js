@@ -11,17 +11,10 @@ const fastapiClient = axios.create({ baseURL: FASTAPI, timeout: 120_000 });
 
 const offenceKey = (account, platform) => `enforcer:offences:${platform}:${account}`.toLowerCase();
 
-async function _getOffenceCount(account, platform) {
-  return await safeRedis(async () => {
-    const val = await redis.get(offenceKey(account, platform));
-    return val ? parseInt(val) : 0;
-  }, 0);
-}
-
 async function _incrementOffences(account, platform) {
   return await safeRedis(async () => {
     const count = await redis.incr(offenceKey(account, platform));
-    await redis.expire(offenceKey(account, platform), 60 * 60 * 24 * 90); // 90 days
+    await redis.expire(offenceKey(account, platform), 60 * 60 * 24 * 90);
     return count;
   }, 1);
 }

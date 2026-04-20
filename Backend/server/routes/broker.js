@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { validateBrokerRequest } from "../middleware/validate.js";
+import { validateBrokerRequest, validateBatchBroker } from "../middleware/validate.js";
 import wrapAsync from "../utils/wrapAsync.js";
 import {
   brokerIncident,
@@ -13,7 +13,7 @@ import {
 const router = Router();
 
 router.post("/broker",               validateBrokerRequest, wrapAsync(brokerIncident));
-router.post("/broker/batch",         wrapAsync(batchBroker));
+router.post("/broker/batch",         validateBatchBroker,   wrapAsync(batchBroker));
 router.patch("/broker/:id/activate", wrapAsync(activateContract));
 router.patch("/broker/:id/dispute",  wrapAsync(disputeContract));
 router.get("/broker",                wrapAsync(getContracts));
