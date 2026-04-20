@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { validateEnforceRequest } from "../middleware/validate.js";
+import { validateEnforceRequest, validateBatchEnforce } from "../middleware/validate.js";
 import wrapAsync from "../utils/wrapAsync.js";
 import {
   enforceIncident,
@@ -13,7 +13,7 @@ import {
 const router = Router();
 
 router.post("/enforce",              validateEnforceRequest, wrapAsync(enforceIncident));
-router.post("/enforce/batch",        wrapAsync(batchEnforce));
+router.post("/enforce/batch",        validateBatchEnforce,   wrapAsync(batchEnforce));
 router.patch("/enforce/:id/approve", wrapAsync(approveDMCA));
 router.patch("/enforce/:id/reject",  wrapAsync(rejectDMCA));
 router.get("/enforce",               wrapAsync(getDMCARecords));

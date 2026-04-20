@@ -50,3 +50,23 @@ export const brokerRequestSchema = Joi.object({
   view_count:             Joi.number().integer().min(0).default(0),
   risk_score:             Joi.number().integer().min(0).max(100).default(30),
 }).options({ abortEarly: false });
+
+export const batchScanSchema = Joi.object({
+  threat_nodes: Joi.array().min(1).required(),
+  jobId:        Joi.string().optional(),
+}).options({ abortEarly: false });
+
+export const batchAdjudicateSchema = Joi.object({
+  incidents: Joi.array().min(1).required(),
+  jobId:     Joi.string().optional(),
+}).options({ abortEarly: false });
+
+export const batchEnforceSchema = Joi.object({
+  incidents: Joi.array().min(1).required(),
+  jobId:     Joi.string().optional(),
+}).options({ abortEarly: false });
+
+export const batchBrokerSchema = Joi.object({
+  incidents: Joi.array().min(1).required(),
+  jobId:     Joi.string().optional(),
+}).options({ abortEarly: false });
