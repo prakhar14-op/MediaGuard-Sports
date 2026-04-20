@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { exec } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -16,24 +15,15 @@ router.post(
   validateHuntRequest,
   wrapAsync(async (req, res) => {
     const { official_video_url } = req.body;
-    console.log(`\n🚨 [Hunt] New hunt triggered → ${official_video_url}`);
+    console.log(`🚨 [Hunt] Triggered → ${official_video_url}`);
 
-    // Read the pre-generated spider payload (Spider runs separately as Python process)
     if (!fs.existsSync(PAYLOAD_PATH)) {
-      throw new ExpressError(
-        404,
-        "Spider payload not found. Run spider.py first to generate threat data."
-      );
+      throw new ExpressError(404, "Spider payload not found. Run spider.py first.");
     }
 
-    const threatMapData = JSON.parse(fs.readFileSync(PAYLOAD_PATH, "utf-8"));
+    const data = JSON.parse(fs.readFileSync(PAYLOAD_PATH, "utf-8"));
 
-    res.json({
-      success: true,
-      status: 200,
-      message: "Hunt completed. Suspects secured.",
-      data: threatMapData,
-    });
+    res.json({ success: true, message: "Hunt completed. Suspects secured.", data });
   })
 );
 
