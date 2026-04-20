@@ -29,10 +29,15 @@ export const adjudicateRequestSchema = Joi.object({
 }).options({ abortEarly: false });
 
 export const enforceRequestSchema = Joi.object({
-  target_account:     Joi.string().min(1).required(),
-  platform:           Joi.string().valid(...PLATFORMS).required(),
-  confidence_score:   Joi.string().min(1).required(),
-  adjudicator_ruling: Joi.string().min(1).required(),
+  incident_id:      Joi.string().min(1).required(),
+  target_account:   Joi.string().min(1).required(),
+  platform:         Joi.string().valid(...PLATFORMS).required(),
+  video_title:      Joi.string().min(1).required(),
+  video_url:        Joi.string().uri().optional().allow(""),
+  confidence_score: Joi.number().min(0).max(100).required(),
+  classification:   Joi.string().valid("SEVERE PIRACY", "FAIR USE / FAN CONTENT").required(),
+  justification:    Joi.string().min(1).required(),
+  integrity_hash:   Joi.string().optional().allow(""),
 }).options({ abortEarly: false });
 
 export const brokerRequestSchema = Joi.object({

@@ -14,6 +14,7 @@ from agents.archivist import tool_ingest_video, vector_db
 from agents.spider import tool_crawl_web, spider_agent
 from agents.sentinel import scan_thumbnail
 from agents.adjudicator import adjudicate, batch_adjudicate
+from agents.enforcer import issue_dmca
 from crewai import Task, Crew
 
 app = FastAPI(title="MediaGuard ML API")
@@ -65,6 +66,37 @@ class AdjudicateRequest(BaseModel):
 
 class BatchAdjudicateRequest(BaseModel):
     incidents: list
+
+
+class EnforceRequest(BaseModel):
+    target_account:   str
+    platform:         str
+    video_title:      str
+    video_url:        str = ""
+    confidence_score: float = 100.0
+    classification:   str = "SEVERE PIRACY"
+    justification:    str = ""
+    integrity_hash:   str = ""
+    offence_number:   int = 1
+
+
+@app.post("/enforce")
+def enforce_incident(payload: EnforceRequest):
+    try:
+        result = issue_dmca(
+            target_account   = payload.target_account,
+            platform         = payload.platform,
+            video_title      = payload.video_title,
+            video_url        = payload.video_url,
+            confidence_score = payload.confidence_score,
+            classification   = payload.classification,
+            justification    = payload.justification,
+            integrity_hash   = payload.integrity_hash,
+            offence_number   = payload.offence_number,
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Enforcer failed: {e}")
 
 
 @app.post("/adjudicate")
