@@ -19,6 +19,10 @@ export const initSocket = (httpServer) => {
       socket.join(`hunt:${jobId}`);
     });
 
+    socket.on("join:ingest", (jobId) => {
+      socket.join(`ingest:${jobId}`);
+    });
+
     socket.on("disconnect", () => {
       console.log(`🔌 [Socket] Disconnected: ${socket.id}`);
     });

@@ -7,62 +7,61 @@ import ExpressError from "../utils/ExpressError.js";
 
 const FASTAPI = process.env.FASTAPI_URL || "http://127.0.0.1:8001";
 
+// Ingest can take 10+ minutes for long videos — timeout set to 30 minutes
+const fastapiClient = axios.create({
+  baseURL: FASTAPI,
+  timeout: 30 * 60 * 1000,
+});
+
 export const ingestAsset = async (req, res) => {
   const { official_video_url } = req.body;
   const jobId = uuidv4();
   const io = getIO();
 
-  const asset = await IngestedAsset.create({
-    official_video_url,
-    status: "downloading",
-  });
+  const asset = await IngestedAsset.create({ official_video_url, status: "downloading" });
 
-  res.json({
-    success: true,
-    message: "Ingest job started.",
-    assetId: asset._id,
-    jobId,
-  });
+  res.json({ success: true, message: "Ingest job started.", assetId: asset._id, jobId });
 
-  // Run the full pipeline async — client tracks progress via socket
   try {
-    io.emit("ingest:progress", { jobId, stage: "downloading", message: "Downloading official video via yt-dlp..." });
+    io.to(`ingest:${jobId}`).emit("ingest:progress", {
+      jobId, stage: "downloading", message: "Downloading official video via yt-dlp...",
+    });
 
-    // FastAPI handles yt-dlp download + CLIP + FAISS
-    const { data: fastapiResult } = await axios.post(`${FASTAPI}/ingest`, {
+    const { data: result } = await fastapiClient.post("/ingest", {
       official_video_url,
       job_id: jobId,
     });
 
-    if (!fastapiResult.success) {
-      throw new ExpressError(500, fastapiResult.message || "FastAPI ingest failed");
-    }
+    if (!result.success) throw new Error(result.message || "FastAPI ingest failed");
 
-    io.emit("ingest:progress", { jobId, stage: "processing", message: `Extracted ${fastapiResult.frame_count} frames. Storing vectors in FAISS vault...` });
+    io.to(`ingest:${jobId}`).emit("ingest:progress", {
+      jobId, stage: "processing",
+      message: `Extracted ${result.frame_count} frames. Storing vectors in FAISS vault...`,
+    });
 
     const integrity_hash = generateHash({
       url: official_video_url,
-      tx_hash: fastapiResult.tx_hash,
-      frame_count: fastapiResult.frame_count,
+      tx_hash: result.tx_hash,
+      frame_count: result.frame_count,
     });
 
     await IngestedAsset.findByIdAndUpdate(asset._id, {
-      title:          fastapiResult.title,
-      local_path:     fastapiResult.local_path,
-      frame_count:    fastapiResult.frame_count,
-      vault_size:     fastapiResult.vault_size,
-      tx_hash:        fastapiResult.tx_hash,
+      title: result.title,
+      local_path: result.local_path,
+      frame_count: result.frame_count,
+      vault_size: result.vault_size,
+      tx_hash: result.tx_hash,
       integrity_hash,
-      status:         "complete",
+      status: "complete",
     });
 
-    io.emit("ingest:complete", {
+    io.to(`ingest:${jobId}`).emit("ingest:complete", {
       jobId,
-      assetId:     asset._id,
-      title:       fastapiResult.title,
-      frame_count: fastapiResult.frame_count,
-      vault_size:  fastapiResult.vault_size,
-      tx_hash:     fastapiResult.tx_hash,
+      assetId: asset._id,
+      title: result.title,
+      frame_count: result.frame_count,
+      vault_size: result.vault_size,
+      tx_hash: result.tx_hash,
       integrity_hash,
     });
 
@@ -71,8 +70,7 @@ export const ingestAsset = async (req, res) => {
       status: "failed",
       error_message: err.message,
     });
-
-    io.emit("ingest:error", { jobId, message: err.message });
+    io.to(`ingest:${jobId}`).emit("ingest:error", { jobId, message: err.message });
   }
 };
 
