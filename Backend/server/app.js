@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
+import redis from "./config/redis.js";
 import { isRedisAvailable } from "./config/redis.js";
 import { initSocket } from "./config/socket.js";
 import huntRouter from "./routes/hunt.js";
@@ -17,9 +18,6 @@ import ExpressError from "./utils/ExpressError.js";
 dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
 
 connectDB();
-
-// Make Redis client globally accessible for velocity tracking in controllers
-import redis from "./config/redis.js";
 global.redisClient = redis;
 
 const app = express();
