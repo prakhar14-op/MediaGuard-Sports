@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from agents.archivist import tool_ingest_video, vector_db
 from agents.spider import tool_crawl_web, spider_agent
 from agents.sentinel import scan_thumbnail
+from agents.adjudicator import adjudicate, batch_adjudicate
 from crewai import Task, Crew
 
 app = FastAPI(title="MediaGuard ML API")
@@ -50,6 +51,43 @@ class ScanRequest(BaseModel):
 
 class BatchScanRequest(BaseModel):
     threat_nodes: list
+
+
+class AdjudicateRequest(BaseModel):
+    sentinel_report:  str
+    platform:         str
+    account_handle:   str
+    video_title:      str
+    description:      str = ""
+    country:          str = ""
+    confidence_score: float = 100.0
+
+
+class BatchAdjudicateRequest(BaseModel):
+    incidents: list
+
+
+@app.post("/adjudicate")
+def adjudicate_incident(payload: AdjudicateRequest):
+    try:
+        verdict = adjudicate(
+            sentinel_report  = payload.sentinel_report,
+            platform         = payload.platform,
+            account_handle   = payload.account_handle,
+            video_title      = payload.video_title,
+            description      = payload.description,
+            country          = payload.country,
+            confidence_score = payload.confidence_score,
+        )
+        return {"success": True, "verdict": verdict}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Adjudicator failed: {e}")
+
+
+@app.post("/adjudicate/batch")
+def adjudicate_batch(payload: BatchAdjudicateRequest):
+    results = batch_adjudicate(payload.incidents)
+    return {"success": True, "results": results, "total": len(results)}
 
 
 @app.post("/scan")

@@ -17,6 +17,7 @@ export const ingestRequestSchema = Joi.object({
 }).options({ abortEarly: false });
 
 export const adjudicateRequestSchema = Joi.object({
+  incident_id:      Joi.string().min(1).required(),
   sentinel_report:  Joi.string().min(1).required(),
   platform:         Joi.string().valid(...PLATFORMS).required(),
   account_handle:   Joi.string().min(1).required(),
@@ -24,6 +25,7 @@ export const adjudicateRequestSchema = Joi.object({
   thumbnail_url:    Joi.string().uri().optional(),
   description:      Joi.string().max(500).optional(),
   country:          Joi.string().length(2).uppercase().optional(),
+  confidence_score: Joi.number().min(0).max(100).optional(),
 }).options({ abortEarly: false });
 
 export const enforceRequestSchema = Joi.object({
