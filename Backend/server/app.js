@@ -4,11 +4,16 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import connectDB from "./config/db.js";
+import redis, { isRedisAvailable } from "./config/redis.js";
 import huntRouter from "./routes/hunt.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ExpressError from "./utils/ExpressError.js";
 
 dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
+
+// Connect to MongoDB (non-blocking — server starts even if DB is down)
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -20,7 +25,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // ─── Health check ────────────────────────────────────────────────
 app.get("/", (req, res) => {
-  res.json({ status: "MediaGuard API is Online and Listening." });
+  res.json({
+    status: "MediaGuard API is Online and Listening.",
+    redis: isRedisAvailable() ? "connected" : "unavailable",
+  });
 });
 
 // ─── Routes ──────────────────────────────────────────────────────
