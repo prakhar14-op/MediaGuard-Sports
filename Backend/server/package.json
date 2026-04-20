@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file=../.env app.js",
-    "dev": "node --watch --env-file=../.env app.js"
+    "dev":   "node --watch --env-file=../.env app.js",
+    "test":  "node --env-file=../.env test.js"
   },
   "dependencies": {
     "axios": "^1.7.2",

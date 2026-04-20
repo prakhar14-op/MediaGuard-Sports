@@ -176,6 +176,7 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
 
 @tool("Crawl and Extract Metadata")
 def tool_crawl_web(search_query: str) -> str:
+    """Generates optimized search queries via Gemini, crawls YouTube for suspects, maps them to country centroids."""
     try:
         result = crawl(search_query)
         if "error" in result:
