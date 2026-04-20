@@ -15,6 +15,7 @@ from agents.spider import tool_crawl_web, spider_agent
 from agents.sentinel import scan_thumbnail
 from agents.adjudicator import adjudicate, batch_adjudicate
 from agents.enforcer import issue_dmca
+from agents.broker import deploy_contract
 from crewai import Task, Crew
 
 app = FastAPI(title="MediaGuard ML API")
@@ -97,6 +98,33 @@ def enforce_incident(payload: EnforceRequest):
         return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Enforcer failed: {e}")
+
+
+class BrokerRequest(BaseModel):
+    target_account:   str
+    platform:         str
+    video_title:      str
+    video_url:        str = ""
+    justification:    str = ""
+    view_count:       int = 0
+    risk_score:       int = 30
+
+
+@app.post("/broker")
+def broker_incident(payload: BrokerRequest):
+    try:
+        result = deploy_contract(
+            target_account = payload.target_account,
+            platform       = payload.platform,
+            video_title    = payload.video_title,
+            video_url      = payload.video_url,
+            justification  = payload.justification,
+            view_count     = payload.view_count,
+            risk_score     = payload.risk_score,
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Broker failed: {e}")
 
 
 @app.post("/adjudicate")
