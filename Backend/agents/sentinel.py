@@ -1,177 +1,139 @@
-# import cv2
-# import torch
-# import faiss
-# import numpy as np
-# from PIL import Image
-# from transformers import CLIPProcessor, CLIPModel
-# from crewai.tools import tool
-# from crewai import Agent
+import faiss
+import numpy as np
+import requests
+import imagehash
+from PIL import Image
+from io import BytesIO
+from crewai.tools import tool
+from crewai import Agent
 
-# # ==========================================
-# # 1. INITIALIZE THE SENTINEL'S BRAIN
-# # ==========================================
-# print("Loading Sentinel CLIP Model & FAISS Vault...")
-# model_id = "openai/clip-vit-base-patch32"
-# processor = CLIPProcessor.from_pretrained(model_id)
-# model = CLIPModel.from_pretrained(model_id)
+from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
-# # Load the database created by the Archivist
-# try:
-#     vector_db = faiss.read_index("faiss_vault.index")
-#     print(f"Vault loaded successfully. Protecting {vector_db.ntotal} authorized assets.")
-# except Exception as e:
-#     print(f"[FATAL ERROR] Could not find 'faiss_vault.index'. Did the Archivist run? Error: {e}")
-#     exit()
+MATCH_THRESHOLD   = 0.55  # L2 distance — below this is a confirmed match
+SUSPECT_THRESHOLD = 0.75  # above MATCH but below this = warning zone
 
-# # ==========================================
-# # 2. THE SENTINEL'S TOOL (Detecting Piracy)
-# # ==========================================
-# @tool("Scan Suspect Media")
-# def tool_scan_media(suspect_video_path: str) -> str:
-#     """Scrapes a suspect video, extracts embeddings, and compares against the FAISS Vault."""
-#     global vector_db
-    
-#     print(f"\n[Sentinel] Scanning target: {suspect_video_path}...")
-    
-#     cap = cv2.VideoCapture(suspect_video_path)
-#     if not cap.isOpened():
-#         return f"[ERROR] Could not open suspect video: {suspect_video_path}"
-    
-#     frame_rate = int(cap.get(cv2.CAP_PROP_FPS))
-#     if frame_rate == 0: frame_rate = 1
-        
-#     match_found = False
-#     highest_confidence = 0.0
-    
-#     while cap.isOpened() and not match_found:
-#         frame_id = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-#         ret, frame = cap.read()
-        
-#         if not ret:
-#             break
-            
-#         # Check 1 frame every second
-#         if frame_id % frame_rate == 0:
-#             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#             pil_image = Image.fromarray(rgb_frame)
-            
-#             inputs = processor(images=pil_image, return_tensors="pt")
-#             with torch.no_grad():
-#                 image_features = model.get_image_features(**inputs)
-            
-#             suspect_embedding = image_features.numpy().astype('float32')
-#             faiss.normalize_L2(suspect_embedding)
-            
-#             # Search the FAISS database for the closest mathematical match
-#             distance, index = vector_db.search(suspect_embedding, k=1)
-#             current_distance = distance[0][0]
-            
-#             if current_distance < 0.6:
-#                 match_found = True
-#                 highest_confidence = round((1.0 - (current_distance / 2.0)) * 100, 2)
-#                 print(f"⚠️ [ALERT] L2 Vector Distance: {current_distance:.4f} (Extremely Close!)")
-#                 break
-#             else:
-#                 print("Clear. No match found in this frame...")
-                
-#     cap.release()
-    
-#     if match_found:
-#         return f"[CRITICAL ANOMALY DETECTED] Signature Match: {highest_confidence}% confidence. Waking up Adjudicator Agent."
-#     else:
-#         return "[CLEAN] No unauthorized assets detected in this media."
 
-# # ==========================================
-# # 3. DEFINE THE CREWAI AGENT
-# # ==========================================
-# sentinel_agent = Agent(
-#     role='The Sentinel',
-#     goal='Scan target media files, extract their mathematical embeddings, and detect unauthorized matches against the FAISS Vault.',
-#     backstory='You are a relentless digital radar. You sweep the internet looking for visual anomalies that match protected intellectual property.',
-#     verbose=True,
-#     allow_delegation=False,
-#     tools=[tool_scan_media],
-#     llm=None # Purely execution-based for now.
-# )
+def _fetch_image(url: str) -> Image.Image:
+    resp = requests.get(url, timeout=10)
+    resp.raise_for_status()
+    return Image.open(BytesIO(resp.content)).convert("RGB")
 
-# # ==========================================
-# # 4. DIRECT EXECUTION TEST 
-# # ==========================================
-# if __name__ == "__main__":
-#     print("\nStarting the Sentinel radar sweep...")
-#     # Point the Sentinel at a simulated 'stolen' video in your assets folder
-#     result = tool_scan_media.invoke({"suspect_video_path": "assets/suspect_video.mp4"})
-    
-#     print("\n--- SENTINEL REPORT ---")
-#     print(result)
-import os
-from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, LLM  # <-- Notice we imported LLM here
 
-# Load the API key from the .env file
-load_dotenv()
+def _l2_to_confidence(distance: float) -> float:
+    """Convert L2 distance to a 0-100 confidence score."""
+    return round(max(0.0, (1.0 - distance / 2.0)) * 100, 2)
 
-print("Waking up The Adjudicator (Gemini 1.5 Pro)...")
 
-# ==========================================
-# 1. INITIALIZE THE LLM BRAIN
-# ==========================================
-# This is the modern CrewAI way to set temperature and pass the key!
-gemini_brain = LLM(
-    model="gemini/gemini-1.5-pro",
-    temperature=0.1,
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+def _severity_from_confidence(confidence: float) -> str:
+    if confidence >= 85:
+        return "CRITICAL"
+    if confidence >= 60:
+        return "WARNING"
+    return "INFO"
 
-# ==========================================
-# 2. DEFINE THE ADJUDICATOR AGENT
-# ==========================================
-adjudicator_agent = Agent(
-    role='Chief IP Adjudicator',
-    goal='Analyze flagged media metadata to distinguish between malicious piracy and transformative fair use.',
-    backstory="""You are an elite, cold, and highly logical legal AI. You receive alerts from the Sentinel radar. 
-    Your job is to read the context of the flagged video. 
-    - If it is raw, unaltered footage meant to steal views, you classify it as 'SEVERE PIRACY'.
-    - If it contains heavy commentary, transformative editing, or parody, you classify it as 'FAIR USE / FAN CONTENT'.""",
+
+def scan_thumbnail(thumbnail_url: str) -> dict:
+    """
+    Core scan function — fetches thumbnail, runs CLIP + pHash dual-layer detection.
+    Returns a structured result dict consumed by both the FastAPI endpoint and the tool.
+    """
+    if vector_db.ntotal == 0:
+        return {"error": "FAISS vault is empty. Run the Archivist first."}
+
+    try:
+        pil_image = _fetch_image(thumbnail_url)
+    except Exception as e:
+        return {"error": f"Could not fetch thumbnail: {e}"}
+
+    # Layer 1 — CLIP vector similarity
+    embedding = embed_image_for_sentinel(pil_image)
+    distances, indices = vector_db.search(embedding, k=3)  # top-3 matches
+
+    best_distance   = float(distances[0][0])
+    best_confidence = _l2_to_confidence(best_distance)
+
+    top_matches = []
+    for dist, idx in zip(distances[0], indices[0]):
+        if idx == -1:
+            continue
+        meta = metadata_store.get(str(idx), {})
+        top_matches.append({
+            "vault_index":    int(idx),
+            "l2_distance":    round(float(dist), 4),
+            "confidence":     _l2_to_confidence(float(dist)),
+            "source_video":   meta.get("video_path", "unknown"),
+            "timestamp_sec":  meta.get("timestamp_sec", 0),
+        })
+
+    # Layer 2 — Perceptual hash cross-check (only if CLIP flagged it)
+    phash_match = False
+    phash_score = 0
+    if best_distance < SUSPECT_THRESHOLD:
+        try:
+            suspect_hash = imagehash.phash(pil_image)
+            # Compare against first vault frame thumbnail if available
+            vault_meta = metadata_store.get("0", {})
+            if vault_meta.get("video_path"):
+                import cv2
+                cap = cv2.VideoCapture(vault_meta["video_path"])
+                ret, frame = cap.read()
+                cap.release()
+                if ret:
+                    vault_pil   = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    vault_hash  = imagehash.phash(vault_pil)
+                    hash_diff   = suspect_hash - vault_hash  # hamming distance
+                    phash_score = max(0, 100 - (hash_diff * 4))
+                    phash_match = hash_diff < 15
+        except Exception:
+            pass
+
+    match_confirmed = best_distance < MATCH_THRESHOLD
+    severity        = _severity_from_confidence(best_confidence)
+
+    return {
+        "match_confirmed":  match_confirmed,
+        "confidence_score": best_confidence,
+        "l2_distance":      round(best_distance, 4),
+        "severity":         severity,
+        "phash_match":      phash_match,
+        "phash_score":      phash_score,
+        "top_matches":      top_matches,
+        "thumbnail_url":    thumbnail_url,
+    }
+
+
+@tool("Scan Suspect Thumbnail")
+def tool_scan_thumbnail(thumbnail_url: str) -> str:
+    """Fetches a suspect thumbnail, runs CLIP + pHash dual detection against the FAISS vault."""
+    result = scan_thumbnail(thumbnail_url)
+
+    if "error" in result:
+        return f"[ERROR] {result['error']}"
+
+    if result["match_confirmed"]:
+        return (
+            f"[CRITICAL ANOMALY DETECTED] "
+            f"Confidence: {result['confidence_score']}% | "
+            f"L2: {result['l2_distance']} | "
+            f"pHash match: {result['phash_match']} | "
+            f"Top match at {result['top_matches'][0]['timestamp_sec']}s in vault."
+        )
+
+    if result["confidence_score"] >= 60:
+        return (
+            f"[SUSPECT] Partial match detected. "
+            f"Confidence: {result['confidence_score']}% — routing for manual review."
+        )
+
+    return f"[CLEAN] No match. Confidence: {result['confidence_score']}%"
+
+
+sentinel_agent = Agent(
+    role="The Sentinel",
+    goal="Scan suspect thumbnails using CLIP + pHash dual-layer detection against the FAISS vault.",
+    backstory="A relentless digital radar that never sleeps. Finds stolen frames in milliseconds.",
     verbose=True,
     allow_delegation=False,
-    llm=gemini_brain  # <-- Pass the customized brain here!
+    tools=[tool_scan_thumbnail],
+    llm=None,
 )
-
-# ==========================================
-# 2. DIRECT EXECUTION TEST 
-# ==========================================
-if __name__ == "__main__":
-    sentinel_report = "[CRITICAL ANOMALY DETECTED] Signature Match: 100.0% confidence."
-    
-    mock_context = f"""
-    SENTINEL ALERT: {sentinel_report}
-    VIDEO SOURCE: TikTok
-    ACCOUNT: @AnimeFanEdits_99
-    AUDIO TRANSCRIPT: "Bro watch this crazy sequence!" followed by heavy phonk music and meme sound effects.
-    VISUALS: Original video is heavily filtered, and text overlays are on screen.
-    """
-
-    triage_task = Task(
-        description=f"""Analyze the following incident report:\n{mock_context}\n
-        Determine if this is Piracy or Fair Use. You must output a final decision in exactly this format:
-        CLASSIFICATION: [Piracy or Fair Use]
-        JUSTIFICATION: [1-2 sentences explaining why based on the audio/visual context]
-        RECOMMENDED ROUTING: [Enforcer or Broker]""",
-        expected_output="A strict 3-line legal classification.",
-        agent=adjudicator_agent
-    )
-
-    adjudicator_crew = Crew(
-        agents=[adjudicator_agent],
-        tasks=[triage_task],
-        verbose=True
-    )
-
-    print("\n[ALERT] Handing context to Adjudicator...\n")
-    result = adjudicator_crew.kickoff()
-    
-    print("\n==============================================")
-    print("⚖️ FINAL ADJUDICATOR VERDICT")
-    print("==============================================")
-    print(result)

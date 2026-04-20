@@ -10,12 +10,17 @@ import { isRedisAvailable } from "./config/redis.js";
 import { initSocket } from "./config/socket.js";
 import huntRouter from "./routes/hunt.js";
 import ingestRouter from "./routes/ingest.js";
+import scanRouter from "./routes/scan.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ExpressError from "./utils/ExpressError.js";
 
 dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
 
 connectDB();
+
+// Make Redis client globally accessible for velocity tracking in controllers
+import redis from "./config/redis.js";
+global.redisClient = redis;
 
 const app = express();
 const httpServer = createServer(app); // Socket.io requires the raw http.Server
@@ -36,6 +41,7 @@ app.get("/", (_req, res) => {
 
 app.use("/api", huntRouter);
 app.use("/api", ingestRouter);
+app.use("/api", scanRouter);
 
 app.all("*", (_req, _res, next) => {
   next(new ExpressError(404, "Route not found"));
