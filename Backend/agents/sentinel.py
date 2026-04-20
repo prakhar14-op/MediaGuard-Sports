@@ -1,5 +1,8 @@
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 import faiss
-import numpy as np
 import requests
 import imagehash
 from PIL import Image
@@ -9,18 +12,17 @@ from crewai import Agent
 
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
-MATCH_THRESHOLD   = 0.55  # L2 distance — below this is a confirmed match
-SUSPECT_THRESHOLD = 0.75  # above MATCH but below this = warning zone
+MATCH_THRESHOLD   = 0.55
+SUSPECT_THRESHOLD = 0.75
 
 
 def _fetch_image(url: str) -> Image.Image:
-    resp = requests.get(url, timeout=10)
+    resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
     return Image.open(BytesIO(resp.content)).convert("RGB")
 
 
 def _l2_to_confidence(distance: float) -> float:
-    """Convert L2 distance to a 0-100 confidence score."""
     return round(max(0.0, (1.0 - distance / 2.0)) * 100, 2)
 
 
@@ -33,10 +35,6 @@ def _severity_from_confidence(confidence: float) -> str:
 
 
 def scan_thumbnail(thumbnail_url: str) -> dict:
-    """
-    Core scan function — fetches thumbnail, runs CLIP + pHash dual-layer detection.
-    Returns a structured result dict consumed by both the FastAPI endpoint and the tool.
-    """
     if vector_db.ntotal == 0:
         return {"error": "FAISS vault is empty. Run the Archivist first."}
 
@@ -45,9 +43,11 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
     except Exception as e:
         return {"error": f"Could not fetch thumbnail: {e}"}
 
-    # Layer 1 — CLIP vector similarity
     embedding = embed_image_for_sentinel(pil_image)
-    distances, indices = vector_db.search(embedding, k=3)  # top-3 matches
+
+    # Clamp k so we never request more neighbours than vectors in the vault
+    k = min(3, vector_db.ntotal)
+    distances, indices = vector_db.search(embedding, k=k)
 
     best_distance   = float(distances[0][0])
     best_confidence = _l2_to_confidence(best_distance)
@@ -58,43 +58,40 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
             continue
         meta = metadata_store.get(str(idx), {})
         top_matches.append({
-            "vault_index":    int(idx),
-            "l2_distance":    round(float(dist), 4),
-            "confidence":     _l2_to_confidence(float(dist)),
-            "source_video":   meta.get("video_path", "unknown"),
-            "timestamp_sec":  meta.get("timestamp_sec", 0),
+            "vault_index":   int(idx),
+            "l2_distance":   round(float(dist), 4),
+            "confidence":    _l2_to_confidence(float(dist)),
+            "source_video":  meta.get("video_path", "unknown"),
+            "timestamp_sec": meta.get("timestamp_sec", 0),
         })
 
-    # Layer 2 — Perceptual hash cross-check (only if CLIP flagged it)
+    # Layer 2 — pHash cross-check (only runs when CLIP already suspects a match)
     phash_match = False
     phash_score = 0
     if best_distance < SUSPECT_THRESHOLD:
         try:
+            import cv2
             suspect_hash = imagehash.phash(pil_image)
-            # Compare against first vault frame thumbnail if available
-            vault_meta = metadata_store.get("0", {})
-            if vault_meta.get("video_path"):
-                import cv2
-                cap = cv2.VideoCapture(vault_meta["video_path"])
+            vault_meta   = metadata_store.get("0", {})
+            video_path   = vault_meta.get("video_path", "")
+            if video_path and os.path.exists(video_path):
+                cap = cv2.VideoCapture(video_path)
                 ret, frame = cap.read()
                 cap.release()
                 if ret:
                     vault_pil   = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                     vault_hash  = imagehash.phash(vault_pil)
-                    hash_diff   = suspect_hash - vault_hash  # hamming distance
+                    hash_diff   = suspect_hash - vault_hash
                     phash_score = max(0, 100 - (hash_diff * 4))
                     phash_match = hash_diff < 15
         except Exception:
             pass
 
-    match_confirmed = best_distance < MATCH_THRESHOLD
-    severity        = _severity_from_confidence(best_confidence)
-
     return {
-        "match_confirmed":  match_confirmed,
+        "match_confirmed":  best_distance < MATCH_THRESHOLD,
         "confidence_score": best_confidence,
         "l2_distance":      round(best_distance, 4),
-        "severity":         severity,
+        "severity":         _severity_from_confidence(best_confidence),
         "phash_match":      phash_match,
         "phash_score":      phash_score,
         "top_matches":      top_matches,
@@ -111,19 +108,17 @@ def tool_scan_thumbnail(thumbnail_url: str) -> str:
         return f"[ERROR] {result['error']}"
 
     if result["match_confirmed"]:
+        top = result["top_matches"][0] if result["top_matches"] else {}
         return (
             f"[CRITICAL ANOMALY DETECTED] "
             f"Confidence: {result['confidence_score']}% | "
             f"L2: {result['l2_distance']} | "
-            f"pHash match: {result['phash_match']} | "
-            f"Top match at {result['top_matches'][0]['timestamp_sec']}s in vault."
+            f"pHash: {result['phash_match']} | "
+            f"Matched vault frame at {top.get('timestamp_sec', '?')}s."
         )
 
     if result["confidence_score"] >= 60:
-        return (
-            f"[SUSPECT] Partial match detected. "
-            f"Confidence: {result['confidence_score']}% — routing for manual review."
-        )
+        return f"[SUSPECT] Partial match. Confidence: {result['confidence_score']}% — flagged for review."
 
     return f"[CLEAN] No match. Confidence: {result['confidence_score']}%"
 

@@ -2,22 +2,20 @@ import axios from "axios";
 import Incident from "../models/Incident.js";
 import HuntJob from "../models/HuntJob.js";
 import { getIO } from "../config/socket.js";
-import { safeRedis } from "../config/redis.js";
+import redis, { safeRedis } from "../config/redis.js";
 import ExpressError from "../utils/ExpressError.js";
 
 const FASTAPI = process.env.FASTAPI_URL || "http://127.0.0.1:8001";
 const fastapiClient = axios.create({ baseURL: FASTAPI, timeout: 60_000 });
 
-// Redis key for tracking how many times an account has been flagged across all hunts
 const velocityKey = (handle) => `sentinel:velocity:${handle}`;
 
-async function _incrementVelocity(account_handle) {
-  const count = await safeRedis(async () => {
-    const r = await global.redisClient?.incr(velocityKey(account_handle));
-    await global.redisClient?.expire(velocityKey(account_handle), 60 * 60 * 24 * 7); // 7 days
-    return r;
+async function _incrementVelocity(handle) {
+  return await safeRedis(async () => {
+    const count = await redis.incr(velocityKey(handle));
+    await redis.expire(velocityKey(handle), 60 * 60 * 24 * 7);
+    return count;
   }, 1);
-  return count || 1;
 }
 
 function _escalateSeverity(baseSeverity, velocity) {
@@ -28,6 +26,9 @@ function _escalateSeverity(baseSeverity, velocity) {
 
 export const scanSuspect = async (req, res) => {
   const { thumbnail_url, account_handle, platform, title, url, country, coordinates, jobId } = req.body;
+
+  if (!thumbnail_url) throw new ExpressError(400, "thumbnail_url is required");
+
   const io = getIO();
 
   const { data: scanResult } = await fastapiClient.post("/scan", {
@@ -42,7 +43,7 @@ export const scanSuspect = async (req, res) => {
   const incident = await Incident.create({
     jobId:            jobId || "manual",
     title:            title || "Unknown",
-    platform,
+    platform:         platform || "Other",
     account_handle,
     url,
     thumbnail_url,
@@ -54,7 +55,7 @@ export const scanSuspect = async (req, res) => {
   });
 
   io.emit("sentinel:scan_result", {
-    incidentId:      incident._id,
+    incidentId:       incident._id,
     jobId,
     title,
     platform,
@@ -87,30 +88,25 @@ export const batchScan = async (req, res) => {
     throw new ExpressError(400, "threat_nodes must be a non-empty array");
   }
 
-  // Update job status
-  if (jobId) {
-    await HuntJob.findOneAndUpdate({ jobId }, { status: "processing" });
-  }
+  if (jobId) await HuntJob.findOneAndUpdate({ jobId }, { status: "processing" });
 
-  io.to(`hunt:${jobId}`).emit("sentinel:batch_started", {
-    jobId, total: threat_nodes.length,
-  });
+  io.to(`hunt:${jobId}`).emit("sentinel:batch_started", { jobId, total: threat_nodes.length });
 
   const { data: batchResult } = await fastapiClient.post("/scan/batch", { threat_nodes });
 
   const incidents = [];
-  let piracy_count = 0;
+  let piracy_count   = 0;
   let fair_use_count = 0;
 
   for (const { node, scan } of batchResult.results) {
     if (scan.error) continue;
 
     const velocity = await _incrementVelocity(node.account_handle || "unknown");
-    const severity = _escalateSeverity(scan.severity, velocity);
+    const severity  = _escalateSeverity(scan.severity, velocity);
 
     const incident = await Incident.create({
       jobId:            jobId || "batch",
-      title:            node.title || "Unknown",
+      title:            node.title    || "Unknown",
       platform:         node.platform || "Other",
       account_handle:   node.account_handle,
       url:              node.url,
@@ -124,9 +120,9 @@ export const batchScan = async (req, res) => {
 
     incidents.push(incident);
 
-    if (scan.match_confirmed) piracy_count++;
+    if (scan.match_confirmed)       piracy_count++;
+    else if (scan.confidence_score >= 60) fair_use_count++;
 
-    // Emit each result live so the dashboard table updates in real-time
     io.to(`hunt:${jobId}`).emit("sentinel:threat_found", {
       incidentId:       incident._id,
       title:            node.title,
@@ -149,32 +145,32 @@ export const batchScan = async (req, res) => {
   }
 
   io.to(`hunt:${jobId}`).emit("sentinel:batch_complete", {
-    jobId,
-    total:         incidents.length,
-    piracy_count,
+    jobId, total: incidents.length, piracy_count, fair_use_count,
   });
 
   res.json({
-    success:       true,
-    total:         incidents.length,
+    success:        true,
+    total:          incidents.length,
     piracy_count,
-    incidents:     incidents.map((i) => i._id),
+    fair_use_count,
+    incidents:      incidents.map((i) => i._id),
   });
 };
 
 export const getIncidents = async (req, res) => {
   const { jobId, severity, status, page = 1, limit = 20 } = req.query;
   const filter = {};
-  if (jobId)   filter.jobId    = jobId;
+  if (jobId)    filter.jobId    = jobId;
   if (severity) filter.severity = severity;
   if (status)   filter.status   = status;
 
-  const incidents = await Incident.find(filter)
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(Number(limit));
-
-  const total = await Incident.countDocuments(filter);
+  const [incidents, total] = await Promise.all([
+    Incident.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit)),
+    Incident.countDocuments(filter),
+  ]);
 
   res.json({ success: true, data: incidents, total, page: Number(page) });
 };
