@@ -12,6 +12,7 @@ import { initSocket } from "./config/socket.js";
 import huntRouter from "./routes/hunt.js";
 import ingestRouter from "./routes/ingest.js";
 import scanRouter from "./routes/scan.js";
+import adjudicateRouter from "./routes/adjudicate.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ExpressError from "./utils/ExpressError.js";
 
@@ -40,6 +41,7 @@ app.get("/", (_req, res) => {
 app.use("/api", huntRouter);
 app.use("/api", ingestRouter);
 app.use("/api", scanRouter);
+app.use("/api", adjudicateRouter);
 
 app.all("*", (_req, _res, next) => {
   next(new ExpressError(404, "Route not found"));
