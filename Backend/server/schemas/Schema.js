@@ -10,8 +10,9 @@ export const huntRequestSchema = Joi.object({
 }).options({ abortEarly: false });
 
 export const ingestRequestSchema = Joi.object({
-  video_path: Joi.string().min(1).required().messages({
-    "any.required": "video_path is required",
+  official_video_url: Joi.string().uri().required().messages({
+    "string.uri": "official_video_url must be a valid URL",
+    "any.required": "official_video_url is required",
   }),
 }).options({ abortEarly: false });
 
