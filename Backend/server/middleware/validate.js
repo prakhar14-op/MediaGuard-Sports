@@ -1,11 +1,3 @@
-/**
- * validate.js — MediaGuard Request Validators
- *
- * Each exported function is an Express middleware.
- * On failure → throws ExpressError(400, messages)
- * On success → calls next()
- */
-
 import ExpressError from "../utils/ExpressError.js";
 import {
   huntRequestSchema,
@@ -15,51 +7,32 @@ import {
   brokerRequestSchema,
 } from "../schemas/Schema.js";
 
-// ─── Helper ─────────────────────────────────────────────────────
 const runValidation = (schema, data) => {
   const { error } = schema.validate(data, { abortEarly: false });
-  if (error) {
-    const message = error.details.map((d) => d.message).join(", ");
-    throw new ExpressError(400, message);
-  }
+  if (error) throw new ExpressError(400, error.details.map((d) => d.message).join(", "));
 };
 
-// ─── 1. Hunt (Spider trigger) ────────────────────────────────────
-export const validateHuntRequest = (req, res, next) => {
-  console.log("🕷️  [Hunt] Validating request:", req.body);
+export const validateHuntRequest = (req, _res, next) => {
   runValidation(huntRequestSchema, req.body);
-  console.log("✅ [Hunt] Validation passed");
   next();
 };
 
-// ─── 2. Ingest (Archivist trigger) ───────────────────────────────
-export const validateIngestRequest = (req, res, next) => {
-  console.log("📦 [Ingest] Validating request:", req.body);
+export const validateIngestRequest = (req, _res, next) => {
   runValidation(ingestRequestSchema, req.body);
-  console.log("✅ [Ingest] Validation passed");
   next();
 };
 
-// ─── 3. Adjudicate (Adjudicator LLM trigger) ─────────────────────
-export const validateAdjudicateRequest = (req, res, next) => {
-  console.log("⚖️  [Adjudicate] Validating request:", req.body);
+export const validateAdjudicateRequest = (req, _res, next) => {
   runValidation(adjudicateRequestSchema, req.body);
-  console.log("✅ [Adjudicate] Validation passed");
   next();
 };
 
-// ─── 4. Enforce (DMCA trigger) ───────────────────────────────────
-export const validateEnforceRequest = (req, res, next) => {
-  console.log("🔨 [Enforce] Validating request:", req.body);
+export const validateEnforceRequest = (req, _res, next) => {
   runValidation(enforceRequestSchema, req.body);
-  console.log("✅ [Enforce] Validation passed");
   next();
 };
 
-// ─── 5. Broker (Smart contract trigger) ──────────────────────────
-export const validateBrokerRequest = (req, res, next) => {
-  console.log("💰 [Broker] Validating request:", req.body);
+export const validateBrokerRequest = (req, _res, next) => {
   runValidation(brokerRequestSchema, req.body);
-  console.log("✅ [Broker] Validation passed");
   next();
 };
