@@ -217,7 +217,7 @@ npm start
 
 ### 5. Start React frontend
 ```bash
-# From project root
+cd Frontend
 npm install
 npm run dev
 # Runs on http://localhost:5173
