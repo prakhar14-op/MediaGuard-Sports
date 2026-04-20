@@ -130,13 +130,14 @@ export const batchAdjudicate = async (req, res) => {
     const { data } = await fastapiClient.post("/adjudicate/batch", { incidents: toProcess });
     freshResults = data.results;
 
+    // Build a lookup map to avoid repeated .find() calls
+    const processMap = Object.fromEntries(toProcess.map((i) => [i.incident_id, i]));
+
     for (const r of freshResults) {
-      if (r.verdict) {
-        const key = _cacheKey(
-          toProcess.find((i) => i.incident_id === r.incident_id)?.account_handle || "",
-          toProcess.find((i) => i.incident_id === r.incident_id)?.platform || "",
-          toProcess.find((i) => i.incident_id === r.incident_id)?.video_title || "",
-        );
+      if (!r.verdict) continue;
+      const inc = processMap[r.incident_id];
+      if (inc) {
+        const key = _cacheKey(inc.account_handle || "", inc.platform || "", inc.video_title || "");
         await _setCache(key, r.verdict);
       }
     }
