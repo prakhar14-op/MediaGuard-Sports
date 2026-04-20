@@ -6,8 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
-import redis from "./config/redis.js";
-import { isRedisAvailable } from "./config/redis.js";
+import redis, { isRedisAvailable } from "./config/redis.js";
 import { initSocket } from "./config/socket.js";
 import huntRouter from "./routes/hunt.js";
 import ingestRouter from "./routes/ingest.js";
