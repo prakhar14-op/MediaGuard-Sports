@@ -1,9 +1,13 @@
 import Redis from "ioredis";
 
+let hasLoggedError = false;
+
 const redisConfig = {
   lazyConnect: false,
   maxRetriesPerRequest: 3,
   enableOfflineQueue: true,
+  // Upstash requires TLS — enabled automatically when URL starts with rediss://
+  tls: process.env.REDIS_URL?.startsWith("rediss://") ? {} : undefined,
   retryStrategy(times) {
     if (times > 10) return null;
     return Math.min(times * 200, 2000);
@@ -17,9 +21,16 @@ const redis = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379", redis
 
 let isConnected = false;
 
-redis.on("connect", () => { isConnected = true;  console.log("✅ [Redis] Connected"); });
-redis.on("ready",   () => { isConnected = true;  console.log("🚀 [Redis] Ready"); });
-redis.on("error",   (err) => { isConnected = false; console.error("❌ [Redis]", err.message); });
+redis.on("connect", () => { isConnected = true; hasLoggedError = false; console.log("✅ [Redis] Connected"); });
+redis.on("ready",   () => { isConnected = true; hasLoggedError = false; console.log("🚀 [Redis] Ready"); });
+redis.on("error",   (err) => {
+  isConnected = false;
+  if (!hasLoggedError) {
+    console.error("❌ [Redis]", err.message);
+    console.warn("⚠️  [Redis] Running without cache/velocity tracking. Set REDIS_URL in .env to enable.");
+    hasLoggedError = true;
+  }
+});
 redis.on("close",   () => { isConnected = false; });
 redis.on("end",     () => { isConnected = false; });
 
