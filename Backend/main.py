@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from agents.archivist import tool_ingest_video, vector_db
 from agents.spider import tool_crawl_web, spider_agent
+from agents.sentinel import scan_thumbnail
 from crewai import Task, Crew
 
 app = FastAPI(title="MediaGuard ML API")
@@ -36,6 +37,39 @@ class IngestRequest(BaseModel):
 
 class HuntRequest(BaseModel):
     official_video_url: str
+
+
+class ScanRequest(BaseModel):
+    thumbnail_url:  str
+    account_handle: str = ""
+    platform:       str = "Unknown"
+    title:          str = ""
+    url:            str = ""
+    country:        str = ""
+
+
+class BatchScanRequest(BaseModel):
+    threat_nodes: list
+
+
+@app.post("/scan")
+def scan_suspect(payload: ScanRequest):
+    result = scan_thumbnail(payload.thumbnail_url)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"success": True, **result}
+
+
+@app.post("/scan/batch")
+def batch_scan(payload: BatchScanRequest):
+    results = []
+    for node in payload.threat_nodes:
+        thumbnail_url = node.get("thumbnail_url", "")
+        if not thumbnail_url:
+            continue
+        result = scan_thumbnail(thumbnail_url)
+        results.append({"node": node, "scan": result})
+    return {"success": True, "results": results, "total": len(results)}
 
 
 @app.get("/")
