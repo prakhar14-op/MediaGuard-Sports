@@ -41,8 +41,12 @@ export const enforceRequestSchema = Joi.object({
 }).options({ abortEarly: false });
 
 export const brokerRequestSchema = Joi.object({
-  target_account:          Joi.string().min(1).required(),
-  platform:                Joi.string().valid(...PLATFORMS).required(),
-  copyright_holder_share:  Joi.number().integer().min(1).max(99).default(30),
-  adjudicator_ruling:      Joi.string().min(1).required(),
+  incident_id:            Joi.string().min(1).required(),
+  target_account:         Joi.string().min(1).required(),
+  platform:               Joi.string().valid(...PLATFORMS).required(),
+  video_title:            Joi.string().min(1).required(),
+  video_url:              Joi.string().uri().optional().allow(""),
+  justification:          Joi.string().min(1).required(),
+  view_count:             Joi.number().integer().min(0).default(0),
+  risk_score:             Joi.number().integer().min(0).max(100).default(30),
 }).options({ abortEarly: false });
