@@ -1,0 +1,13 @@
+# Python virtual environments
+Backend/.venv/
+Backend/env/
+Backend/__pycache__/
+
+# Environment variables (NEVER COMMIT THIS)
+Backend/.env
+
+# Downloaded videos and local FAISS databases
+Backend/assets/
+*.mp4
+*.faiss
+*.pkl
