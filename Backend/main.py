@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-import json
 import os
 import glob
 import sys
@@ -11,12 +10,11 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(__file__))
 
 from agents.archivist import tool_ingest_video, vector_db
-from agents.spider import tool_crawl_web, spider_agent
+from agents.spider import crawl
 from agents.sentinel import scan_thumbnail
 from agents.adjudicator import adjudicate, batch_adjudicate
 from agents.enforcer import issue_dmca
 from agents.broker import deploy_contract
-from crewai import Task, Crew
 
 app = FastAPI(title="MediaGuard ML API")
 
@@ -29,7 +27,6 @@ app.add_middleware(
 )
 
 OFFICIAL_DIR = os.path.join(os.path.dirname(__file__), "assets", "official")
-PAYLOAD_PATH = os.path.join(os.path.dirname(__file__), "assets", "suspects", "spider_payload.json")
 os.makedirs(OFFICIAL_DIR, exist_ok=True)
 
 
@@ -233,29 +230,12 @@ def ingest_asset(payload: IngestRequest):
 
 @app.post("/hunt")
 def trigger_hunt(payload: HuntRequest):
-    import yt_dlp
+    result = crawl(payload.official_video_url)
 
-    try:
-        with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
-            info  = ydl.extract_info(payload.official_video_url, download=False)
-            title = info.get("title", "Unknown Video")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Title extraction failed: {e}")
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
 
-    task = Task(
-        description=f"Crawl for infringements of '{title}'. Assign them to country centroids.",
-        expected_output="A JSON map payload with dynamic coordinates.",
-        agent=spider_agent,
-    )
-    Crew(agents=[spider_agent], tasks=[task]).kickoff()
-
-    if not os.path.exists(PAYLOAD_PATH):
-        raise HTTPException(status_code=500, detail="Spider payload not generated")
-
-    with open(PAYLOAD_PATH, "r") as f:
-        data = json.load(f)
-
-    return {"success": True, "data": data}
+    return {"success": True, "data": result}
 
 
 if __name__ == "__main__":
