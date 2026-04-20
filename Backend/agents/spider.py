@@ -56,12 +56,22 @@ COUNTRY_CENTROIDS = {
     "TR": {"lat": 38.9637,  "lng": 35.2433},
 }
 
+spider_agent = Agent(
+    role="Threat Intelligence Crawler",
+    goal="Generate optimized OSINT search queries and map piracy suspects to geographic coordinates for the UI.",
+    backstory=(
+        "You are a silent, sprawling global OSINT specialist. "
+        "You generate smart search variants, scour platforms, deduplicate results, "
+        "and map every suspect to a country centroid. Zero disk usage. Maximum coverage."
+    ),
+    verbose=True,
+    allow_delegation=False,
+    tools=[],
+    llm=gemini_brain,
+)
+
 
 def _generate_search_queries(title: str, official_country: str) -> list[str]:
-    """
-    Uses Gemini to generate optimized multi-variant search queries.
-    Raw title search misses reposts that change the title slightly.
-    """
     prompt = f"""
 You are an OSINT specialist hunting for pirated copies of a video titled: "{title}"
 The original is from country: {official_country}
@@ -90,17 +100,8 @@ Example: ["query 1", "query 2", "query 3", "query 4"]
 
 
 def crawl(official_video_url: str, official_country: str = "US") -> dict:
-    """
-    Full Spider crawl. Extracts official metadata, generates search queries via Gemini,
-    scrapes YouTube for suspects, deduplicates, and returns the map payload.
-    """
-    ydl_opts = {
-        "quiet":       True,
-        "noplaylist":  True,
-        "extract_flat": False,
-    }
+    ydl_opts = {"quiet": True, "noplaylist": True, "extract_flat": False}
 
-    # Step 1 — Extract official video metadata
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info             = ydl.extract_info(official_video_url, download=False)
@@ -109,9 +110,7 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
     except Exception as e:
         return {"error": f"Could not extract official video metadata: {e}"}
 
-    # Step 2 — Generate optimized search queries via Gemini
-    search_queries = _generate_search_queries(title, official_country)
-
+    search_queries  = _generate_search_queries(title, official_country)
     official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
 
     map_payload = {
@@ -130,7 +129,6 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
 
     seen_urls = set()
 
-    # Step 3 — Crawl each query, deduplicate by URL
     for query in search_queries:
         search_string = f"ytsearch5:{query}"
         try:
@@ -178,7 +176,6 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
 
 @tool("Crawl and Extract Metadata")
 def tool_crawl_web(search_query: str) -> str:
-    """Generates optimized search queries via Gemini, crawls YouTube for suspects, maps them to country centroids."""
     try:
         result = crawl(search_query)
         if "error" in result:
@@ -189,16 +186,4 @@ def tool_crawl_web(search_query: str) -> str:
         return f"[ERROR] Crawl failed: {e}"
 
 
-spider_agent = Agent(
-    role="Threat Intelligence Crawler",
-    goal="Generate optimized OSINT search queries and map piracy suspects to geographic coordinates for the UI.",
-    backstory=(
-        "You are a silent, sprawling global OSINT specialist. "
-        "You generate smart search variants, scour platforms, deduplicate results, "
-        "and map every suspect to a country centroid. Zero disk usage. Maximum coverage."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    tools=[tool_crawl_web],
-    llm=gemini_brain,
-)
+spider_agent.tools = [tool_crawl_web]
