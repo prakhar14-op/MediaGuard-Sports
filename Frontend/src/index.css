@@ -44,7 +44,7 @@
 /* Ripple cell with CSS custom props */
 @keyframes cellRipple {
   0%   { background-color: transparent; }
-  30%  { background-color: rgba(13,148,136,0.18); }
+  25%  { background-color: rgba(13,148,136,0.22); box-shadow: inset 0 0 12px rgba(13,148,136,0.15); }
   100% { background-color: transparent; }
 }
 .animate-cell-ripple {
