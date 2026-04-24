@@ -4,36 +4,49 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-200 antialiased selection:bg-blue-500/30;
+    @apply antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
 @layer components {
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
 }
 
-/* Leaflet Popup Layering Fix */
-.leaflet-popup {
-  z-index: 3000 !important;
+/* Dashboard keeps dark bg */
+.dashboard-root { @apply bg-slate-950 text-slate-200; }
+
+/* Leaflet */
+.leaflet-popup { z-index: 3000 !important; }
+.leaflet-pane  { z-index: 1 !important; }
+.leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+
+/* Ripple cell animation */
+@keyframes cellPulse {
+  0%   { background-color: transparent; }
+  30%  { background-color: rgba(13,148,136,0.15); }
+  100% { background-color: transparent; }
 }
 
-.leaflet-pane {
-  z-index: 1 !important;
+/* Animated gradient text */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
 }
 
-.leaflet-top, .leaflet-bottom {
-  z-index: 2 !important;
+/* Ripple cell with CSS custom props */
+@keyframes cellRipple {
+  0%   { background-color: transparent; }
+  30%  { background-color: rgba(13,148,136,0.18); }
+  100% { background-color: transparent; }
+}
+.animate-cell-ripple {
+  animation: cellRipple var(--duration, 380ms) var(--delay, 0ms) ease-out both;
 }
