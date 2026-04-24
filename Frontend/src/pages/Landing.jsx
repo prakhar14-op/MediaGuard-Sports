@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, ArrowRight, Database, Globe, Eye, Brain, Gavel, Coins,
-  Zap, CheckCircle, ChevronRight, AlertCircle, Lock
+  Zap, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { FlipWords } from '../components/ui/FlipWords';
 
@@ -163,6 +163,13 @@ const Hero = ({ onLaunch }) => {
               Explore Agents
             </motion.button>
           </motion.div>
+
+          {/* Live ticker — NxtDevs style */}
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.58, duration: 0.55 }}
+            className="mt-8 max-w-[430px]">
+            <LiveTicker />
+          </motion.div>
         </div>
 
         {/* RIGHT — fanned floating cards */}
@@ -178,7 +185,39 @@ const Hero = ({ onLaunch }) => {
   );
 };
 
-// ─── Split Card (GSSoC-style) ─────────────────────────────────────────────────
+// ─── Live Activity Ticker (NxtDevs-style) ────────────────────────────────────
+const TICKER_EVENTS = [
+  { icon: '🕷️', text: 'Spider found 18 suspects on YouTube', time: '2s ago', color: '#818cf8' },
+  { icon: '👁️', text: 'Sentinel: CRITICAL match — L2 0.09', time: '8s ago', color: '#fbbf24' },
+  { icon: '⚖️', text: 'Adjudicator: SEVERE PIRACY → Enforcer', time: '14s ago', color: '#c084fc' },
+  { icon: '🔨', text: 'Enforcer: DMCA drafted for @PirateHD', time: '21s ago', color: '#f87171' },
+  { icon: '💰', text: 'Broker: Rev-share contract minted', time: '35s ago', color: '#34d399' },
+  { icon: '✅', text: 'Swarm complete — 8 incidents resolved', time: '1m ago', color: '#2dd4bf' },
+];
+
+const LiveTicker = () => (
+  <div className="relative overflow-hidden rounded-2xl bg-[#0d1117] border border-slate-800/60 py-2.5"
+    style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}>
+    <div className="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none"
+      style={{ background: 'linear-gradient(to right, #0d1117, transparent)' }} />
+    <div className="absolute right-0 top-0 bottom-0 w-12 z-10 pointer-events-none"
+      style={{ background: 'linear-gradient(to left, #0d1117, transparent)' }} />
+    <motion.div
+      animate={{ x: ['0%', '-50%'] }}
+      transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
+      className="flex gap-6 w-max px-4"
+    >
+      {[...TICKER_EVENTS, ...TICKER_EVENTS].map((e, i) => (
+        <span key={i} className="inline-flex items-center gap-2 text-[11px] font-medium whitespace-nowrap">
+          <span>{e.icon}</span>
+          <span style={{ color: e.color }}>{e.text}</span>
+          <span className="text-slate-600">{e.time}</span>
+          <span className="text-slate-700 mx-1">·</span>
+        </span>
+      ))}
+    </motion.div>
+  </div>
+);
 const SplitCard = ({ num, tag, title, label, desc, cta, reverse = false }) => (
   <motion.div
     initial={{ opacity: 0, y: 44 }}
@@ -360,91 +399,236 @@ const PipelineSection = () => (
   </section>
 );
 
-// ─── Tech Stack Section ───────────────────────────────────────────────────────
-const FEATURES = [
-  { icon: Database,    title: 'CLIP Embeddings',   desc: 'openai/clip-vit-base-patch32 · 512-D cross-modal visual fingerprints',       color: '#3b82f6', gradient: 'from-blue-400 to-indigo-500' },
-  { icon: Globe,       title: 'FAISS Vector DB',   desc: 'Facebook AI Similarity Search · sub-millisecond L2 nearest-neighbour lookup', color: '#6366f1', gradient: 'from-indigo-400 to-purple-500' },
-  { icon: Brain,       title: 'Gemini 2.5 Flash',  desc: 'CrewAI agent orchestration · strict JSON output · 24h Redis verdict cache',   color: '#f59e0b', gradient: 'from-amber-400 to-orange-500' },
-  { icon: Eye,         title: 'yt-dlp OSINT',      desc: 'Zero-download architecture · metadata and thumbnails only · URL dedup',       color: '#10b981', gradient: 'from-emerald-400 to-teal-500' },
-  { icon: Lock,        title: 'SHA-256 + Polygon', desc: 'Cryptographic proof of ownership · mock Polygon tx hash on every asset',      color: '#a855f7', gradient: 'from-purple-400 to-violet-500' },
-  { icon: Zap,         title: 'Redis + MongoDB',   desc: 'Velocity tracking · verdict caching · full incident and audit persistence',   color: '#ef4444', gradient: 'from-red-400 to-rose-500' },
-  { icon: Gavel,       title: 'Express + FastAPI', desc: 'Node.js API layer + Python ML server · clean separation of concerns',         color: '#0d9488', gradient: 'from-teal-400 to-cyan-500' },
-  { icon: Coins,       title: 'Socket.io',         desc: 'Real-time agent event streaming · live dashboard updates per phase',          color: '#f97316', gradient: 'from-orange-400 to-amber-500' },
+// ─── NxtDevs-inspired: Scrolling Tech Marquee ────────────────────────────────
+const MARQUEE_ITEMS = [
+  'HuggingFace CLIP', 'FAISS Vector DB', 'Gemini 2.5 Flash', 'CrewAI Agents',
+  'yt-dlp OSINT', 'pHash Detection', 'Redis Caching', 'MongoDB Atlas',
+  'Express.js', 'FastAPI', 'Socket.io', 'Polygon Mock', 'SHA-256 Proof',
+  'PyTorch', 'OpenCV', 'ImageHash', 'Upstash Redis', 'Mongoose ODM',
 ];
 
-const FeatureCard = ({ feature, index }) => {
-  const Icon = feature.icon;
-  return (
+const Marquee = () => (
+  <div className="relative overflow-hidden py-4 bg-white border-y border-slate-100">
+    <div className="absolute left-0 top-0 bottom-0 w-24 z-10 pointer-events-none"
+      style={{ background: 'linear-gradient(to right, white, transparent)' }} />
+    <div className="absolute right-0 top-0 bottom-0 w-24 z-10 pointer-events-none"
+      style={{ background: 'linear-gradient(to left, white, transparent)' }} />
     <motion.div
-      initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-30px' }}
-      transition={{ delay: index * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="group relative bg-white border border-slate-200/70 rounded-2xl p-6 hover:shadow-lg transition-all duration-400 overflow-hidden cursor-default"
+      animate={{ x: ['0%', '-50%'] }}
+      transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+      className="flex gap-3 w-max"
     >
-      <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-[0.06] transition-opacity duration-500`} />
-      <div className="relative z-10">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110"
-          style={{ backgroundColor: `${feature.color}10`, border: `1px solid ${feature.color}18` }}>
-          <Icon className="w-5 h-5" style={{ color: feature.color }} />
-        </div>
-        <h3 className="text-[13px] font-black text-slate-900 mb-1.5">{feature.title}</h3>
-        <p className="text-[11px] text-slate-400 leading-relaxed">{feature.desc}</p>
-      </div>
+      {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+        <span key={i}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200/70 rounded-full text-[11px] font-bold text-slate-600 whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />{item}
+        </span>
+      ))}
     </motion.div>
-  );
-};
+  </div>
+);
 
-const TechSection = () => (
-  <section id="stack" className="py-28 px-8 bg-[#f6f7fc]">
-    <div className="max-w-6xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }} transition={{ duration: 0.6 }}
-        className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 mb-5">
-          <AlertCircle className="w-3.5 h-3.5 text-teal-600" />
-          <span className="text-[10px] font-bold text-teal-700 uppercase tracking-[0.24em]">Mission-Critical Stack</span>
-        </div>
-        <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight mb-5">
-          Production-Grade{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 animate-gradient">
-            Tech Stack
-          </span>
-        </h2>
-        <p className="text-[17px] text-slate-500 max-w-lg mx-auto leading-relaxed">
-          Every component selected for speed, accuracy, and a zero-download architecture that
-          never stores suspect content on disk.
-        </p>
-      </motion.div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        {FEATURES.map((f, i) => <FeatureCard key={f.title} feature={f} index={i} />)}
+// ─── NxtDevs-inspired: Live Threat Card ──────────────────────────────────────
+const LiveThreatCard = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }} transition={{ duration: 0.6 }}
+    className="bg-[#0d1117] rounded-3xl overflow-hidden border border-slate-800/60"
+    style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+  >
+    {/* Header */}
+    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/60">
+      <div className="flex items-center gap-2">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Live Threat Detected</span>
       </div>
+      <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 px-2.5 py-1 rounded-full border border-teal-400/20">
+        Sentinel Active
+      </span>
+    </div>
+    {/* Threat metadata */}
+    <div className="px-6 py-5 font-mono text-xs space-y-2">
+      <div className="flex justify-between">
+        <span className="text-slate-500">platform</span>
+        <span className="text-amber-400">YouTube</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-slate-500">account</span>
+        <span className="text-slate-300">@SportsLeaks_HD</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-slate-500">title</span>
+        <span className="text-slate-300 truncate max-w-[180px]">"Champions League Final Full Match"</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-slate-500">l2_distance</span>
+        <span className="text-red-400">0.12</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-slate-500">phash_match</span>
+        <span className="text-red-400">true</span>
+      </div>
+    </div>
+    {/* Question overlay */}
+    <div className="mx-4 mb-4 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
+      <p className="text-[11px] font-bold text-slate-300 mb-3">What should the Adjudicator classify this as?</p>
+      <div className="space-y-2">
+        {['SEVERE PIRACY — raw repost, no transformation', 'FAIR USE — commentary and reaction content'].map((opt, i) => (
+          <div key={i}
+            className={`px-3 py-2 rounded-xl text-[11px] font-medium border cursor-default transition-colors ${i === 0 ? 'bg-red-500/15 border-red-500/30 text-red-300' : 'bg-slate-700/40 border-slate-600/40 text-slate-400'}`}>
+            {opt}
+          </div>
+        ))}
+      </div>
+    </div>
+  </motion.div>
+);
 
-      {/* Architecture strip */}
-      <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }} transition={{ delay: 0.15, duration: 0.6 }}
-        className="bg-white border border-slate-200/70 rounded-3xl p-8">
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-6 text-center">System Architecture</p>
-        <div className="flex flex-col md:flex-row items-center justify-center gap-3 text-xs font-mono flex-wrap">
-          {[
-            { l: 'React UI',     s: 'Vite · Port 5173', c: '#3b82f6' },
-            { plain: true },
-            { l: 'Express API',  s: 'Node.js · Port 8000', c: '#10b981' },
-            { plain: true },
-            { l: 'FastAPI ML',   s: 'Python · Port 8001', c: '#a855f7' },
-            { plain: true },
-            { l: 'CLIP + FAISS', s: 'Gemini · CrewAI', c: '#f59e0b' },
-          ].map((item, i) => item.plain
-            ? <span key={i} className="text-slate-300 text-lg hidden md:block">→</span>
-            : <div key={i} className="px-5 py-3 rounded-xl border text-center min-w-[120px]"
-                style={{ borderColor: `${item.c}22`, backgroundColor: `${item.c}06` }}>
-                <p className="font-bold text-[12px]" style={{ color: item.c }}>{item.l}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">{item.s}</p>
-              </div>
-          )}
+// ─── NxtDevs-inspired: Detection Metrics Bars ────────────────────────────────
+const METRICS = [
+  { label: 'CLIP Vector Match',    value: 99, color: '#ef4444' },
+  { label: 'pHash Confirmation',   value: 94, color: '#f59e0b' },
+  { label: 'Velocity Score',       value: 87, color: '#a855f7' },
+  { label: 'Risk Score (0–100)',    value: 96, color: '#0d9488' },
+];
+
+const MetricBars = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}
+    className="bg-white border border-slate-200/70 rounded-3xl p-7"
+    style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.05)' }}
+  >
+    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.28em] mb-5">Adjudicator Confidence Profile</p>
+    <div className="space-y-4">
+      {METRICS.map((m, i) => (
+        <div key={m.label}>
+          <div className="flex justify-between mb-1.5">
+            <span className="text-[12px] font-bold text-slate-700">{m.label}</span>
+            <span className="text-[12px] font-black" style={{ color: m.color }}>{m.value}%</span>
+          </div>
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }} whileInView={{ width: `${m.value}%` }}
+              viewport={{ once: true }} transition={{ delay: i * 0.1 + 0.3, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="h-full rounded-full"
+              style={{ backgroundColor: m.color }}
+            />
+          </div>
         </div>
-      </motion.div>
+      ))}
+    </div>
+  </motion.div>
+);
+
+// ─── NxtDevs-inspired: Verdict Duel Card ─────────────────────────────────────
+const VerdictDuel = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }}
+    className="bg-white border border-slate-200/70 rounded-3xl p-7"
+    style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.05)' }}
+  >
+    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.28em] mb-5">Adjudicator Routing Decision</p>
+    <div className="flex items-center gap-4">
+      <div className="flex-1 bg-red-50 border border-red-200/60 rounded-2xl p-4 text-center">
+        <Gavel className="w-6 h-6 text-red-500 mx-auto mb-2" />
+        <p className="text-[11px] font-black text-red-600 uppercase tracking-wide">Enforcer</p>
+        <p className="text-2xl font-black text-red-500 mt-1">5</p>
+        <p className="text-[10px] text-red-400 font-medium">DMCA Notices</p>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">VS</span>
+        <div className="w-px h-8 bg-slate-200" />
+      </div>
+      <div className="flex-1 bg-emerald-50 border border-emerald-200/60 rounded-2xl p-4 text-center">
+        <Coins className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
+        <p className="text-[11px] font-black text-emerald-600 uppercase tracking-wide">Broker</p>
+        <p className="text-2xl font-black text-emerald-500 mt-1">3</p>
+        <p className="text-[10px] text-emerald-400 font-medium">Rev-Share Contracts</p>
+      </div>
+    </div>
+    <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden flex">
+      <div className="bg-red-400 h-full rounded-l-full" style={{ width: '62.5%' }} />
+      <div className="bg-emerald-400 h-full rounded-r-full" style={{ width: '37.5%' }} />
+    </div>
+    <div className="flex justify-between mt-1.5">
+      <span className="text-[10px] text-red-400 font-bold">62.5% Piracy</span>
+      <span className="text-[10px] text-emerald-400 font-bold">37.5% Fair Use</span>
+    </div>
+  </motion.div>
+);
+
+// ─── NxtDevs-inspired: AI Agent Reasoning Bubble ─────────────────────────────
+const AICoachBubble = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }}
+    className="bg-[#0d1117] rounded-3xl p-6 border border-slate-800/60"
+    style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+  >
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-8 h-8 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
+        <Brain className="w-4 h-4 text-teal-400" />
+      </div>
+      <div>
+        <p className="text-[11px] font-black text-teal-400">Adjudicator Agent</p>
+        <p className="text-[9px] text-slate-500 uppercase tracking-widest">Gemini 2.5 Flash · Low Temp</p>
+      </div>
+      <div className="ml-auto flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+        <span className="text-[9px] text-teal-500 font-bold uppercase tracking-wider">Reasoning</span>
+      </div>
+    </div>
+    <div className="bg-slate-800/50 rounded-2xl p-4 text-[12px] text-slate-300 leading-relaxed border border-slate-700/40">
+      The thumbnail L2 distance of <span className="text-red-400 font-bold">0.12</span> confirms a pixel-level match.
+      However, the description contains <span className="text-amber-400 font-bold">"reaction + commentary"</span> — applying
+      17 U.S.C. § 107 fair use factors. Transformative purpose detected.
+    </div>
+    <div className="mt-3 flex items-center gap-2">
+      <span className="px-3 py-1 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+        → Routing to Broker
+      </span>
+      <span className="px-3 py-1 bg-slate-700/50 border border-slate-600/40 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+        Risk Score: 34/100
+      </span>
+    </div>
+  </motion.div>
+);
+
+// ─── Showcase Section (replaces TechSection) ─────────────────────────────────
+const ShowcaseSection = () => (
+  <section id="stack" className="bg-[#f6f7fc]">
+    <Marquee />
+    <div className="py-28 px-8">
+      <div className="max-w-6xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.6 }}
+          className="text-center mb-16">
+          <p className="text-[10px] font-bold text-teal-600 uppercase tracking-[0.28em] mb-4">System in Action</p>
+          <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight mb-5">
+            Watch the Swarm<br />
+            <span className="text-teal-600">Think in Real-Time.</span>
+          </h2>
+          <p className="text-[17px] text-slate-500 max-w-lg mx-auto leading-relaxed">
+            Every detection, verdict, and action streams live to the dashboard.
+            The agents reason, route, and act — you just approve.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left col */}
+          <div className="space-y-6">
+            <LiveThreatCard />
+            <AICoachBubble />
+          </div>
+          {/* Right col */}
+          <div className="space-y-6">
+            <MetricBars />
+            <VerdictDuel />
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 );
@@ -502,7 +686,7 @@ const Landing = () => {
       <Hero onLaunch={onLaunch} />
       <AgentsSection />
       <PipelineSection />
-      <TechSection />
+      <ShowcaseSection />
       <CTA onLaunch={onLaunch} />
       <footer className="py-8 px-8 border-t border-slate-100 bg-[#f6f7fc]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
