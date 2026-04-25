@@ -212,16 +212,9 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
             ydl_opts = {
                 "outtmpl":  os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-                "format":   "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
+                "format":   "best",
                 "quiet":    True,
                 "no_warnings": True,
-                "merge_output_format": "mp4",
-                "postprocessors": [],
-                "extractor_args": {
-                    "youtube": {
-                        "player_client": ["web_creator", "web", "android"],
-                    }
-                },
             }
 
             # Use cookies if available
