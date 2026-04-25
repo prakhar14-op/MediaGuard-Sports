@@ -1,8 +1,8 @@
 {
   "official_source": {
     "node_id": "official_01",
-    "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
-    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "title": "Every Way Humans Tried to Cheat Death (One Is Still Happening)",
+    "url": "https://youtu.be/OnBFCpLQzm4?si=Xz7yc3qPYQYArA4R",
     "country": "US",
     "coordinates": {
       "lat": 37.0902,
@@ -11,297 +11,313 @@
     "status": "System Online: Global Node Monitoring Active"
   },
   "country_threat_counts": {
-    "VN": 1,
-    "RU": 1,
+    "ZA": 1,
     "EG": 1,
-    "DE": 2,
-    "TR": 2,
-    "IT": 1,
-    "SG": 1,
+    "US": 2,
     "PH": 1,
-    "CO": 1,
-    "IN": 2,
-    "TH": 1,
-    "ES": 2,
+    "NG": 2,
+    "FR": 1,
+    "RU": 2,
+    "ES": 1,
+    "MX": 1,
+    "IN": 1,
+    "CN": 2,
+    "TR": 1,
     "AU": 1,
-    "PK": 1
+    "BR": 1,
+    "CA": 1
   },
   "threat_nodes": [
     {
-      "title": "InsurAAAnce & Rick Astley Never Gonna Give You Up",
+      "title": "This Much Will Kill You",
       "platform": "YouTube",
-      "account_handle": "CSAA Insurance Group, a AAA Insurer",
-      "url": "https://www.youtube.com/watch?v=GtL1huin9EE",
-      "thumbnail_url": "https://i.ytimg.com/vi/GtL1huin9EE/maxresdefault.jpg",
-      "country": "VN",
+      "account_handle": "AsapSCIENCE",
+      "url": "https://www.youtube.com/watch?v=vPszR0-vTqc",
+      "thumbnail_url": "https://i.ytimg.com/vi/vPszR0-vTqc/maxresdefault.jpg",
+      "country": "ZA",
       "coordinates": {
-        "lat": 14.0583,
-        "lng": 108.2772
+        "lat": -30.5595,
+        "lng": 22.9375
       },
-      "view_count": 8845700,
-      "description": "Our legendary service is never gonna let you down.  Start saving today on auto and home coverage that would never run around and desert you. Because with 100 years of experience, InsurAAAnce is no stranger to love or exceptional service.\n \n#RickAstley #Rickroll #RR #InsurAAAnce #CSAAInsuranceGroup",
-      "search_query": "\"Rick Astley Never Gonna Give You Up\" unofficial OR fanmade OR copy"
+      "view_count": 22974794,
+      "description": "A lot of things can kill you - but here are some surprising ones!\nThis Much Will Kill You PART 2: https://youtu.be/IPrndNZ4m6w\nThis Is 200 Calories: https://youtu.be/KMGUmcveQeg\n\nSUBSCRIBE (it's free): http://bit.ly/asapsci\nGET THE ASAPSCIENCE BOOK: http://asapscience.com/book/\n\nWritten by Rachel Sa",
+      "search_query": "Every Way Humans Tried to Cheat Death reupload"
     },
     {
-      "title": "RICK ASTLEY \"Never Gonna Give You Up\" METAL COVER with original vocals.",
+      "title": "Getting Over It Yeet's TAS (38.679s) FWR Reupload",
       "platform": "YouTube",
-      "account_handle": "ESTUDIOS GALLINERO",
-      "url": "https://www.youtube.com/watch?v=6bmTATPmfCA",
-      "thumbnail_url": "https://i.ytimg.com/vi/6bmTATPmfCA/sddefault.jpg",
-      "country": "RU",
-      "coordinates": {
-        "lat": 61.524,
-        "lng": 105.3188
-      },
-      "view_count": 24680,
-      "description": "The Rick Astley hit  \"Never Gonna Give You Up\" METAL COVER with original vocals.By Estudios Gallinero.",
-      "search_query": "\"Rick Astley Never Gonna Give You Up\" unofficial OR fanmade OR copy"
-    },
-    {
-      "title": "Kygo & Rick Astley- Never gonna give up [Music Video 2018]",
-      "platform": "YouTube",
-      "account_handle": "SoulMotion",
-      "url": "https://www.youtube.com/watch?v=O3BCQtMXWls",
-      "thumbnail_url": "https://i.ytimg.com/vi/O3BCQtMXWls/maxresdefault.jpg",
+      "account_handle": "Yeet Archive",
+      "url": "https://www.youtube.com/watch?v=rSKOVohamx4",
+      "thumbnail_url": "https://i.ytimg.com/vi/rSKOVohamx4/maxresdefault.jpg",
       "country": "EG",
       "coordinates": {
         "lat": 26.8206,
         "lng": 30.8025
       },
-      "view_count": 1303,
-      "description": "Subscribe for more songs!",
-      "search_query": "\"Rick Astley Never Gonna Give You Up\" unofficial OR fanmade OR copy"
+      "view_count": 1230235,
+      "description": "Yeet was a Getting Over It Youtuber who has made the fastest GOI TAS ever (has been beaten now). His Youtube account was terminated because of hate speech. This is his 38.679s TAS Reuploaded. Yeet's TAS has been archived on the wayback machine, but the videos there don't load. There are reuploads of",
+      "search_query": "Every Way Humans Tried to Cheat Death reupload"
     },
     {
-      "title": "Rick Astley\u306b\u99c6\u3051\u308b remastered (full ver.)",
+      "title": "Man Who Killed Victim With Single Punch Jailed CCTV",
       "platform": "YouTube",
-      "account_handle": "Raymond Hsu",
-      "url": "https://www.youtube.com/watch?v=O_vMqGuoxv8",
-      "thumbnail_url": "https://i.ytimg.com/vi/O_vMqGuoxv8/maxresdefault.jpg",
-      "country": "DE",
+      "account_handle": "Sky News",
+      "url": "https://www.youtube.com/watch?v=W_KNCGypkUE",
+      "thumbnail_url": "https://i.ytimg.com/vi/W_KNCGypkUE/maxresdefault.jpg",
+      "country": "US",
       "coordinates": {
-        "lat": 51.1657,
-        "lng": 10.4515
+        "lat": 37.0902,
+        "lng": -95.7129
       },
-      "view_count": 794208,
-      "description": "it became somehow harder to edit after short version because rick astley literary had no other lyrics... and i realized i duplicated the word \"remaster\" in the first 5 second ;-;\n\nOriginal remix made by Anker, remastered and extended by Raymond.\nOriginal Remix: https://youtu.be/6omHDfHITZ4\n\nI did no",
-      "search_query": "\"Rick Astley Never Gonna Give You Up\" unofficial OR fanmade OR copy"
+      "view_count": 5034023,
+      "description": "A man has been jailed after his single punch led to the death of a stranger after an argument about cycling on the pavement.\n\nLewis Gill, 20, was given a four-year sentence at Salisbury Crown Court after his attack gave 40-year-old Andrew Young a fatal head injury when he fell.\n\nCCTV cameras recorde",
+      "search_query": "Every Way Humans Tried to Cheat Death reupload"
     },
     {
-      "title": "Rick Astley - Whenever you need somebody - BERLIN LIVE - Reuploaded",
+      "title": "Stupid Video",
       "platform": "YouTube",
-      "account_handle": "Elamigo Silencioso",
-      "url": "https://www.youtube.com/watch?v=8l2P57jpVfE",
-      "thumbnail_url": "https://i.ytimg.com/vi/8l2P57jpVfE/maxresdefault.jpg",
-      "country": "TR",
-      "coordinates": {
-        "lat": 38.9637,
-        "lng": 35.2433
-      },
-      "view_count": 331397,
-      "description": "I Reupload this performance because I see that youtube delete the original video, I don\u00b4t know who is the owner.\n\n#rickastley #wheneveryouneedsomebody #nevergonnagiveyouup #rickroll",
-      "search_query": "\"Never Gonna Give You Up\" live OR cover OR remix reupload"
-    },
-    {
-      "title": "Rick Astley performs 'It Would Take A Strong Man' & 'Never Gonna Give You Up' in Kelly Clarkson Show",
-      "platform": "YouTube",
-      "account_handle": "just.rick_6",
-      "url": "https://www.youtube.com/watch?v=zdzcOS1ldfs",
-      "thumbnail_url": "https://i.ytimg.com/vi/zdzcOS1ldfs/maxresdefault.jpg",
-      "country": "IT",
-      "coordinates": {
-        "lat": 41.8719,
-        "lng": 12.5674
-      },
-      "view_count": 128049,
-      "description": "It seems that the video is already on private or deleted by them. Here's a reupload of Rick performing in Kelly Clarkson Show. \n\n#rickastley #nevergonnagiveyouup #rickroll #itwouldtakeastrongstrongman #kellyclarkson #kellyclarksonshow #interview \n\nNote: I do not own any rare footages, videos and pic",
-      "search_query": "\"Never Gonna Give You Up\" live OR cover OR remix reupload"
-    },
-    {
-      "title": "Never Gonna Give Together Forever Up (Reupload)",
-      "platform": "YouTube",
-      "account_handle": "Kenny Garrison",
-      "url": "https://www.youtube.com/watch?v=hTtCzCtJ5u0",
-      "thumbnail_url": "https://i.ytimg.com/vi/hTtCzCtJ5u0/sddefault.jpg?sqp=-oaymwEmCIAFEOAD8quKqQMa8AEB-AH-BIAC6AKKAgwIABABGGUgTShVMA8=&rs=AOn4CLA8gadzVrdbk8prdqmTFzZYX5M4jw",
-      "country": "SG",
-      "coordinates": {
-        "lat": 1.3521,
-        "lng": 103.8198
-      },
-      "view_count": 633,
-      "description": "Original From Rat Flap Gang.\nOriginal Upload: Oct 21, 2022",
-      "search_query": "\"Never Gonna Give You Up\" live OR cover OR remix reupload"
-    },
-    {
-      "title": "\u3010Official\u3011\u8b8a\u6210\u65e5\u6f2b\u7247\u5c3e\u66f2\u7684Never Gonna Give You Up",
-      "platform": "YouTube",
-      "account_handle": "\u867d\u534e",
-      "url": "https://www.youtube.com/watch?v=KZ_SeW5ga-0",
-      "thumbnail_url": "https://i.ytimg.com/vi/KZ_SeW5ga-0/sddefault.jpg",
+      "account_handle": "Markiplier",
+      "url": "https://www.youtube.com/watch?v=nnkyInAj6Z8",
+      "thumbnail_url": "https://i.ytimg.com/vi/nnkyInAj6Z8/maxresdefault.jpg",
       "country": "PH",
       "coordinates": {
         "lat": 12.8797,
         "lng": 121.774
       },
-      "view_count": 143228,
-      "description": "I am the original creator of this video. \nThank you for watching. \n\nBilibili: https://www.bilibili.com/video/BV1i64y127GM?share_source=copy_web\n\nYoutube\u6388\u6743\u8f6c\u8f7d: https://youtu.be/v1POP-m76ac",
-      "search_query": "\"Never Gonna Give You Up\" live OR cover OR remix reupload"
+      "view_count": 12675508,
+      "description": "I use stupidity as a method of procrastination.",
+      "search_query": "Every Way Humans Tried to Cheat Death reupload"
     },
     {
-      "title": "Never Gonna Give You Up | Datenshi Ver. - Cover",
+      "title": "Punchmade Dev - Wire Fraud Tutorial (Official Music Video Reupload)",
       "platform": "YouTube",
-      "account_handle": "Datenshi",
-      "url": "https://www.youtube.com/watch?v=yBK8JENguDo",
-      "thumbnail_url": "https://i.ytimg.com/vi/yBK8JENguDo/maxresdefault.jpg",
-      "country": "CO",
+      "account_handle": "Windows4L",
+      "url": "https://www.youtube.com/watch?v=SkgZlRucsK0",
+      "thumbnail_url": "https://i.ytimg.com/vi/SkgZlRucsK0/maxresdefault.jpg",
+      "country": "NG",
       "coordinates": {
-        "lat": 4.5709,
-        "lng": -74.2973
+        "lat": 9.082,
+        "lng": 8.6753
       },
-      "view_count": 12824,
-      "description": "Head over to dokomisekai.de and enter the Code ZQBG6 to unlock story part 2! #Dokomisekai2024\n\nNever Gonna Give You Up by Rick Astley Original Cover by Datenshi! ft. OpaluVA\n\n=============================================================\n\nVocals  : AzeruOfficial [ https://linktr.ee/azeruofficial ]\nBa",
-      "search_query": "\"Never Gonna Give You Up\" live OR cover OR remix reupload"
+      "view_count": 241719,
+      "description": "idk why it got removed but this og 4k quality",
+      "search_query": "Every Way Humans Tried to Cheat Death reupload"
     },
     {
-      "title": "Rick astley never gonna give you up (4k Remestared 60fps reupload)",
+      "title": "Every Way Humans Tried to Cheat Death (One Is Still Happening)",
       "platform": "YouTube",
-      "account_handle": "RabbidPlayZ",
-      "url": "https://www.youtube.com/watch?v=dMravujH6hk",
-      "thumbnail_url": "https://i.ytimg.com/vi/dMravujH6hk/maxresdefault.jpg",
+      "account_handle": "Dave Explains",
+      "url": "https://www.youtube.com/watch?v=OnBFCpLQzm4",
+      "thumbnail_url": "https://i.ytimg.com/vi/OnBFCpLQzm4/maxresdefault.jpg",
+      "country": "NG",
+      "coordinates": {
+        "lat": 9.082,
+        "lng": 8.6753
+      },
+      "view_count": 845988,
+      "description": "Exploring humanity's relentless pursuit of immortality, this video examines various approaches to cheat death, from ancient elixirs to modern science. We examine how far medicine has come and the ethical implications of manipulating the human body in the quest for eternal life!\n\n\n\n\u25b6\ufe0f Subscribe for m",
+      "search_query": "Humans Cheat Death full video"
+    },
+    {
+      "title": "Every Way Humans Tried to Cheat Death (Pt. 2)",
+      "platform": "YouTube",
+      "account_handle": "Dave Explains",
+      "url": "https://www.youtube.com/watch?v=ECFmtOpayt8",
+      "thumbnail_url": "https://i.ytimg.com/vi/ECFmtOpayt8/maxresdefault.jpg",
+      "country": "FR",
+      "coordinates": {
+        "lat": 46.2276,
+        "lng": 2.2137
+      },
+      "view_count": 15914,
+      "description": "From Emperor Jiajing drinking mercury elixirs to Countess B\u00e1thory bathing in virgin blood, from the ancient Epic of Gilgamesh to Alexander Bogdanov's fatal blood transfusions \u2014 humanity has always searched for immortality. Now tech millionaire Bryan Johnson spends $2 million a year trying to reverse",
+      "search_query": "Humans Cheat Death full video"
+    },
+    {
+      "title": "Unbelievable Moments People Cheated Death Caught on Camera!",
+      "platform": "YouTube",
+      "account_handle": "100M",
+      "url": "https://www.youtube.com/watch?v=x8yFTB88-3A",
+      "thumbnail_url": "https://i.ytimg.com/vi/x8yFTB88-3A/maxresdefault.jpg",
+      "country": "RU",
+      "coordinates": {
+        "lat": 61.524,
+        "lng": 105.3188
+      },
+      "view_count": 2615,
+      "description": "Unbelievable Moments People Cheated Death Caught on Camera!\n\n\u25ba For copyright queries or general inquiries please get in touch: top5bestmgmt@gmail.com",
+      "search_query": "Humans Cheat Death full video"
+    },
+    {
+      "title": "Can Humans Cheat Death? | Science Of Living Forever | Karan Sachdeva",
+      "platform": "YouTube",
+      "account_handle": "Karan Sachdeva",
+      "url": "https://www.youtube.com/watch?v=mP-L79lDDXg",
+      "thumbnail_url": "https://i.ytimg.com/vi/mP-L79lDDXg/maxresdefault.jpg",
+      "country": "ES",
+      "coordinates": {
+        "lat": 40.4637,
+        "lng": -3.7492
+      },
+      "view_count": 205,
+      "description": "In this video, we break down the real science behind ageing, lifespan limits, and whether it's biologically possible to stop or reverse ageing. \n\nYou'll understand what actually happens inside the body as we grow older, what research says about living beyond 100 years, and whether modern science can",
+      "search_query": "Humans Cheat Death full video"
+    },
+    {
+      "title": "Every Way Humans Tried to Cheat Death",
+      "platform": "YouTube",
+      "account_handle": "God Explains          ",
+      "url": "https://www.youtube.com/watch?v=_Fa_0NgOeds",
+      "thumbnail_url": "https://i.ytimg.com/vi/_Fa_0NgOeds/maxresdefault.jpg",
+      "country": "RU",
+      "coordinates": {
+        "lat": 61.524,
+        "lng": 105.3188
+      },
+      "view_count": 14,
+      "description": "Every Way Humans Tried to Cheat Death \n\nExploring humanity's relentless pursuit of immortality, this video examines various approaches to cheat death, from ancient elixirs to modern science. We examine how far medicine has come and the ethical implications of manipulating the human body in the quest",
+      "search_query": "Humans Cheat Death full video"
+    },
+    {
+      "title": "Shadow of War How To Get A Captain To Cheat Death",
+      "platform": "YouTube",
+      "account_handle": "SOW Gameplay & CONTENT!",
+      "url": "https://www.youtube.com/watch?v=KLGpilSJKvs",
+      "thumbnail_url": "https://i.ytimg.com/vi/KLGpilSJKvs/maxresdefault.jpg",
+      "country": "MX",
+      "coordinates": {
+        "lat": 23.6345,
+        "lng": -102.5528
+      },
+      "view_count": 30386,
+      "description": "Welcome back to another shadow of war video guys today i am answering a question i have been asked alot my viewers from the channel hope you guys enjoy the video.\n\n\u25baCheck Out Dubby Energy Gives You Energy With No Crash or Jitters: https://www.dubby.gg/discount/PenguinGame\n\n\u25baSocial Media\nMy twitter-h",
+      "search_query": "Cheat Death explained"
+    },
+    {
+      "title": "There is a Way to CHEAT The Death Curse - Something Very Bad is Going to Happen Explained - Part 2",
+      "platform": "YouTube",
+      "account_handle": "Haunting Tube",
+      "url": "https://www.youtube.com/watch?v=PD3DVlZjfOc",
+      "thumbnail_url": "https://i.ytimg.com/vi/PD3DVlZjfOc/maxresdefault.jpg",
+      "country": "IN",
+      "coordinates": {
+        "lat": 20.5937,
+        "lng": 78.9629
+      },
+      "view_count": 187173,
+      "description": "Watch Part 1: https://youtu.be/JQ3247qztO8\n\nWatch on Netflix: https://www.netflix.com/in/title/81667463\n\nSomething Very Bad Is Going to Happen is an American horror miniseries[1] created by Haley Z. Boston for Netflix. Boston serves as the series showrunner and is also an executive producer along wi",
+      "search_query": "Cheat Death explained"
+    },
+    {
+      "title": "Cheating Death",
+      "platform": "YouTube",
+      "account_handle": "Buttered Side Down",
+      "url": "https://www.youtube.com/watch?v=25DoE3Z2oGI",
+      "thumbnail_url": "https://i.ytimg.com/vi/25DoE3Z2oGI/maxresdefault.jpg",
+      "country": "US",
+      "coordinates": {
+        "lat": 37.0902,
+        "lng": -95.7129
+      },
+      "view_count": 28477741,
+      "description": "Forgot to chew my food..\n\n~LIKE & SUBSCRIBE~ \n\nJOIN for Discord and Benefits!: https://www.youtube.com/butteredsidedown/join\n\nPATREON: \nhttps://patreon.com/butteredsidedown\nTWITTER: \nhttps://twitter.com/ButteredSideDwn\nINSTAGRAM:\nhttps://www.instagram.com/thebutteredsidedown/\nREDDIT: \nhttps://www.re",
+      "search_query": "Cheat Death explained"
+    },
+    {
+      "title": "You Can\u2019t Cheat Death \u2013 Mind-Blowing Thriller Movie Ending Explained",
+      "platform": "YouTube",
+      "account_handle": "CineClue",
+      "url": "https://www.youtube.com/watch?v=PvhVcU2XS5w",
+      "thumbnail_url": "https://i.ytimg.com/vi/PvhVcU2XS5w/maxresdefault.jpg",
+      "country": "CN",
+      "coordinates": {
+        "lat": 35.8617,
+        "lng": 104.1954
+      },
+      "view_count": 574,
+      "description": "Can you really escape fate? In this mind-bending thriller, a group of people tries to cheat death\u2014but soon realizes the consequences are far deadlier than they imagined. In this video, we break down the full plot, twists, hidden clues, and shocking ending explained in detail.\n\nWhat you\u2019ll learn:\n\nFu",
+      "search_query": "Cheat Death explained"
+    },
+    {
+      "title": "[1-23] He Was Treated Like Trash, But He Was Actually a Trillionaire | Manhwa in Hindi",
+      "platform": "YouTube",
+      "account_handle": "Pick Me Manhwa",
+      "url": "https://www.youtube.com/watch?v=NXaPKN8K8IY",
+      "thumbnail_url": "https://i.ytimg.com/vi/NXaPKN8K8IY/maxresdefault.jpg",
       "country": "TR",
       "coordinates": {
         "lat": 38.9637,
         "lng": 35.2433
       },
-      "view_count": 35,
-      "description": "This is reupload because it blocked my country so yes",
-      "search_query": "\"Rick Astley\" \"Never Gonna Give You Up\" 4K re-upload OR bootleg"
+      "view_count": 11290,
+      "description": "Rich CEO revenge\u2014OP MC comeback after betrayal \ud83d\udcb8\ud83d\udd25\n\n\ud83d\udcd6 Welcome to * Pick Me Manhwa *!  \nAapko yahan milega ** best Manhwa Recaps in Hindi ** \u2013 jaha hum manhwa, manhua, manga aur webtoon ki kahaniyan simple aur engaging style mein explain karte hain.  \n\nTimestamps \n00:00:00 :- Old Parts\n02:13:32 :- New",
+      "search_query": "Every Way Humans Tried to Cheat Death mirror"
     },
     {
-      "title": "Rick Astley's Never gonna give you up but in 4k",
+      "title": "Let's Kill You a Billion Times to Make You Immortal",
       "platform": "YouTube",
-      "account_handle": "Pood bobo",
-      "url": "https://www.youtube.com/watch?v=7_0zSxExHm0",
-      "thumbnail_url": "https://i.ytimg.com/vi/7_0zSxExHm0/maxresdefault.jpg",
-      "country": "IN",
-      "coordinates": {
-        "lat": 20.5937,
-        "lng": 78.9629
-      },
-      "view_count": 934,
-      "description": "Rickroll in 4k, good luck memorizing 4k rickroll now",
-      "search_query": "\"Rick Astley\" \"Never Gonna Give You Up\" 4K re-upload OR bootleg"
-    },
-    {
-      "title": "Rick Astley - Never Gonna Give You Up (DRIIIFT 'Never Gonna Give BigRoom Up' Mix) [OFFICIAL]",
-      "platform": "YouTube",
-      "account_handle": "Intensity Recordings",
-      "url": "https://www.youtube.com/watch?v=ZM3CcCyvbJE",
-      "thumbnail_url": "https://i.ytimg.com/vi/ZM3CcCyvbJE/maxresdefault.jpg",
-      "country": "TH",
-      "coordinates": {
-        "lat": 15.87,
-        "lng": 100.9925
-      },
-      "view_count": 8623,
-      "description": "Your new Rick Roll link is here! The long-awaited festival bootleg of this internet classic by DRIIIFT is finally here! While just the thought of it sends shudders down people's spines, DRIIIFT has managed to take the best elements of the track and adding his signature touch to it. With early suppor",
-      "search_query": "\"Rick Astley\" \"Never Gonna Give You Up\" 4K re-upload OR bootleg"
-    },
-    {
-      "title": "Rick Takeuchi - Never Gonna Give You Plastic Love",
-      "platform": "YouTube",
-      "account_handle": "Gemosu",
-      "url": "https://www.youtube.com/watch?v=dM9zwZCOmjM",
-      "thumbnail_url": "https://i.ytimg.com/vi/dM9zwZCOmjM/maxresdefault.jpg",
-      "country": "IN",
-      "coordinates": {
-        "lat": 20.5937,
-        "lng": 78.9629
-      },
-      "view_count": 1084313,
-      "description": "Oh no.\n\n\n========================\nOriginal Songs:\n- Mariya Takeuchi - Plastic Love\n- Rick Astley - Never Gonna Give You Up",
-      "search_query": "\"Rick Astley\" \"Never Gonna Give You Up\" 4K re-upload OR bootleg"
-    },
-    {
-      "title": "rickroll, but with only vocals",
-      "platform": "YouTube",
-      "account_handle": "The Roller",
-      "url": "https://www.youtube.com/watch?v=947fI7MkNZE",
-      "thumbnail_url": "https://i.ytimg.com/vi/947fI7MkNZE/hqdefault.jpg",
-      "country": "ES",
-      "coordinates": {
-        "lat": 40.4637,
-        "lng": -3.7492
-      },
-      "view_count": 644,
-      "description": "Vocals only rickroll\n\nMy Patreon (exclusive benefits) \nhttps://patreon.com/s2i2\n\nSubscribe to this channel! \ud83d\udc5e \nhttps://youtube.com/rickrolled\n\nSubscribe to my main channel! \ud83d\ude02 \nhttp://youtube.com/S2I2yt \n\nSubscribe to my third channel! \ud83c\udfb6 \nhttps://youtube.com/jinguss\n\njingus discord: \nhttps://discord.",
-      "search_query": "#RickRoll #NeverGonnaGiveYouUp reupload OR pirated"
-    },
-    {
-      "title": "Rick Astley - Never Gonna Give You Up (Without Backing Vocals)",
-      "platform": "YouTube",
-      "account_handle": "RickHappiness",
-      "url": "https://www.youtube.com/watch?v=ilty94EasUA",
-      "thumbnail_url": "https://i.ytimg.com/vi/ilty94EasUA/maxresdefault.jpg",
+      "account_handle": "Kurzgesagt \u2013 In a Nutshell",
+      "url": "https://www.youtube.com/watch?v=7wK4peez9zE",
+      "thumbnail_url": "https://i.ytimg.com/vi/7wK4peez9zE/maxresdefault.jpg",
       "country": "AU",
       "coordinates": {
         "lat": -25.2744,
         "lng": 133.7751
       },
-      "view_count": 1124,
-      "description": "hi\n#rickastley #rickroll #nevergonnagiveyouup #vocals",
-      "search_query": "#RickRoll #NeverGonnaGiveYouUp reupload OR pirated"
+      "view_count": 4511869,
+      "description": "Go to https://ground.news/KiN to get 40% off unlimited access to Ground News so you can compare coverage and think critically about the news you read.\n\nSources & further reading:\nhttps://sites.google.com/view/sources-quantum-immortality/\n\nNo matter how likely your death is, there will always be a ve",
+      "search_query": "Every Way Humans Tried to Cheat Death mirror"
     },
     {
-      "title": "The longest rickroll ever",
+      "title": "\"Developers knew you would try this...\"",
       "platform": "YouTube",
-      "account_handle": "The Roller",
-      "url": "https://www.youtube.com/watch?v=rjC7luXHmc0",
-      "thumbnail_url": "https://i.ytimg.com/vi/rjC7luXHmc0/sddefault.jpg",
-      "country": "ES",
+      "account_handle": "Muaxh03",
+      "url": "https://www.youtube.com/watch?v=HiuO1epV8Vo",
+      "thumbnail_url": "https://i.ytimg.com/vi/HiuO1epV8Vo/maxresdefault.jpg",
+      "country": "CN",
       "coordinates": {
-        "lat": 40.4637,
-        "lng": -3.7492
+        "lat": 35.8617,
+        "lng": 104.1954
       },
-      "view_count": 9005,
-      "description": "1 hour rickroll\n\nMy Patreon (exclusive benefits) \nhttps://patreon.com/s2i2\n\nSubscribe to this channel! \ud83d\udc5e \nhttps://youtube.com/rickrolled\n\nSubscribe to my main channel! \ud83d\ude02 \nhttp://youtube.com/S2I2yt \n\nSubscribe to my third channel! \ud83c\udfb6 \nhttps://youtube.com/jinguss\n\njingus discord: \nhttps://discord.gg/eh",
-      "search_query": "#RickRoll #NeverGonnaGiveYouUp reupload OR pirated"
+      "view_count": 4003716,
+      "description": "This is Hogwarts Legacy gameplay",
+      "search_query": "Every Way Humans Tried to Cheat Death mirror"
     },
     {
-      "title": "\"Rick Astley Gives Up\"",
+      "title": "Physics \u0915\u094b \u092d\u0940 Fail \u0915\u0930 \u0926\u0947\u0928\u0947 \u0935\u093e\u0932\u093e Case \u0915\u0948\u0938\u0947 Crack \u0915\u0930\u0947\u0917\u0940\u00a0CID\u00a0Force? | CID | Latest Episode | 2 Mar 2024",
       "platform": "YouTube",
-      "account_handle": "TNT BITES",
-      "url": "https://www.youtube.com/watch?v=iyacwhwRa-c",
-      "thumbnail_url": "https://i.ytimg.com/vi/iyacwhwRa-c/hqdefault.jpg",
-      "country": "PK",
+      "account_handle": "LIV Crime",
+      "url": "https://www.youtube.com/watch?v=yPcSxZKPB7Y",
+      "thumbnail_url": "https://i.ytimg.com/vi/yPcSxZKPB7Y/maxresdefault.jpg",
+      "country": "BR",
       "coordinates": {
-        "lat": 30.3753,
-        "lng": 69.3451
+        "lat": -14.235,
+        "lng": -51.9253
       },
-      "view_count": 26,
-      "description": "Lier Rick Astley who states that he'll never give up , is spotted repeating that he gives up in tis...\nAt this incidence I think Post Malone has written a fantastic line in his song - Paranoid , as quoted , \" Politicians and the lies\nTell me, what's the point in pickin' sides? \" .\n\nThis one's also a",
-      "search_query": "#RickRoll #NeverGonnaGiveYouUp reupload OR pirated"
+      "view_count": 7530789,
+      "description": "Click here to Subscribe to LIV Crime: \nhttps://www.youtube.com/channel/UCzXpAx4v6rFLYXkJZ5nmSvQ?sub_confirmation=1\n\nA man is talking to his wife on the phone and he hears her scream. Someone has attacked her in her home. CID comes to the scene and it\u2019s evident from the geography of the room that the",
+      "search_query": "Every Way Humans Tried to Cheat Death mirror"
     },
     {
-      "title": "Rick Astley PewDiePie",
+      "title": "9 Things That Will Happen to Someone Who Messes with a Chosen One",
       "platform": "YouTube",
-      "account_handle": "Santaceic",
-      "url": "https://www.youtube.com/watch?v=Vc5us6sF674",
-      "thumbnail_url": "https://i.ytimg.com/vi/Vc5us6sF674/sddefault.jpg",
-      "country": "DE",
+      "account_handle": "the chosen seer",
+      "url": "https://www.youtube.com/watch?v=-Y23oYamq8Q",
+      "thumbnail_url": "https://i.ytimg.com/vi/-Y23oYamq8Q/maxresdefault.jpg",
+      "country": "CA",
       "coordinates": {
-        "lat": 51.1657,
-        "lng": 10.4515
+        "lat": 56.1304,
+        "lng": -106.3468
       },
-      "view_count": 351,
-      "description": "Floor gang Ough.\n#memes #RickAstley #Rickroll #NeverGonnaGiveYouUp #pewdiepie",
-      "search_query": "#RickRoll #NeverGonnaGiveYouUp reupload OR pirated"
+      "view_count": 410219,
+      "description": "Messing with a Chosen One is never without consequences.\nThey may look quiet, gentle, or even misunderstood \u2014 but Chosen Ones carry divine energy that activates spiritual laws. When someone betrays, mocks, manipulates, or curses a Chosen One, life responds in brutal and mysterious ways.\n\nIn this pow",
+      "search_query": "Every Way Humans Tried to Cheat Death mirror"
     }
   ],
   "search_queries_used": [
-    "\"Rick Astley Never Gonna Give You Up\" unofficial OR fanmade OR copy",
-    "\"Never Gonna Give You Up\" live OR cover OR remix reupload",
-    "\"Rick Astley\" \"Never Gonna Give You Up\" 4K re-upload OR bootleg",
-    "#RickRoll #NeverGonnaGiveYouUp reupload OR pirated"
+    "Every Way Humans Tried to Cheat Death reupload",
+    "Humans Cheat Death full video",
+    "Cheat Death explained",
+    "Every Way Humans Tried to Cheat Death mirror"
   ]
 }

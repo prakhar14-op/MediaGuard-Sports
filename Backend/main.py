@@ -186,9 +186,9 @@ def ingest_asset(payload: IngestRequest):
 
     ydl_opts = {
         "outtmpl": os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "format": "best[ext=mp4]/best",
         "quiet": True,
-        "merge_output_format": "mp4",
+        "extractor_args": {"youtube": {"js_runtimes": ["nodejs"]}},
     }
 
     try:
