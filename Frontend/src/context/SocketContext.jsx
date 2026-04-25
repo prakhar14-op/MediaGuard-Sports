@@ -23,10 +23,12 @@ export const SocketProvider = ({ children }) => {
   const [socketReady, setSocketReady] = useState(false);
 
   useEffect(() => {
-    const sock = io('http://localhost:8000', {
+    const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const sock = io(SOCKET_URL, {
       reconnectionAttempts: 10,
       reconnectionDelay:    1000,
       timeout:              10000,
+      transports:           ['websocket', 'polling'],
     });
 
     socketRef.current = sock;
