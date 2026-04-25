@@ -1,125 +1,132 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Database, Globe, Eye, Brain, Gavel, Coins } from 'lucide-react';
 
 const AGENTS = [
   {
-    name: 'The Archivist',
-    phase: 'Phase 1 · Ingestion',
-    desc: 'Downloads official video via yt-dlp, extracts 1 frame/sec, runs each through HuggingFace CLIP, stores 512-D embeddings in FAISS. Generates SHA-256 + mock Polygon tx hash as proof of ownership.',
-    icon: Database,
-    accent: '#3b82f6',
-    glow: 'rgba(59,130,246,0.15)',
+    num: 1, tag: 'CLIP + FAISS', label: 'INGESTION', title: 'The Archivist',
+    color: '#2dd4bf',
+    desc: 'Ingests any official video URL via yt-dlp. Extracts one frame per second, embeds each through HuggingFace CLIP (openai/clip-vit-base-patch32), and stores 512-dimensional vectors in a persistent FAISS vault. Generates a SHA-256 integrity hash and a mock Polygon transaction as cryptographic proof of ownership.',
+    cta: 'Vector Vault',
+    reverse: false,
   },
   {
-    name: 'The Spider',
-    phase: 'Phase 2 · OSINT Hunt',
-    desc: 'Gemini generates 4 optimised search variants. yt-dlp scrapes YouTube zero-download — metadata and thumbnails only. Deduplicates by URL, maps every suspect to a country centroid.',
-    icon: Globe,
-    accent: '#6366f1',
-    glow: 'rgba(99,102,241,0.15)',
+    num: 2, tag: 'OSINT CRAWLER', label: 'HUNT', title: 'The Spider',
+    color: '#818cf8',
+    desc: 'Gemini 2.5 Flash generates four platform-optimised search query variants from the official title. yt-dlp scrapes YouTube with zero file downloads — metadata and thumbnails only. Deduplicates by URL, captures view counts and descriptions, and maps every suspect to a geographic centroid for the live threat map.',
+    cta: 'Zero-Download Architecture',
+    reverse: true,
   },
   {
-    name: 'The Sentinel',
-    phase: 'Phase 3 · Detection',
-    desc: 'Dual-layer: CLIP L2 vector search returns top-3 vault matches with timestamps. pHash cross-check eliminates false positives. Redis velocity tracking auto-escalates repeat offenders to CRITICAL.',
-    icon: Eye,
-    accent: '#f59e0b',
-    glow: 'rgba(245,158,11,0.15)',
+    num: 3, tag: 'DUAL-LAYER SCAN', label: 'DETECTION', title: 'The Sentinel',
+    color: '#fbbf24',
+    desc: 'Layer 1: CLIP L2 vector search returns the top-3 closest vault matches with exact frame timestamps. Layer 2: perceptual hash (pHash) cross-check eliminates false positives. Redis velocity tracking monitors repeat offenders — accounts flagged three or more times auto-escalate to CRITICAL severity.',
+    cta: 'pHash + CLIP Fusion',
+    reverse: false,
   },
   {
-    name: 'The Adjudicator',
-    phase: 'Phase 4 · Legal Triage',
-    desc: 'Gemini 2.5 Flash classifies SEVERE PIRACY vs FAIR USE with a 0-100 risk score, legal basis citation, and recommended action. Redis caches verdicts 24h — same account never hits Gemini twice.',
-    icon: Brain,
-    accent: '#a855f7',
-    glow: 'rgba(168,85,247,0.15)',
+    num: 4, tag: 'GEMINI 2.5 FLASH', label: 'TRIAGE', title: 'The Adjudicator',
+    color: '#c084fc',
+    desc: 'Classifies each incident as SEVERE PIRACY or FAIR USE / FAN CONTENT with a 0–100 numeric risk score, a legal basis citation (e.g. 17 U.S.C. § 107 fair use factors), and a concrete recommended action. Redis caches verdicts for 24 hours — the same account, platform, and title never hits the Gemini API twice.',
+    cta: 'Risk Score Engine',
+    reverse: true,
   },
   {
-    name: 'The Enforcer',
-    phase: 'Phase 5 · Takedown',
-    desc: 'Gemini drafts legally precise 17 U.S.C. § 512(c) DMCA notices. Escalation tiers: standard → expedited → legal referral. Platform-specific legal routing. Human approves before send.',
-    icon: Gavel,
-    accent: '#ef4444',
-    glow: 'rgba(239,68,68,0.15)',
+    num: 5, tag: '17 U.S.C. § 512(c)', label: 'TAKEDOWN', title: 'The Enforcer',
+    color: '#f87171',
+    desc: 'Gemini drafts a legally precise DMCA takedown notice tailored to the platform, incident context, and offence history. Escalation tiers: standard (1st offence) → expedited with account suspension request (2nd) → full legal referral (3rd+). Platform-specific legal routing. Notices are staged — human approves before dispatch.',
+    cta: 'DMCA Automation',
+    reverse: false,
   },
   {
-    name: 'The Broker',
-    phase: 'Phase 6 · Monetize',
-    desc: 'Deploys dynamic rev-share smart contracts. Platinum viral content (1M+ views) gets 20/80 splits. Revenue projections use real platform CPM rates. Contracts minted with mock Polygon tx hash.',
-    icon: Coins,
-    accent: '#10b981',
-    glow: 'rgba(16,185,129,0.15)',
+    num: 6, tag: 'POLYGON MOCK', label: 'MONETIZE', title: 'The Broker',
+    color: '#34d399',
+    desc: 'Deploys dynamic revenue-sharing smart contracts for Fair Use content. Virality tiers determine the split: Platinum (1M+ views) 20/80, Gold 25/75, Silver 30/70, Bronze 35/65. Revenue projections use real platform CPM rates (YouTube $4.50, TikTok $0.02). Contracts are minted with a mock Polygon tx hash and staged for human activation.',
+    cta: 'Smart Contract Minting',
+    reverse: true,
   },
 ];
 
-const AgentCard = ({ agent, index }) => {
-  const Icon = agent.icon;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ delay: index * 0.07, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      className="group relative bg-slate-900/60 border border-white/5 rounded-3xl p-7 hover:border-white/10 transition-all duration-300 overflow-hidden cursor-default"
+const AgentCard = ({ num, tag, label, title, color, desc, cta, reverse }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 44 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: '-60px' }}
+    transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+    className={`flex flex-col ${reverse ? 'md:flex-row-reverse' : 'md:flex-row'} rounded-3xl overflow-hidden border border-slate-200/70 bg-white group hover:shadow-lg transition-shadow duration-500`}
+  >
+    {/* Visual panel */}
+    <div
+      className="md:w-[38%] relative flex items-center justify-center p-10 min-h-[200px] overflow-hidden"
+      style={{ background: `linear-gradient(135deg, ${color}12 0%, transparent 70%)` }}
     >
-      {/* Glow on hover */}
+      {/* Dot pattern */}
       <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"
-        style={{ background: `radial-gradient(circle at 30% 30%, ${agent.glow}, transparent 70%)` }}
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage: `radial-gradient(${color} 1px, transparent 1px)`,
+          backgroundSize: '18px 18px',
+        }}
       />
+      {/* Big number watermark */}
+      <span
+        className="absolute bottom-0 right-3 text-[100px] font-black leading-none select-none pointer-events-none"
+        style={{ color: 'rgba(148,163,184,0.12)' }}
+      >
+        {String(num).padStart(2, '0')}
+      </span>
 
-      <div className="relative z-10">
-        <div className="flex items-start gap-4 mb-4">
-          <div
-            className="p-3 rounded-2xl shrink-0"
-            style={{ backgroundColor: `${agent.accent}15`, border: `1px solid ${agent.accent}25` }}
-          >
-            <Icon className="w-6 h-6" style={{ color: agent.accent }} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-0.5" style={{ color: agent.accent }}>
-              {agent.phase}
-            </p>
-            <h3 className="text-lg font-black text-white leading-tight">{agent.name}</h3>
-          </div>
-        </div>
-        <p className="text-sm text-slate-400 leading-relaxed">{agent.desc}</p>
+      <motion.div
+        animate={{ y: [0, -7, 0] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: num * 0.3 }}
+        className="relative z-10 px-5 py-2.5 bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-full shadow-sm"
+      >
+        <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.22em]">{tag}</span>
+      </motion.div>
+    </div>
+
+    {/* Content panel */}
+    <div className="md:w-[62%] p-9 flex flex-col justify-center">
+      <p className="text-[9px] font-bold uppercase tracking-[0.26em] mb-3" style={{ color }}>
+        — {String(num).padStart(2, '0')}, {label}
+      </p>
+      <h3 className="text-2xl md:text-[1.7rem] font-black text-slate-900 mb-3 leading-tight group-hover:text-teal-700 transition-colors duration-300">
+        {title}
+      </h3>
+      <p className="text-slate-500 leading-relaxed mb-5 text-[13.5px]">{desc}</p>
+      <div className="inline-flex">
+        <span
+          className="px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.16em] border"
+          style={{ color, backgroundColor: `${color}0d`, borderColor: `${color}30` }}
+        >
+          {cta}
+        </span>
       </div>
-    </motion.div>
-  );
-};
+    </div>
+  </motion.div>
+);
 
 const AgentsSection = () => (
-  <section id="agents" className="py-32 px-8 bg-[#020617] relative">
-    <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_40%_at_50%_50%,rgba(59,130,246,0.04),transparent)] pointer-events-none" />
-
-    <div className="max-w-7xl mx-auto">
+  <section id="agents" className="py-28 px-8 bg-[#f6f7fc]">
+    <div className="max-w-5xl mx-auto">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 22 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="text-center mb-20"
+        transition={{ duration: 0.6 }}
+        className="text-center mb-16"
       >
-        <p className="text-[11px] font-bold text-blue-400 uppercase tracking-[0.25em] mb-4">The Autonomous Swarm</p>
-        <h2 className="text-5xl md:text-6xl font-black text-white tracking-tight mb-6">
-          6 Agents. One Pipeline.
-          <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-            Zero Manual Work.
-          </span>
+        <p className="text-[9px] font-bold text-teal-600 uppercase tracking-[0.3em] mb-4">The Autonomous Swarm</p>
+        <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight mb-5">
+          6 Agents.<br /><span className="text-teal-600">One Pipeline.</span>
         </h2>
-        <p className="text-lg text-slate-400 max-w-2xl mx-auto font-medium">
+        <p className="text-[17px] text-slate-500 max-w-lg mx-auto leading-relaxed">
           One URL triggers the entire swarm. Each agent hands off to the next automatically.
-          Humans only intervene at the final approval step.
+          Human intervention only at the final approval step.
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {AGENTS.map((agent, i) => (
-          <AgentCard key={agent.name} agent={agent} index={i} />
-        ))}
+      <div className="space-y-5">
+        {AGENTS.map((a) => <AgentCard key={a.num} {...a} />)}
       </div>
     </div>
   </section>
