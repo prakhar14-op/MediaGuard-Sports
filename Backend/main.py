@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -6,6 +6,7 @@ import os
 import glob
 import sys
 import numpy as np
+import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -28,6 +29,9 @@ app.add_middleware(
 
 OFFICIAL_DIR = os.path.join(os.path.dirname(__file__), "assets", "official")
 os.makedirs(OFFICIAL_DIR, exist_ok=True)
+
+# In-memory job store for async ingest tracking
+_ingest_jobs: dict = {}
 
 
 class IngestRequest(BaseModel):
@@ -178,54 +182,75 @@ def vault_status():
 
 
 @app.post("/ingest")
-def ingest_asset(payload: IngestRequest):
-    import yt_dlp
-
-    url    = payload.official_video_url
+def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
+    """
+    Returns immediately with job_id.
+    The actual download + embedding runs in a background thread.
+    Poll /ingest/status/{job_id} to check progress.
+    """
     job_id = payload.job_id
+    url    = payload.official_video_url
 
-    ydl_opts = {
-        "outtmpl": os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-        "format": "best[ext=mp4]/best",
-        "quiet": True,
-        "extractor_args": {"youtube": {"js_runtimes": ["nodejs"]}},
-    }
+    # Mark job as started
+    _ingest_jobs[job_id] = {"status": "downloading", "message": "Downloading via yt-dlp…"}
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info  = ydl.extract_info(url, download=True)
-            title = info.get("title", "Unknown")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Download failed: {e}")
+    def _run():
+        import yt_dlp
+        try:
+            ydl_opts = {
+                "outtmpl": os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
+                "format":  "best[ext=mp4]/best",
+                "quiet":   True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info  = ydl.extract_info(url, download=True)
+                title = info.get("title", "Unknown")
 
-    # Glob for the actual downloaded file — extension may differ from info dict
-    matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
-    if not matches:
-        raise HTTPException(status_code=500, detail="Downloaded file not found on disk")
+            matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
+            if not matches:
+                _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found"}
+                return
 
-    local_path = matches[0]
+            local_path = matches[0]
+            _ingest_jobs[job_id] = {"status": "processing", "message": "Embedding frames…"}
 
-    # Call the Archivist tool directly (not via CrewAI agent — no LLM needed here)
-    result = tool_ingest_video(local_path)
+            result = tool_ingest_video(local_path)
+            if "[ERROR]" in result:
+                _ingest_jobs[job_id] = {"status": "failed", "message": result}
+                return
 
-    if "[ERROR]" in result:
-        raise HTTPException(status_code=500, detail=result)
+            frame_count = 0
+            try:
+                frame_count = int(result.split("Extracted ")[1].split(" frames")[0])
+            except Exception:
+                pass
 
-    frame_count = 0
-    try:
-        frame_count = int(result.split("Extracted ")[1].split(" frames")[0])
-    except Exception:
-        pass
+            _ingest_jobs[job_id] = {
+                "status":      "complete",
+                "title":       title,
+                "local_path":  local_path,
+                "frame_count": frame_count,
+                "vault_size":  vector_db.ntotal,
+                "tx_hash":     "0x" + np.random.bytes(32).hex(),
+                "message":     result,
+            }
+        except Exception as e:
+            _ingest_jobs[job_id] = {"status": "failed", "message": str(e)}
 
-    return {
-        "success":     True,
-        "title":       title,
-        "local_path":  local_path,
-        "frame_count": frame_count,
-        "vault_size":  vector_db.ntotal,
-        "tx_hash":     "0x" + np.random.bytes(32).hex(),
-        "message":     result,
-    }
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+
+    return {"success": True, "job_id": job_id, "status": "downloading",
+            "message": "Ingest started. Poll /ingest/status/{job_id} for progress."}
+
+
+@app.get("/ingest/status/{job_id}")
+def ingest_status(job_id: str):
+    """Poll this endpoint to check ingest progress."""
+    job = _ingest_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"success": True, "job_id": job_id, **job}
 
 
 @app.post("/hunt")
