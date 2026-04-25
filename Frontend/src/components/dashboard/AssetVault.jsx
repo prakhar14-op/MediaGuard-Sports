@@ -5,8 +5,7 @@ import { useSocket } from '../../context/SocketContext';
 import { archivistService } from '../../services/api';
 import {
   Plus, Link as LinkIcon, Database, CheckCircle, ExternalLink,
-  Loader2, AlertTriangle, Hash, Shield, Layers, Clock,
-  RefreshCw, ChevronLeft, ChevronRight, Zap,
+  Loader2, AlertTriangle, Hash, Shield, Layers, Clock, RefreshCw,
 } from 'lucide-react';
 
 const G = {
@@ -21,6 +20,13 @@ const G = {
   muted:   '#94a3b8',
 };
 
+const STATUS_CFG = {
+  complete:    { color: G.teal,    bg: G.tealBg,                  border: G.tealBdr,                  label: 'PROTECTED'   },
+  processing:  { color: '#6366f1', bg: 'rgba(99,102,241,0.08)',   border: 'rgba(99,102,241,0.2)',      label: 'PROCESSING'  },
+  downloading: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',   border: 'rgba(245,158,11,0.2)',      label: 'DOWNLOADING' },
+  failed:      { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',    border: 'rgba(239,68,68,0.2)',       label: 'FAILED'      },
+};
+
 const STAGES = ['queued', 'downloading', 'processing', 'complete'];
 
 // ─── Progress timeline ────────────────────────────────────────────────────────
@@ -30,11 +36,11 @@ const ProgressTimeline = ({ stage, message }) => {
     <motion.div
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
       style={{
-        marginTop: 16, background: '#f8fafc', border: `1px solid ${G.tealBdr}`,
-        borderRadius: 14, padding: 16,
+        marginTop: 16, background: '#f8fafc', borderRadius: 14,
+        border: `1px solid ${G.tealBdr}`, padding: '14px 16px',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <Loader2 size={14} style={{ color: G.teal, animation: 'spin 1s linear infinite' }} />
         <span style={{ fontSize: 11, fontWeight: 700, color: G.teal, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
           Archivist Running
@@ -46,12 +52,12 @@ const ProgressTimeline = ({ stage, message }) => {
           const active = i === idx;
           return (
             <React.Fragment key={s}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <div style={{
                   width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: done ? G.teal : active ? G.tealBg : '#e2e8f0',
                   border: `2px solid ${done || active ? G.teal : G.border}`,
-                  boxShadow: active ? `0 0 10px ${G.teal}40` : 'none',
+                  boxShadow: active ? `0 0 10px ${G.teal}30` : 'none',
                   transition: 'all 0.3s',
                 }}>
                   {done
@@ -64,41 +70,32 @@ const ProgressTimeline = ({ stage, message }) => {
                 </span>
               </div>
               {i < STAGES.length - 1 && (
-                <div style={{ flex: 1, height: 2, marginBottom: 18, background: i < idx ? G.teal : G.border, transition: 'background 0.5s' }} />
+                <div style={{ flex: 1, height: 2, marginBottom: 16, background: i < idx ? G.teal : G.border, borderRadius: 99, transition: 'background 0.5s' }} />
               )}
             </React.Fragment>
           );
         })}
       </div>
-      <p style={{ fontSize: 12, color: G.sub, margin: 0, lineHeight: 1.5 }}>{message}</p>
+      <p style={{ fontSize: 12, color: G.sub, margin: 0 }}>{message}</p>
     </motion.div>
   );
 };
 
-// ─── Asset card (Vihaan BatteryBay style) ─────────────────────────────────────
-const AssetCard = ({ asset, isSelected, onSelect }) => {
+// ─── Asset card ───────────────────────────────────────────────────────────────
+const AssetCard = ({ asset }) => {
+  const s = STATUS_CFG[asset.status] || STATUS_CFG.processing;
   const thumbId = asset.official_video_url?.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
   const thumb   = thumbId ? `https://i.ytimg.com/vi/${thumbId}/mqdefault.jpg` : null;
-  const isComplete = asset.status === 'complete';
-
-  const statusCfg = {
-    complete:    { color: G.teal,    bg: G.tealBg,                  label: 'Protected'   },
-    processing:  { color: '#6366f1', bg: 'rgba(99,102,241,0.08)',   label: 'Processing'  },
-    downloading: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',   label: 'Downloading' },
-    failed:      { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',    label: 'Failed'      },
-  }[asset.status] || { color: G.muted, bg: 'rgba(148,163,184,0.08)', label: asset.status };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -3, boxShadow: '0 12px 40px rgba(0,0,0,0.10)' }}
-      onClick={() => onSelect(asset._id)}
       style={{
-        background: G.card, borderRadius: 18, overflow: 'hidden', cursor: 'pointer',
-        border: isSelected ? `2px solid ${G.teal}` : `1px solid ${G.border}`,
-        boxShadow: isSelected ? `0 0 0 3px ${G.tealBg}` : '0 2px 8px rgba(0,0,0,0.04)',
-        transition: 'all 0.2s',
+        background: G.card, borderRadius: 18, overflow: 'hidden',
+        border: `1px solid ${G.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        transition: 'all 0.25s',
       }}
     >
       {/* Thumbnail */}
@@ -110,7 +107,7 @@ const AssetCard = ({ asset, isSelected, onSelect }) => {
             onMouseLeave={e => e.target.style.transform = 'scale(1)'}
           />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Database size={28} style={{ color: G.muted }} />
           </div>
         )}
@@ -121,10 +118,11 @@ const AssetCard = ({ asset, isSelected, onSelect }) => {
           position: 'absolute', top: 8, right: 8,
           display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
           borderRadius: 999, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)',
-          fontSize: 9, fontWeight: 800, color: statusCfg.color, textTransform: 'uppercase', letterSpacing: '0.1em',
+          border: `1px solid ${s.border}`, fontSize: 9, fontWeight: 800, color: s.color,
+          textTransform: 'uppercase', letterSpacing: '0.1em',
         }}>
-          {isComplete && <CheckCircle size={9} />}
-          {statusCfg.label}
+          {asset.status === 'complete' && <CheckCircle size={9} />}
+          {s.label}
         </div>
 
         {/* Frame count */}
@@ -142,76 +140,75 @@ const AssetCard = ({ asset, isSelected, onSelect }) => {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '12px 14px' }}>
+      <div style={{ padding: '14px 16px' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: G.text, margin: '0 0 2px',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {asset.title || 'Processing…'}
         </p>
-        <p style={{ fontSize: 10, color: G.muted, margin: '0 0 10px',
+        <p style={{ fontSize: 10, color: G.muted, margin: '0 0 12px',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {asset.official_video_url}
         </p>
 
         {/* Stats grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           {[
             { label: 'Vault Vectors', value: asset.vault_size ? `${asset.vault_size}` : '—', color: '#6366f1' },
             { label: 'Frames',        value: asset.frame_count ? `${asset.frame_count}` : '—', color: '#a855f7' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{
-              background: '#f8fafc', borderRadius: 10, padding: '8px 10px',
+              background: '#f8fafc', borderRadius: 10, padding: '10px 12px',
               border: `1px solid ${G.border}`,
             }}>
-              <p style={{ fontSize: 8, fontWeight: 700, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 2px' }}>{label}</p>
-              <p style={{ fontSize: 16, fontWeight: 900, color, margin: 0 }}>{value}</p>
+              <p style={{ fontSize: 8, fontWeight: 700, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 3px' }}>{label}</p>
+              <p style={{ fontSize: 18, fontWeight: 900, color, margin: 0 }}>{value}</p>
             </div>
           ))}
         </div>
 
         {/* Hashes */}
-        <div style={{ borderTop: `1px solid ${G.border}`, paddingTop: 8, marginBottom: 10 }}>
+        <div style={{ marginBottom: 12 }}>
           {asset.integrity_hash && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 9, color: G.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Hash size={9} /> Integrity
+              <span style={{ fontSize: 10, color: G.sub, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Hash size={10} /> Integrity
               </span>
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: G.teal }}>{asset.integrity_hash.slice(0, 16)}…</span>
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: G.teal }}>{asset.integrity_hash.slice(0, 16)}…</span>
             </div>
           )}
           {asset.tx_hash && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 9, color: G.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <svg viewBox="0 0 38 33" style={{ width: 9, height: 9, fill: '#7c3aed' }}><path d="M29 10.2L19 4.6 9 10.2v11.2l10 5.6 10-5.6V10.2zM19 0L38 11v11L19 33 0 22V11L19 0z"/></svg>
+              <span style={{ fontSize: 10, color: G.sub, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <svg viewBox="0 0 38 33" style={{ width: 10, height: 10, fill: '#a855f7' }}><path d="M29 10.2L19 4.6 9 10.2v11.2l10 5.6 10-5.6V10.2zM19 0L38 11v11L19 33 0 22V11L19 0z"/></svg>
                 Polygon TX
               </span>
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#7c3aed' }}>{asset.tx_hash.slice(0, 16)}…</span>
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#a855f7' }}>{asset.tx_hash.slice(0, 16)}…</span>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 9, color: G.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Clock size={9} /> Ingested
-            </span>
-            <span style={{ fontSize: 9, color: G.sub }}>{asset.createdAt ? new Date(asset.createdAt).toLocaleDateString() : '—'}</span>
-          </div>
+          {asset.createdAt && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 10, color: G.sub, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Clock size={10} /> Ingested
+              </span>
+              <span style={{ fontSize: 10, color: G.muted }}>{new Date(asset.createdAt).toLocaleDateString()}</span>
+            </div>
+          )}
         </div>
 
-        {/* Action row */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8, borderTop: `1px solid ${G.border}`, paddingTop: 12 }}>
           <div style={{
-            flex: 1, padding: '6px 0', borderRadius: 8, textAlign: 'center',
-            background: G.tealBg, border: `1px solid ${G.tealBdr}`,
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '7px 0', borderRadius: 9, background: G.tealBg, border: `1px solid ${G.tealBdr}`,
             fontSize: 10, fontWeight: 700, color: G.teal,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
           }}>
             <Shield size={11} /> Fingerprint Active
           </div>
           {asset.official_video_url && (
             <a href={asset.official_video_url} target="_blank" rel="noreferrer"
-              onClick={e => e.stopPropagation()}
               style={{
-                padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`,
+                padding: '7px 10px', borderRadius: 9, border: `1px solid ${G.border}`,
                 background: 'transparent', display: 'flex', alignItems: 'center',
-                transition: 'all 0.15s',
               }}>
               <ExternalLink size={13} style={{ color: G.sub }} />
             </a>
@@ -232,9 +229,6 @@ const AssetVault = () => {
   const [error,     setError]     = useState('');
   const [progress,  setProgress]  = useState(null);
   const [activeJob, setActiveJob] = useState(null);
-  const [selected,  setSelected]  = useState(null);
-  const [page,      setPage]      = useState(0);
-  const PER_PAGE = 6;
 
   useEffect(() => {
     if (!activeJob) return;
@@ -273,8 +267,6 @@ const AssetVault = () => {
   };
 
   const totalVectors = assets.reduce((s, a) => s + (a.vault_size || 0), 0);
-  const totalPages   = Math.ceil(assets.length / PER_PAGE);
-  const visible      = assets.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
   return (
     <div style={{ color: G.text }}>
@@ -282,9 +274,9 @@ const AssetVault = () => {
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {[
-          { label: 'Assets Vaulted',  value: assets.length,                                    color: '#6366f1' },
+          { label: 'Assets Vaulted',  value: assets.length,                                          color: '#6366f1' },
           { label: 'Total Vectors',   value: totalVectors > 0 ? totalVectors.toLocaleString() : '—', color: '#a855f7' },
-          { label: 'Protected',       value: assets.filter(a => a.status === 'complete').length, color: G.teal    },
+          { label: 'Protected',       value: assets.filter(a => a.status === 'complete').length,      color: G.teal    },
         ].map(({ label, value, color }) => (
           <motion.div key={label} whileHover={{ y: -2 }}
             style={{
@@ -292,43 +284,39 @@ const AssetVault = () => {
               border: `1px solid ${G.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}>
             <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: G.muted, margin: '0 0 6px' }}>{label}</p>
-            <p style={{ fontSize: '2rem', fontWeight: 900, color, margin: 0, lineHeight: 1 }}>{value}</p>
+            <p style={{ fontSize: 28, fontWeight: 900, color, margin: 0 }}>{value}</p>
           </motion.div>
         ))}
       </div>
 
       {/* Ingest form */}
       <div style={{
-        background: G.card, borderRadius: 20, padding: 22, marginBottom: 20,
-        border: `1px solid ${G.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+        background: G.card, borderRadius: 20, padding: '20px 22px', marginBottom: 20,
+        border: `1px solid ${G.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: G.tealBg, border: `1px solid ${G.tealBdr}` }}>
-                <Zap size={15} style={{ color: G.teal }} />
-              </div>
-              <h2 style={{ fontSize: 15, fontWeight: 800, color: G.text, margin: 0 }}>Ingest Official Content</h2>
-            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: G.text, margin: '0 0 4px' }}>Ingest Official Content</h2>
             <p style={{ fontSize: 12, color: G.sub, margin: 0, maxWidth: 480 }}>
-              The Archivist downloads via yt-dlp, extracts 1 frame/sec, embeds through CLIP (512-dim), and stores vectors in the FAISS vault with a SHA-256 integrity hash.
+              The Archivist downloads via yt-dlp, extracts 1 frame/sec, embeds each through CLIP (512-dim), and stores vectors in the FAISS vault with a SHA-256 integrity hash.
             </p>
           </div>
-          <button onClick={() => { refresh(); setPage(0); }}
-            style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: G.sub }}
-            onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            <RefreshCw size={12} /> Refresh
+          <button onClick={refresh} style={{
+            padding: '6px 10px', borderRadius: 9, border: `1px solid ${G.border}`,
+            background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+            fontSize: 11, color: G.sub,
+          }}>
+            <RefreshCw size={12} />
           </button>
         </div>
 
         <form onSubmit={handleIngest} style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
-            <input type="url" value={url} onChange={e => setUrl(e.target.value)}
+            <input
+              type="url" value={url} onChange={e => setUrl(e.target.value)}
               placeholder="https://www.youtube.com/watch?v=…"
-              disabled={loading}
+              disabled={loading} required
               style={{
                 width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
                 borderRadius: 12, border: `1px solid ${G.border}`, background: '#f8fafc',
@@ -336,7 +324,6 @@ const AssetVault = () => {
               }}
               onFocus={e => e.target.style.borderColor = G.tealBdr}
               onBlur={e => e.target.style.borderColor = G.border}
-              required
             />
           </div>
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -347,7 +334,7 @@ const AssetVault = () => {
               fontWeight: 700, fontSize: 13,
               background: loading ? G.border : `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
               color: loading ? G.muted : '#fff',
-              boxShadow: loading ? 'none' : `0 0 20px ${G.teal}30`,
+              boxShadow: loading ? 'none' : `0 0 20px ${G.teal}25`,
               opacity: (!url.trim() && !loading) ? 0.5 : 1,
             }}>
             {loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
@@ -359,7 +346,11 @@ const AssetVault = () => {
           {progress && <ProgressTimeline stage={progress.stage} message={progress.message} />}
           {error && (
             <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, color: '#ef4444' }}>
+              style={{
+                marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+                borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                fontSize: 12, color: '#ef4444',
+              }}>
               <AlertTriangle size={14} />{error}
             </motion.div>
           )}
@@ -373,43 +364,18 @@ const AssetVault = () => {
       </div>
 
       {assets.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '64px 0', background: G.card, borderRadius: 20, border: `1px dashed ${G.border}` }}>
+        <div style={{
+          textAlign: 'center', padding: '64px 0', background: G.card,
+          borderRadius: 20, border: `1px dashed ${G.border}`,
+        }}>
           <Database size={40} style={{ color: G.muted, margin: '0 auto 12px', opacity: 0.4 }} />
           <p style={{ fontSize: 15, fontWeight: 700, color: G.sub, margin: 0 }}>Vault is empty</p>
           <p style={{ fontSize: 12, color: G.muted, margin: '4px 0 0' }}>Ingest an official video above to create the first fingerprint.</p>
         </div>
       ) : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-            {visible.map(asset => (
-              <AssetCard key={asset._id} asset={asset} isSelected={selected === asset._id} onSelect={setSelected} />
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-              <span style={{ fontSize: 12, color: G.sub }}>
-                Showing {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, assets.length)} of {assets.length}
-              </span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                  style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`, background: G.card, cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
-                  <ChevronLeft size={14} style={{ color: G.sub }} />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button key={i} onClick={() => setPage(i)}
-                    style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${i === page ? G.teal : G.border}`, background: i === page ? G.tealBg : G.card, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: i === page ? G.teal : G.sub }}>
-                    {i + 1}
-                  </button>
-                ))}
-                <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
-                  style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`, background: G.card, cursor: page === totalPages - 1 ? 'not-allowed' : 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
-                  <ChevronRight size={14} style={{ color: G.sub }} />
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          {assets.map(asset => <AssetCard key={asset._id} asset={asset} />)}
+        </div>
       )}
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
