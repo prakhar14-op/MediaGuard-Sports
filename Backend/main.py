@@ -232,37 +232,54 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
     def _run():
         import yt_dlp
+        import urllib.request
         try:
-            ydl_opts = {
-                "outtmpl":     os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-                "format":      "best",
-                "quiet":       False,
-                "no_warnings": False,
-            }
+            # ── Detect direct video file URL vs platform URL ──────────────────
+            is_direct = any(url.lower().split("?")[0].endswith(ext) for ext in
+                           ('.mp4', '.webm', '.mkv', '.avi', '.mov', '.m4v'))
+            is_direct = is_direct or any(host in url for host in [
+                'drive.google.com/uc', 'dl.dropboxusercontent.com',
+                'storage.googleapis.com', 'amazonaws.com', 'cloudfront.net',
+            ])
 
-            if os.path.exists(COOKIES_PATH):
-                ydl_opts["cookiefile"] = COOKIES_PATH
-                print(f"[Ingest] Using cookies from {COOKIES_PATH}")
+            if is_direct:
+                # ── Direct download — no yt-dlp, no bot detection ─────────────
+                local_path = os.path.join(OFFICIAL_DIR, f"{job_id}.mp4")
+                print(f"[Ingest] Direct URL — downloading with urllib")
+                _ingest_jobs[job_id]["message"] = "Downloading video file directly..."
+                urllib.request.urlretrieve(url, local_path)
+                title = url.split("/")[-1].split("?")[0] or "Official Video"
+
             else:
-                print("[Ingest] No cookies file — attempting unauthenticated download")
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info  = ydl.extract_info(url, download=True)
-                title = info.get("title", "Unknown")
+                # ── Platform URL — use yt-dlp ─────────────────────────────────
+                ydl_opts = {
+                    "outtmpl":     os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
+                    "format":      "best",
+                    "quiet":       False,
+                    "no_warnings": False,
+                }
+                if os.path.exists(COOKIES_PATH):
+                    ydl_opts["cookiefile"] = COOKIES_PATH
+                    print(f"[Ingest] Using cookies from {COOKIES_PATH}")
+                else:
+                    print("[Ingest] No cookies — attempting unauthenticated download")
 
-            # Find the downloaded file — extension may vary
-            matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
-            if not matches:
-                _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found"}
-                return
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info  = ydl.extract_info(url, download=True)
+                    title = info.get("title", "Unknown")
 
-            local_path = matches[0]
+                # Find downloaded file and normalise extension
+                matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
+                if not matches:
+                    _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found"}
+                    return
+                local_path = matches[0]
+                ext = os.path.splitext(local_path)[1].lower()
+                if ext not in (".mp4", ".webm", ".mkv", ".avi", ".mov"):
+                    new_path = os.path.splitext(local_path)[0] + ".mp4"
+                    os.rename(local_path, new_path)
+                    local_path = new_path
 
-            # Rename to .mp4 if it has an unrecognised extension so OpenCV can open it
-            ext = os.path.splitext(local_path)[1].lower()
-            if ext not in (".mp4", ".webm", ".mkv", ".avi", ".mov"):
-                new_path = os.path.splitext(local_path)[0] + ".mp4"
-                os.rename(local_path, new_path)
-                local_path = new_path
             _ingest_jobs[job_id] = {"status": "processing", "message": "Embedding frames…"}
 
             result = tool_ingest_video(local_path)

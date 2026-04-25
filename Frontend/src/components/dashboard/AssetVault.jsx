@@ -451,7 +451,7 @@ const AssetVault = () => {
             <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
             <input
               type="url" value={url} onChange={e => setUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=…"
+              placeholder="YouTube URL or direct .mp4 link (Google Drive, Dropbox…)"
               disabled={loading} required
               style={{
                 width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
