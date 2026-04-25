@@ -13,21 +13,21 @@ services:
       - key: PORT
         value: 8000
       - key: MONGO_URI
-        sync: false          # set manually in Render dashboard
+        sync: false
       - key: REDIS_URL
-        sync: false          # set manually in Render dashboard
+        sync: false
       - key: FASTAPI_URL
-        sync: false          # set to your FastAPI service URL after deploying it
+        sync: false
       - key: CLIENT_URL
-        sync: false          # set to your Vercel frontend URL
+        sync: false
 
   # ── FastAPI ML backend ───────────────────────────────────────────────────────
   - type: web
     name: mediaguard-fastapi
     runtime: docker
     rootDir: Backend
-    dockerfilePath: Dockerfile.fastapi
-    plan: standard            # needs 2GB RAM for CLIP — free plan only has 512MB
+    dockerfilePath: ./Dockerfile.fastapi
+    plan: free
     envVars:
       - key: PORT
         value: 8001
