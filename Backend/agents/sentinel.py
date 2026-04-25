@@ -59,10 +59,10 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
         meta = metadata_store.get(str(idx), {})
         top_matches.append({
             "vault_index":   int(idx),
-            "l2_distance":   round(float(dist), 4),
-            "confidence":    _l2_to_confidence(float(dist)),
+            "l2_distance":   float(round(float(dist), 4)),
+            "confidence":    float(_l2_to_confidence(float(dist))),
             "source_video":  meta.get("video_path", "unknown"),
-            "timestamp_sec": meta.get("timestamp_sec", 0),
+            "timestamp_sec": int(meta.get("timestamp_sec", 0)),
         })
 
     # Layer 2 — pHash cross-check (only runs when CLIP already suspects a match)
@@ -88,12 +88,12 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
             pass
 
     return {
-        "match_confirmed":  best_distance < MATCH_THRESHOLD,
-        "confidence_score": best_confidence,
-        "l2_distance":      round(best_distance, 4),
+        "match_confirmed":  bool(best_distance < MATCH_THRESHOLD),
+        "confidence_score": float(best_confidence),
+        "l2_distance":      float(round(best_distance, 4)),
         "severity":         _severity_from_confidence(best_confidence),
-        "phash_match":      phash_match,
-        "phash_score":      phash_score,
+        "phash_match":      bool(phash_match),
+        "phash_score":      int(phash_score),
         "top_matches":      top_matches,
         "thumbnail_url":    thumbnail_url,
     }
