@@ -26,6 +26,10 @@ export const ingestAsset = async (req, res) => {
     io.to(`ingest:${jobId}`).emit("ingest:progress", {
       jobId, stage: "downloading", message: "Downloading official video via yt-dlp...",
     });
+    // Also broadcast globally so the frontend catches it even before joining the room
+    io.emit("ingest:progress", {
+      jobId, assetId: asset._id, stage: "downloading", message: "Downloading official video via yt-dlp...",
+    });
 
     const { data: result } = await fastapiClient.post("/ingest", {
       official_video_url,
@@ -36,6 +40,10 @@ export const ingestAsset = async (req, res) => {
 
     io.to(`ingest:${jobId}`).emit("ingest:progress", {
       jobId, stage: "processing",
+      message: `Extracted ${result.frame_count} frames. Storing vectors in FAISS vault...`,
+    });
+    io.emit("ingest:progress", {
+      jobId, assetId: asset._id, stage: "processing",
       message: `Extracted ${result.frame_count} frames. Storing vectors in FAISS vault...`,
     });
 
@@ -64,6 +72,16 @@ export const ingestAsset = async (req, res) => {
       tx_hash: result.tx_hash,
       integrity_hash,
     });
+    // Broadcast globally so frontend always receives it
+    io.emit("ingest:complete", {
+      jobId,
+      assetId: asset._id,
+      title: result.title,
+      frame_count: result.frame_count,
+      vault_size: result.vault_size,
+      tx_hash: result.tx_hash,
+      integrity_hash,
+    });
 
   } catch (err) {
     await IngestedAsset.findByIdAndUpdate(asset._id, {
@@ -71,6 +89,7 @@ export const ingestAsset = async (req, res) => {
       error_message: err.message,
     });
     io.to(`ingest:${jobId}`).emit("ingest:error", { jobId, message: err.message });
+    io.emit("ingest:error", { jobId, assetId: asset._id, message: err.message });
   }
 };
 
@@ -83,4 +102,23 @@ export const getAssetById = async (req, res) => {
   const asset = await IngestedAsset.findById(req.params.id);
   if (!asset) throw new ExpressError(404, "Asset not found");
   res.json({ success: true, data: asset });
+};
+
+export const deleteAsset = async (req, res) => {
+  const asset = await IngestedAsset.findById(req.params.id);
+  if (!asset) throw new ExpressError(404, "Asset not found");
+
+  // Delete the downloaded video file from disk if it exists
+  if (asset.local_path) {
+    try {
+      const fs = await import("fs/promises");
+      await fs.unlink(asset.local_path);
+    } catch {
+      // File already gone — not an error
+    }
+  }
+
+  await IngestedAsset.findByIdAndDelete(req.params.id);
+
+  res.json({ success: true, message: "Asset deleted from vault.", id: req.params.id });
 };

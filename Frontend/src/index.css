@@ -17,12 +17,19 @@
 }
 
 /* Dashboard keeps dark bg */
-.dashboard-root { @apply bg-slate-950 text-slate-200; }
+/* .dashboard-root { @apply bg-slate-950 text-slate-200; } */
 
 /* Leaflet */
-.leaflet-popup { z-index: 3000 !important; }
-.leaflet-pane  { z-index: 1 !important; }
-.leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+.leaflet-container        { height: 100%; width: 100%; }
+.leaflet-popup            { z-index: 3000 !important; }
+.leaflet-pane             { z-index: 400 !important; }
+.leaflet-tile-pane        { z-index: 200 !important; }
+.leaflet-overlay-pane     { z-index: 400 !important; }
+.leaflet-marker-pane      { z-index: 600 !important; }
+.leaflet-tooltip-pane     { z-index: 650 !important; }
+.leaflet-popup-pane       { z-index: 700 !important; }
+.leaflet-top,
+.leaflet-bottom           { z-index: 1000 !important; }
 
 /* Ripple cell animation */
 @keyframes cellPulse {

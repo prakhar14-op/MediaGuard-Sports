@@ -60,7 +60,7 @@ def tool_ingest_video(video_path: str) -> str:
         if not ret:
             break
 
-        if frame_id % frame_rate == 0:
+        if frame_id % (frame_rate * 5) == 0:
             pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             embedding = _embed_pil_image(pil_image)
             faiss.normalize_L2(embedding)

@@ -7,16 +7,12 @@ import random
 import json
 import re
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, LLM
+from crewai import Agent
 from crewai.tools import tool
 
-load_dotenv()
+from agents.llm_factory import get_primary_llm
 
-gemini_brain = LLM(
-    model="gemini/gemini-2.5-flash",
-    temperature=0.4,
-    api_key=os.getenv("GEMINI_API_KEY"),
-)
+load_dotenv()
 
 SUSPECTS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "suspects")
 os.makedirs(SUSPECTS_DIR, exist_ok=True)
@@ -67,36 +63,57 @@ spider_agent = Agent(
     verbose=True,
     allow_delegation=False,
     tools=[],
-    llm=gemini_brain,
+    llm=get_primary_llm(temperature=0.4),
 )
 
 
+def _fallback_queries(title: str) -> list[str]:
+    """Rule-based query generation — used when LLM is unavailable."""
+    base = title.strip()
+    return [
+        base,
+        f"{base} full video",
+        f"{base} highlights",
+        f"{base} leaked stream",
+    ]
+
+
 def _generate_search_queries(title: str, official_country: str) -> list[str]:
-    prompt = f"""
-You are an OSINT specialist hunting for pirated copies of a video titled: "{title}"
-The original is from country: {official_country}
-
-Generate exactly 4 search query strings that would find pirated/reposted versions on YouTube.
-Think about: common repost title patterns, highlight/clip keywords, language variants, hashtag patterns.
-Return ONLY a JSON array of 4 strings. No explanation.
-Example: ["query 1", "query 2", "query 3", "query 4"]
-"""
-    task = Task(
-        description=prompt,
-        expected_output="A JSON array of 4 search query strings.",
-        agent=spider_agent,
+    """Ask the LLM for smart OSINT queries. Falls back to rule-based if LLM fails."""
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    prompt = (
+        f'You are an OSINT specialist hunting for pirated copies of a video titled: "{title}"\n'
+        f"The original is from country: {official_country}\n\n"
+        f"Generate exactly 4 search query strings that would find pirated/reposted versions on YouTube.\n"
+        f"Return ONLY a JSON array of 4 strings. No explanation.\n"
+        f'Example: ["query 1", "query 2", "query 3", "query 4"]'
     )
-    crew   = Crew(agents=[spider_agent], tasks=[task], verbose=False)
-    result = str(crew.kickoff())
+    try:
+        if groq_key:
+            from groq import Groq
+            client = Groq(api_key=groq_key)
+            resp = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=200,
+            )
+            result = resp.choices[0].message.content.strip()
+        else:
+            import google.generativeai as genai
+            genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+            model  = genai.GenerativeModel("gemini-2.0-flash-lite")
+            result = model.generate_content(prompt).text.strip()
 
-    match = re.search(r"\[.*?\]", result, re.DOTALL)
-    if match:
-        try:
+        match = re.search(r"\[.*?\]", result, re.DOTALL)
+        if match:
             queries = json.loads(match.group())
-            return queries[:4] if isinstance(queries, list) else [title]
-        except Exception:
-            pass
-    return [title, f"{title} highlights", f"{title} full video", f"{title} leaked"]
+            if isinstance(queries, list) and len(queries) > 0:
+                return queries[:4]
+    except Exception as e:
+        print(f"[Spider] LLM query generation failed ({e}), using fallback queries.")
+
+    return _fallback_queries(title)
 
 
 def crawl(official_video_url: str, official_country: str = "US") -> dict:
@@ -176,7 +193,7 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
 
 @tool("Crawl and Extract Metadata")
 def tool_crawl_web(search_query: str) -> str:
-    """Generates optimized search queries via Gemini, crawls YouTube for suspects, maps them to country centroids."""
+    """Generates optimized search queries, crawls YouTube for suspects, maps them to country centroids."""
     try:
         result = crawl(search_query)
         if "error" in result:

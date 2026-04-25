@@ -2,10 +2,40 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDashboard } from '../../context/DashboardContext';
 import { enforcerService } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import {
   Gavel, CheckCircle, XCircle, FileText, Shield,
   AlertTriangle, ChevronDown, ChevronUp, Copy, ExternalLink,
 } from 'lucide-react';
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+const EmptyState = ({ icon, title, desc, action }) => {
+  const navigate = useNavigate();
+  return (
+    <div style={{
+      textAlign: 'center', padding: '56px 32px',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+      borderRadius: 20, border: '2px dashed rgba(148,163,184,0.35)',
+    }}>
+      <div style={{ marginBottom: 16 }}>{icon}</div>
+      <p style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>{title}</p>
+      <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', maxWidth: 420, marginInline: 'auto', lineHeight: 1.6 }}>{desc}</p>
+      {action && (
+        <button
+          onClick={() => navigate(action.href)}
+          style={{
+            padding: '10px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #0d9488, #2dd4bf)',
+            color: '#fff', fontWeight: 700, fontSize: 13,
+            boxShadow: '0 0 20px rgba(13,148,136,0.25)',
+          }}
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+};
 
 // ─── NxtDevs-style dark card + GSSoC teal accents ────────────────────────────
 const TIER_CFG = {
@@ -264,14 +294,12 @@ const LegalPanel = () => {
       )}
 
       {dmcas.length === 0 && (
-        <div style={{
-          textAlign: 'center', padding: '64px 0', background: '#ffffff',
-          borderRadius: 20, border: '1px dashed rgba(148,163,184,0.3)',
-        }}>
-          <Gavel size={40} style={{ color: '#94a3b8', margin: '0 auto 12px', opacity: 0.4 }} />
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#64748b', margin: 0 }}>No DMCA notices staged.</p>
-          <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>Run the swarm to generate takedown notices automatically.</p>
-        </div>
+        <EmptyState
+          icon={<Gavel size={40} style={{ color: '#94a3b8', opacity: 0.5 }} />}
+          title="No DMCA notices staged yet"
+          desc="DMCA notices are generated automatically when the Adjudicator classifies an incident as SEVERE PIRACY. Run the swarm first, then come back here to approve notices."
+          action={{ label: '→ Go to Threat Hunter', href: '/dashboard/hunter' }}
+        />
       )}
 
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>

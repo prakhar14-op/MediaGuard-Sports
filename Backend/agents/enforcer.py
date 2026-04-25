@@ -2,21 +2,14 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import json
-import re
+import time
+import logging
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, LLM
-from crewai.tools import tool
 
 load_dotenv()
 
-gemini_brain = LLM(
-    model="gemini/gemini-2.5-flash",
-    temperature=0.1,
-    api_key=os.getenv("GEMINI_API_KEY"),
-)
+logger = logging.getLogger(__name__)
 
-# Real legal contact endpoints per platform
 PLATFORM_LEGAL_CONTACTS = {
     "YouTube":   "copyright@youtube.com",
     "TikTok":    "legal@tiktok.com",
@@ -27,10 +20,9 @@ PLATFORM_LEGAL_CONTACTS = {
     "Other":     "legal@platform.com",
 }
 
-_DMCA_PROMPT = """
-You are a senior IP attorney. Draft a formal DMCA takedown notice using the details below.
-The notice must cite 17 U.S.C. § 512(c) and reference the cryptographic FAISS vector proof.
-Be precise, professional, and legally binding. Output ONLY the notice text — no preamble.
+_DMCA_PROMPT = """You are a senior IP attorney. Draft a formal DMCA takedown notice using the details below.
+Cite 17 U.S.C. § 512(c) and reference the cryptographic FAISS vector proof.
+Output ONLY the notice text — no preamble, no markdown.
 
 INCIDENT DETAILS:
 - Target Account: {target_account}
@@ -39,59 +31,66 @@ INCIDENT DETAILS:
 - Video Title: {video_title}
 - Video URL: {video_url}
 - Sentinel Confidence: {confidence_score}%
-- Adjudicator Classification: {classification}
-- Adjudicator Justification: {justification}
+- Classification: {classification}
+- Justification: {justification}
 - Integrity Hash (FAISS Proof): {integrity_hash}
 - Offence Number: {offence_number}
 
 Include:
-1. Formal header with To/From/Date/Re fields
+1. Formal header (To/From/Date/Re)
 2. Statement of authority
-3. Description of infringement with specific evidence
-4. The cryptographic proof reference
+3. Description of infringement with evidence
+4. Cryptographic proof reference
 5. Action requested (removal + account strike)
-6. If offence_number >= 2, add repeat infringer policy citation (17 U.S.C. § 512(i))
-7. If offence_number >= 3, add referral to legal counsel
-8. Signature block
-"""
+6. If offence_number >= 2: cite 17 U.S.C. § 512(i) repeat infringer policy
+7. If offence_number >= 3: add referral to legal counsel
+8. Signature block"""
+
+_QUOTA_SIGNALS = ("429", "quota", "resource_exhausted", "rate_limit", "too many requests")
+
+def _is_quota(e: Exception) -> bool:
+    return any(s in str(e).lower() for s in _QUOTA_SIGNALS)
 
 
-@tool("Draft DMCA Notice")
-def tool_draft_dmca(
-    target_account: str,
-    platform: str,
-    video_title: str,
-    video_url: str,
-    confidence_score: str,
-    classification: str,
-    justification: str,
-    integrity_hash: str,
-    offence_number: int = 1,
-) -> str:
-    """Uses Gemini to draft a legally precise DMCA takedown notice tailored to the platform and offence history."""
-    legal_contact = PLATFORM_LEGAL_CONTACTS.get(platform, PLATFORM_LEGAL_CONTACTS["Other"])
+def _call_llm(prompt: str) -> str:
+    """Direct LLM call — Groq 70b for quality DMCA drafting, fallback to Gemini."""
+    groq_key   = os.getenv("GROQ_API_KEY",  "").strip()
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
 
-    prompt = _DMCA_PROMPT.format(
-        target_account=target_account,
-        platform=platform,
-        legal_contact=legal_contact,
-        video_title=video_title,
-        video_url=video_url,
-        confidence_score=confidence_score,
-        classification=classification,
-        justification=justification,
-        integrity_hash=integrity_hash,
-        offence_number=offence_number,
-    )
+    if groq_key:
+        from groq import Groq
+        client = Groq(api_key=groq_key)
+        for model, delay in [
+            ("llama-3.3-70b-versatile", 0),
+            ("llama-3.1-8b-instant",    15),
+        ]:
+            try:
+                if delay:
+                    logger.warning(f"[Enforcer] Rate limit — retrying with {model} in {delay}s…")
+                    time.sleep(delay)
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": "You are a senior IP attorney. Output only the DMCA notice text."},
+                        {"role": "user",   "content": prompt},
+                    ],
+                    temperature=0.1,
+                    max_tokens=1024,
+                )
+                return resp.choices[0].message.content.strip()
+            except Exception as e:
+                if _is_quota(e):
+                    continue
+                raise
 
-    task = Task(
-        description=prompt,
-        expected_output="A complete, formal DMCA takedown notice ready to send.",
-        agent=enforcer_agent,
-    )
-    crew   = Crew(agents=[enforcer_agent], tasks=[task], verbose=False)
-    result = crew.kickoff()
-    return str(result)
+    if gemini_key:
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_key)
+        model  = genai.GenerativeModel("gemini-2.0-flash-lite")
+        result = model.generate_content(prompt)
+        return result.text.strip()
+
+    raise RuntimeError("[Enforcer] No API keys configured.")
 
 
 def issue_dmca(
@@ -107,17 +106,20 @@ def issue_dmca(
 ) -> dict:
     legal_contact = PLATFORM_LEGAL_CONTACTS.get(platform, PLATFORM_LEGAL_CONTACTS["Other"])
 
-    notice_text = tool_draft_dmca.func(
+    prompt = _DMCA_PROMPT.format(
         target_account=target_account,
         platform=platform,
+        legal_contact=legal_contact,
         video_title=video_title,
-        video_url=video_url,
-        confidence_score=str(confidence_score),
+        video_url=video_url or "Not provided",
+        confidence_score=confidence_score,
         classification=classification,
         justification=justification,
-        integrity_hash=integrity_hash,
+        integrity_hash=integrity_hash or "N/A",
         offence_number=offence_number,
     )
+
+    notice_text = _call_llm(prompt)
 
     tier = "standard"
     if offence_number >= 3:
@@ -133,18 +135,3 @@ def issue_dmca(
         "tier":           tier,
         "offence_number": offence_number,
     }
-
-
-enforcer_agent = Agent(
-    role="Lead Legal Executor",
-    goal="Draft legally precise DMCA takedown notices and escalate based on repeat infringer history.",
-    backstory=(
-        "You are a relentless digital lawyer. When the Adjudicator rules SEVERE PIRACY, "
-        "you draft airtight 17 U.S.C. § 512(c) notices. Repeat offenders get escalated to "
-        "expedited takedowns and legal referrals. You never hesitate."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    tools=[tool_draft_dmca],
-    llm=gemini_brain,
-)
