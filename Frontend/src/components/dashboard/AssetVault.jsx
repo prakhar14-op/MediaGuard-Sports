@@ -5,150 +5,215 @@ import { useSocket } from '../../context/SocketContext';
 import { archivistService } from '../../services/api';
 import {
   Plus, Link as LinkIcon, Database, CheckCircle, ExternalLink,
-  Loader2, AlertTriangle, Hash, Shield, Layers, Clock, RefreshCw,
+  Loader2, AlertTriangle, Hash, Shield, Layers, Clock,
+  RefreshCw, ChevronLeft, ChevronRight, Zap,
 } from 'lucide-react';
 
-const STATUS_COLORS = {
-  complete:    { text: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
-  processing:  { text: 'text-blue-400',    bg: 'bg-blue-400/10',    border: 'border-blue-400/20'    },
-  downloading: { text: 'text-amber-400',   bg: 'bg-amber-400/10',   border: 'border-amber-400/20'   },
-  failed:      { text: 'text-red-400',     bg: 'bg-red-400/10',     border: 'border-red-400/20'     },
+const G = {
+  teal:    '#0d9488',
+  tealBg:  'rgba(13,148,136,0.08)',
+  tealBdr: 'rgba(13,148,136,0.2)',
+  card:    '#ffffff',
+  bg:      '#f6f7fc',
+  border:  'rgba(148,163,184,0.2)',
+  text:    '#0f172a',
+  sub:     '#64748b',
+  muted:   '#94a3b8',
 };
 
 const STAGES = ['queued', 'downloading', 'processing', 'complete'];
 
-// ─── Live progress timeline ───────────────────────────────────────────────────
-const ProgressTimeline = ({ stage, message }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-    className="mt-5 bg-slate-950/60 border border-blue-500/15 rounded-2xl p-5"
-  >
-    <div className="flex items-center gap-2 mb-4">
-      <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-      <span className="text-[11px] font-bold text-blue-400 uppercase tracking-widest">Archivist Running</span>
-    </div>
-    <div className="flex items-center gap-0 mb-4">
-      {STAGES.map((s, i) => {
-        const idx     = STAGES.indexOf(stage);
-        const done    = i < idx;
-        const active  = i === idx;
-        return (
-          <React.Fragment key={s}>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                done   ? 'bg-blue-500 border-blue-500' :
-                active ? 'bg-blue-500/20 border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.4)]' :
-                         'bg-slate-900 border-white/10'
-              }`}>
-                {done
-                  ? <CheckCircle className="w-3.5 h-3.5 text-white" />
-                  : <div className={`w-2 h-2 rounded-full ${active ? 'bg-blue-400 animate-pulse' : 'bg-slate-700'}`} />
-                }
+// ─── Progress timeline ────────────────────────────────────────────────────────
+const ProgressTimeline = ({ stage, message }) => {
+  const idx = STAGES.indexOf(stage);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+      style={{
+        marginTop: 16, background: '#f8fafc', border: `1px solid ${G.tealBdr}`,
+        borderRadius: 14, padding: 16,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Loader2 size={14} style={{ color: G.teal, animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: G.teal, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+          Archivist Running
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 12 }}>
+        {STAGES.map((s, i) => {
+          const done   = i < idx;
+          const active = i === idx;
+          return (
+            <React.Fragment key={s}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: done ? G.teal : active ? G.tealBg : '#e2e8f0',
+                  border: `2px solid ${done || active ? G.teal : G.border}`,
+                  boxShadow: active ? `0 0 10px ${G.teal}40` : 'none',
+                  transition: 'all 0.3s',
+                }}>
+                  {done
+                    ? <CheckCircle size={13} style={{ color: '#fff' }} />
+                    : <div style={{ width: 7, height: 7, borderRadius: '50%', background: active ? G.teal : G.muted, animation: active ? 'pulse 1s ease-in-out infinite' : 'none' }} />
+                  }
+                </div>
+                <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: active ? G.teal : done ? G.sub : G.muted }}>
+                  {s}
+                </span>
               </div>
-              <span className={`text-[8px] font-bold uppercase tracking-wider ${active ? 'text-blue-400' : done ? 'text-slate-400' : 'text-slate-700'}`}>
-                {s}
-              </span>
-            </div>
-            {i < STAGES.length - 1 && (
-              <div className={`flex-1 h-px mb-4 transition-all duration-500 ${i < idx ? 'bg-blue-500' : 'bg-white/8'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-    <p className="text-[12px] text-slate-300 leading-relaxed">{message}</p>
-  </motion.div>
-);
+              {i < STAGES.length - 1 && (
+                <div style={{ flex: 1, height: 2, marginBottom: 18, background: i < idx ? G.teal : G.border, transition: 'background 0.5s' }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: 12, color: G.sub, margin: 0, lineHeight: 1.5 }}>{message}</p>
+    </motion.div>
+  );
+};
 
-// ─── Asset card ───────────────────────────────────────────────────────────────
-const AssetCard = ({ asset }) => {
-  const s = STATUS_COLORS[asset.status] || STATUS_COLORS.processing;
+// ─── Asset card (Vihaan BatteryBay style) ─────────────────────────────────────
+const AssetCard = ({ asset, isSelected, onSelect }) => {
   const thumbId = asset.official_video_url?.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
   const thumb   = thumbId ? `https://i.ytimg.com/vi/${thumbId}/mqdefault.jpg` : null;
+  const isComplete = asset.status === 'complete';
+
+  const statusCfg = {
+    complete:    { color: G.teal,    bg: G.tealBg,                  label: 'Protected'   },
+    processing:  { color: '#6366f1', bg: 'rgba(99,102,241,0.08)',   label: 'Processing'  },
+    downloading: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',   label: 'Downloading' },
+    failed:      { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',    label: 'Failed'      },
+  }[asset.status] || { color: G.muted, bg: 'rgba(148,163,184,0.08)', label: asset.status };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.97 }}
+      initial={{ opacity: 0, y: 16, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden group hover:border-white/10 hover:shadow-lg hover:shadow-black/20 transition-all duration-300"
+      whileHover={{ y: -3, boxShadow: '0 12px 40px rgba(0,0,0,0.10)' }}
+      onClick={() => onSelect(asset._id)}
+      style={{
+        background: G.card, borderRadius: 18, overflow: 'hidden', cursor: 'pointer',
+        border: isSelected ? `2px solid ${G.teal}` : `1px solid ${G.border}`,
+        boxShadow: isSelected ? `0 0 0 3px ${G.tealBg}` : '0 2px 8px rgba(0,0,0,0.04)',
+        transition: 'all 0.2s',
+      }}
     >
       {/* Thumbnail */}
-      <div className="aspect-video bg-slate-800 relative overflow-hidden">
+      <div style={{ position: 'relative', aspectRatio: '16/9', background: '#e2e8f0', overflow: 'hidden' }}>
         {thumb ? (
-          <img src={thumb} alt={asset.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" />
+          <img src={thumb} alt={asset.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
+            onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+          />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Database className="w-10 h-10 text-slate-700" />
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}>
+            <Database size={28} style={{ color: G.muted }} />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4), transparent)' }} />
 
         {/* Status badge */}
-        <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[9px] font-bold border flex items-center gap-1.5 backdrop-blur-sm ${s.text} ${s.bg} ${s.border}`}>
-          {asset.status === 'complete' && <CheckCircle className="w-3 h-3" />}
-          {asset.status === 'complete' ? 'PROTECTED' : (asset.status || 'UNKNOWN').toUpperCase()}
+        <div style={{
+          position: 'absolute', top: 8, right: 8,
+          display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
+          borderRadius: 999, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)',
+          fontSize: 9, fontWeight: 800, color: statusCfg.color, textTransform: 'uppercase', letterSpacing: '0.1em',
+        }}>
+          {isComplete && <CheckCircle size={9} />}
+          {statusCfg.label}
         </div>
 
-        {/* Frame count overlay */}
+        {/* Frame count */}
         {asset.frame_count > 0 && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-sm rounded-full border border-white/10">
-            <Layers className="w-3 h-3 text-blue-400" />
-            <span className="text-[9px] font-bold text-white">{asset.frame_count} frames</span>
+          <div style={{
+            position: 'absolute', bottom: 8, left: 8,
+            display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
+            borderRadius: 999, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)',
+            fontSize: 9, fontWeight: 700, color: G.text,
+          }}>
+            <Layers size={9} style={{ color: '#6366f1' }} />
+            {asset.frame_count} frames
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-5">
-        <h4 className="font-bold text-white truncate mb-1 text-sm">{asset.title || 'Processing...'}</h4>
-        <p className="text-[10px] text-slate-500 mb-4 truncate">{asset.official_video_url}</p>
+      <div style={{ padding: '12px 14px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: G.text, margin: '0 0 2px',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {asset.title || 'Processing…'}
+        </p>
+        <p style={{ fontSize: 10, color: G.muted, margin: '0 0 10px',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {asset.official_video_url}
+        </p>
 
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
           {[
-            { label: 'Vault Vectors', value: asset.vault_size ? `${asset.vault_size}` : '—',         color: 'text-blue-400'    },
-            { label: 'Frames',        value: asset.frame_count ? `${asset.frame_count}` : '—',       color: 'text-purple-400'  },
+            { label: 'Vault Vectors', value: asset.vault_size ? `${asset.vault_size}` : '—', color: '#6366f1' },
+            { label: 'Frames',        value: asset.frame_count ? `${asset.frame_count}` : '—', color: '#a855f7' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-slate-950/50 rounded-xl p-3 border border-white/5">
-              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-              <p className={`text-lg font-black ${color}`}>{value}</p>
+            <div key={label} style={{
+              background: '#f8fafc', borderRadius: 10, padding: '8px 10px',
+              border: `1px solid ${G.border}`,
+            }}>
+              <p style={{ fontSize: 8, fontWeight: 700, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 2px' }}>{label}</p>
+              <p style={{ fontSize: 16, fontWeight: 900, color, margin: 0 }}>{value}</p>
             </div>
           ))}
         </div>
 
         {/* Hashes */}
-        <div className="space-y-1.5 mb-4">
+        <div style={{ borderTop: `1px solid ${G.border}`, paddingTop: 8, marginBottom: 10 }}>
           {asset.integrity_hash && (
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-slate-500 flex items-center gap-1"><Hash className="w-2.5 h-2.5" />Integrity</span>
-              <span className="text-teal-400 font-mono">{asset.integrity_hash.slice(0, 16)}…</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: G.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <Hash size={9} /> Integrity
+              </span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: G.teal }}>{asset.integrity_hash.slice(0, 16)}…</span>
             </div>
           )}
           {asset.tx_hash && (
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-slate-500 flex items-center gap-1">
-                <svg viewBox="0 0 38 33" className="w-2.5 h-2.5 fill-violet-400"><path d="M29 10.2L19 4.6 9 10.2v11.2l10 5.6 10-5.6V10.2zM19 0L38 11v11L19 33 0 22V11L19 0z"/></svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: G.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg viewBox="0 0 38 33" style={{ width: 9, height: 9, fill: '#7c3aed' }}><path d="M29 10.2L19 4.6 9 10.2v11.2l10 5.6 10-5.6V10.2zM19 0L38 11v11L19 33 0 22V11L19 0z"/></svg>
                 Polygon TX
               </span>
-              <span className="text-violet-400 font-mono">{asset.tx_hash.slice(0, 16)}…</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#7c3aed' }}>{asset.tx_hash.slice(0, 16)}…</span>
             </div>
           )}
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-slate-500 flex items-center gap-1"><Clock className="w-2.5 h-2.5" />Ingested</span>
-            <span className="text-slate-400">{new Date(asset.createdAt).toLocaleDateString()}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 9, color: G.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Clock size={9} /> Ingested
+            </span>
+            <span style={{ fontSize: 9, color: G.sub }}>{asset.createdAt ? new Date(asset.createdAt).toLocaleDateString() : '—'}</span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <div className="flex-1 py-2 bg-white/5 rounded-lg text-[10px] font-bold text-slate-400 flex items-center justify-center gap-1.5 border border-white/5">
-            <Shield className="w-3 h-3 text-emerald-400" />
-            <span className="text-emerald-400">Fingerprint Active</span>
+        {/* Action row */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{
+            flex: 1, padding: '6px 0', borderRadius: 8, textAlign: 'center',
+            background: G.tealBg, border: `1px solid ${G.tealBdr}`,
+            fontSize: 10, fontWeight: 700, color: G.teal,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          }}>
+            <Shield size={11} /> Fingerprint Active
           </div>
           {asset.official_video_url && (
             <a href={asset.official_video_url} target="_blank" rel="noreferrer"
-              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 transition-all">
-              <ExternalLink className="w-4 h-4 text-slate-400" />
+              onClick={e => e.stopPropagation()}
+              style={{
+                padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`,
+                background: 'transparent', display: 'flex', alignItems: 'center',
+                transition: 'all 0.15s',
+              }}>
+              <ExternalLink size={13} style={{ color: G.sub }} />
             </a>
           )}
         </div>
@@ -157,7 +222,7 @@ const AssetCard = ({ asset }) => {
   );
 };
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const AssetVault = () => {
   const { assets, refresh } = useDashboard();
   const { eventLog, joinIngest } = useSocket();
@@ -167,6 +232,9 @@ const AssetVault = () => {
   const [error,     setError]     = useState('');
   const [progress,  setProgress]  = useState(null);
   const [activeJob, setActiveJob] = useState(null);
+  const [selected,  setSelected]  = useState(null);
+  const [page,      setPage]      = useState(0);
+  const PER_PAGE = 6;
 
   useEffect(() => {
     if (!activeJob) return;
@@ -175,7 +243,6 @@ const AssetVault = () => {
       e.payload?.jobId === activeJob
     );
     if (!latest) return;
-
     if (latest.type === 'ingest:progress') {
       setProgress({ stage: latest.payload.stage, message: latest.payload.message });
     } else if (latest.type === 'ingest:complete') {
@@ -183,9 +250,7 @@ const AssetVault = () => {
       setTimeout(() => { setProgress(null); setActiveJob(null); setLoading(false); refresh(); }, 2000);
     } else if (latest.type === 'ingest:error') {
       setError(latest.payload.message);
-      setProgress(null);
-      setActiveJob(null);
-      setLoading(false);
+      setProgress(null); setActiveJob(null); setLoading(false);
     }
   }, [eventLog, activeJob, refresh]);
 
@@ -193,7 +258,7 @@ const AssetVault = () => {
     e.preventDefault();
     if (!url.trim()) return;
     setError('');
-    setProgress({ stage: 'queued', message: 'Starting ingest job...' });
+    setProgress({ stage: 'queued', message: 'Starting ingest job…' });
     setLoading(true);
     try {
       const res = await archivistService.ingest(url.trim());
@@ -203,61 +268,89 @@ const AssetVault = () => {
       setUrl('');
     } catch (err) {
       setError(err?.response?.data?.message || 'Ingest failed. Is the backend running?');
-      setProgress(null);
-      setLoading(false);
+      setProgress(null); setLoading(false);
     }
   };
 
   const totalVectors = assets.reduce((s, a) => s + (a.vault_size || 0), 0);
+  const totalPages   = Math.ceil(assets.length / PER_PAGE);
+  const visible      = assets.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
   return (
-    <div className="space-y-8">
+    <div style={{ color: G.text }}>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
         {[
-          { label: 'Assets Vaulted',  value: assets.length,                          color: 'text-blue-400'    },
-          { label: 'Total Vectors',   value: totalVectors > 0 ? totalVectors : '—',  color: 'text-purple-400'  },
-          { label: 'Protected',       value: assets.filter(a => a.status === 'complete').length, color: 'text-emerald-400' },
+          { label: 'Assets Vaulted',  value: assets.length,                                    color: '#6366f1' },
+          { label: 'Total Vectors',   value: totalVectors > 0 ? totalVectors.toLocaleString() : '—', color: '#a855f7' },
+          { label: 'Protected',       value: assets.filter(a => a.status === 'complete').length, color: G.teal    },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-slate-900/40 border border-white/5 rounded-2xl p-5">
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
-            <p className={`text-3xl font-black ${color}`}>{value}</p>
-          </div>
+          <motion.div key={label} whileHover={{ y: -2 }}
+            style={{
+              background: G.card, borderRadius: 16, padding: '18px 20px',
+              border: `1px solid ${G.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+            <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: G.muted, margin: '0 0 6px' }}>{label}</p>
+            <p style={{ fontSize: '2rem', fontWeight: 900, color, margin: 0, lineHeight: 1 }}>{value}</p>
+          </motion.div>
         ))}
       </div>
 
       {/* Ingest form */}
-      <div className="bg-gradient-to-br from-blue-600/10 to-indigo-600/10 border border-blue-500/20 rounded-3xl p-7">
-        <div className="flex items-start justify-between mb-5">
+      <div style={{
+        background: G.card, borderRadius: 20, padding: 22, marginBottom: 20,
+        border: `1px solid ${G.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
-            <h2 className="text-xl font-bold text-white mb-1">Ingest Official Content</h2>
-            <p className="text-slate-400 text-sm max-w-xl">
-              The Archivist downloads via yt-dlp, extracts 1 frame/sec, embeds each through
-              CLIP (512-dim), and stores vectors in the FAISS vault with a SHA-256 integrity hash.
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: G.tealBg, border: `1px solid ${G.tealBdr}` }}>
+                <Zap size={15} style={{ color: G.teal }} />
+              </div>
+              <h2 style={{ fontSize: 15, fontWeight: 800, color: G.text, margin: 0 }}>Ingest Official Content</h2>
+            </div>
+            <p style={{ fontSize: 12, color: G.sub, margin: 0, maxWidth: 480 }}>
+              The Archivist downloads via yt-dlp, extracts 1 frame/sec, embeds through CLIP (512-dim), and stores vectors in the FAISS vault with a SHA-256 integrity hash.
             </p>
           </div>
-          <button onClick={refresh} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all" title="Refresh">
-            <RefreshCw className="w-4 h-4 text-slate-400" />
+          <button onClick={() => { refresh(); setPage(0); }}
+            style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: G.sub }}
+            onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <RefreshCw size={12} /> Refresh
           </button>
         </div>
 
-        <form onSubmit={handleIngest} className="flex gap-3">
-          <div className="flex-1 relative">
-            <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input
-              type="url" value={url} onChange={e => setUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full bg-slate-950 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all"
-              disabled={loading} required
+        <form onSubmit={handleIngest} style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
+            <input type="url" value={url} onChange={e => setUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=…"
+              disabled={loading}
+              style={{
+                width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
+                borderRadius: 12, border: `1px solid ${G.border}`, background: '#f8fafc',
+                fontSize: 13, color: G.text, outline: 'none', boxSizing: 'border-box',
+              }}
+              onFocus={e => e.target.style.borderColor = G.tealBdr}
+              onBlur={e => e.target.style.borderColor = G.border}
+              required
             />
           </div>
-          <motion.button
-            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             type="submit" disabled={loading || !url.trim()}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.25)]"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
+              borderRadius: 12, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 700, fontSize: 13,
+              background: loading ? G.border : `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
+              color: loading ? G.muted : '#fff',
+              boxShadow: loading ? 'none' : `0 0 20px ${G.teal}30`,
+              opacity: (!url.trim() && !loading) ? 0.5 : 1,
+            }}>
+            {loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
             Ingest
           </motion.button>
         </form>
@@ -266,32 +359,60 @@ const AssetVault = () => {
           {progress && <ProgressTimeline stage={progress.stage} message={progress.message} />}
           {error && (
             <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="mt-4 flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-[12px]">
-              <AlertTriangle className="w-4 h-4 shrink-0" />{error}
+              style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, color: '#ef4444' }}>
+              <AlertTriangle size={14} />{error}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       {/* Assets grid */}
-      <div>
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-xl font-bold text-white">Protected Assets</h3>
-          <span className="text-sm text-slate-500 font-medium">{assets.length} vaulted</span>
-        </div>
-
-        {assets.length === 0 ? (
-          <div className="py-24 text-center bg-slate-900/20 border border-dashed border-white/8 rounded-3xl">
-            <Database className="w-14 h-14 text-slate-700 mx-auto mb-4" />
-            <p className="text-slate-400 font-bold text-lg mb-1">Vault is empty</p>
-            <p className="text-slate-600 text-sm">Ingest an official video above to create the first fingerprint.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {assets.map((asset) => <AssetCard key={asset._id} asset={asset} />)}
-          </div>
-        )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 800, color: G.text, margin: 0 }}>Protected Assets</h3>
+        <span style={{ fontSize: 12, color: G.sub }}>{assets.length} vaulted</span>
       </div>
+
+      {assets.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '64px 0', background: G.card, borderRadius: 20, border: `1px dashed ${G.border}` }}>
+          <Database size={40} style={{ color: G.muted, margin: '0 auto 12px', opacity: 0.4 }} />
+          <p style={{ fontSize: 15, fontWeight: 700, color: G.sub, margin: 0 }}>Vault is empty</p>
+          <p style={{ fontSize: 12, color: G.muted, margin: '4px 0 0' }}>Ingest an official video above to create the first fingerprint.</p>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+            {visible.map(asset => (
+              <AssetCard key={asset._id} asset={asset} isSelected={selected === asset._id} onSelect={setSelected} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+              <span style={{ fontSize: 12, color: G.sub }}>
+                Showing {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, assets.length)} of {assets.length}
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`, background: G.card, cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
+                  <ChevronLeft size={14} style={{ color: G.sub }} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button key={i} onClick={() => setPage(i)}
+                    style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${i === page ? G.teal : G.border}`, background: i === page ? G.tealBg : G.card, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: i === page ? G.teal : G.sub }}>
+                    {i + 1}
+                  </button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${G.border}`, background: G.card, cursor: page === totalPages - 1 ? 'not-allowed' : 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, display: 'flex', alignItems: 'center' }}>
+                  <ChevronRight size={14} style={{ color: G.sub }} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
     </div>
   );
 };
