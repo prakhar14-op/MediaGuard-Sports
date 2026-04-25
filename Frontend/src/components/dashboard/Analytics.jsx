@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ComposedChart, Bar, Line, Area, AreaChart, PieChart, Pie, Cell,
+  ComposedChart, Bar, Line, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
 import { useDashboard } from '../../context/DashboardContext';
 import { useSocket } from '../../context/SocketContext';
 import {
-  TrendingUp, Shield, Coins, AlertTriangle, RefreshCw,
+  TrendingUp, RefreshCw,
   Activity, BarChart3, PieChart as PieIcon, Zap,
 } from 'lucide-react';
 
@@ -63,39 +63,9 @@ const ChartTooltip = ({ active, payload, label }) => {
   );
 };
 
-// ─── Metric card ──────────────────────────────────────────────────────────────
-const MetricCard = ({ icon: Icon, value, label, color, sub, delay = 0 }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, duration: 0.4 }}
-    whileHover={{ y: -2, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}
-    style={{
-      background: G.card, borderRadius: 16, padding: '18px 20px',
-      border: `1px solid ${G.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-    }}
-  >
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-      <div>
-        <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: G.muted, margin: '0 0 8px' }}>{label}</p>
-        <p style={{ fontSize: 28, fontWeight: 900, color, margin: '0 0 3px' }}>{value}</p>
-        {sub && <p style={{ fontSize: 11, color: G.sub, margin: 0 }}>{sub}</p>}
-      </div>
-      <div style={{
-        width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: `${color}12`, border: `1px solid ${color}25`,
-      }}>
-        <Icon size={18} style={{ color }} />
-      </div>
-    </div>
-    <div style={{ marginTop: 12, height: 3, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: '70%', background: `linear-gradient(to right, ${color}, ${color}80)`, borderRadius: 99 }} />
-    </div>
-  </motion.div>
-);
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const Analytics = () => {
-  const { incidents, dmcas, contracts, stats, refresh } = useDashboard();
+  const { incidents, dmcas, contracts, refresh } = useDashboard();
   const { eventLog, isConnected } = useSocket();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [liveCount,  setLiveCount]  = useState(0);
@@ -163,7 +133,7 @@ const Analytics = () => {
     return slots;
   }, [incidents, dmcas, contracts]);
 
-  // Severity distribution
+  // Severity distribution (used for future chart expansion)
   const sevData = useMemo(() => {
     const critical = incidents.filter(i => i.severity === 'CRITICAL').length;
     const warning  = incidents.filter(i => i.severity === 'WARNING').length;
@@ -175,10 +145,7 @@ const Analytics = () => {
     ].filter(d => d.value > 0);
   }, [incidents]);
 
-  const totalRevenue = contracts.reduce((s, c) => s + (Number(c.estimated_monthly_revenue) || 0), 0);
-  const avgConf = incidents.length > 0
-    ? Math.round(incidents.reduce((s, i) => s + (i.confidence_score || 0), 0) / incidents.length)
-    : 0;
+  void sevData; // reserved for future severity chart
 
   return (
     <div style={{ color: G.text }}>

@@ -5,7 +5,7 @@ import { useSocket } from '../../context/SocketContext';
 import { archivistService } from '../../services/api';
 import {
   Plus, Link as LinkIcon, Database, CheckCircle, ExternalLink,
-  Loader2, AlertTriangle, Hash, Shield, Layers, Clock, RefreshCw,
+  Loader2, AlertTriangle, Hash, Shield, Layers, Clock, RefreshCw, Trash2, X,
 } from 'lucide-react';
 
 const G = {
@@ -81,8 +81,78 @@ const ProgressTimeline = ({ stage, message }) => {
   );
 };
 
+// ─── Delete confirmation dialog ───────────────────────────────────────────────
+const DeleteConfirm = ({ asset, onConfirm, onCancel, deleting }) => (
+  <motion.div
+    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}
+    onClick={onCancel}
+  >
+    <motion.div
+      initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+      onClick={e => e.stopPropagation()}
+      style={{
+        background: '#fff', borderRadius: 20, padding: '28px 28px 24px',
+        maxWidth: 400, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+        border: '1px solid rgba(148,163,184,0.2)',
+      }}
+    >
+      {/* Icon */}
+      <div style={{
+        width: 52, height: 52, borderRadius: 14, background: 'rgba(239,68,68,0.08)',
+        border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', marginBottom: 16,
+      }}>
+        <Trash2 size={22} style={{ color: '#ef4444' }} />
+      </div>
+
+      <p style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
+        Delete from Vault?
+      </p>
+      <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 6px', lineHeight: 1.5 }}>
+        <strong style={{ color: '#0f172a' }}>{asset.title || 'This asset'}</strong> will be permanently removed from the vault.
+      </p>
+      <p style={{
+        fontSize: 11, color: '#ef4444', margin: '0 0 22px', padding: '8px 12px',
+        background: 'rgba(239,68,68,0.06)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.15)',
+      }}>
+        ⚠️ This also deletes the downloaded video file and its FAISS vectors. Any active swarm using this fingerprint will lose its reference.
+      </p>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button onClick={onCancel} disabled={deleting}
+          style={{
+            flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(148,163,184,0.3)',
+            background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b',
+          }}>
+          Cancel
+        </button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          onClick={onConfirm} disabled={deleting}
+          style={{
+            flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
+            background: deleting ? '#e2e8f0' : 'linear-gradient(135deg, #ef4444, #f87171)',
+            cursor: deleting ? 'not-allowed' : 'pointer',
+            fontSize: 13, fontWeight: 700, color: deleting ? '#94a3b8' : '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            boxShadow: deleting ? 'none' : '0 0 20px rgba(239,68,68,0.25)',
+          }}>
+          {deleting
+            ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Deleting…</>
+            : <><Trash2 size={13} /> Delete</>
+          }
+        </motion.button>
+      </div>
+    </motion.div>
+  </motion.div>
+);
+
 // ─── Asset card ───────────────────────────────────────────────────────────────
-const AssetCard = ({ asset }) => {
+const AssetCard = ({ asset, onDelete }) => {
   const s = STATUS_CFG[asset.status] || STATUS_CFG.processing;
   const thumbId = asset.official_video_url?.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
   const thumb   = thumbId ? `https://i.ytimg.com/vi/${thumbId}/mqdefault.jpg` : null;
@@ -213,6 +283,20 @@ const AssetCard = ({ asset }) => {
               <ExternalLink size={13} style={{ color: G.sub }} />
             </a>
           )}
+          {/* Delete button */}
+          <motion.button
+            whileHover={{ scale: 1.05, background: 'rgba(239,68,68,0.08)' }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onDelete(asset)}
+            title="Delete from vault"
+            style={{
+              padding: '7px 10px', borderRadius: 9,
+              border: '1px solid rgba(239,68,68,0.2)',
+              background: 'transparent', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+            }}>
+            <Trash2 size={13} style={{ color: '#ef4444' }} />
+          </motion.button>
         </div>
       </div>
     </motion.div>
@@ -224,30 +308,56 @@ const AssetVault = () => {
   const { assets, refresh } = useDashboard();
   const { eventLog, joinIngest } = useSocket();
 
-  const [url,       setUrl]       = useState('');
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState('');
-  const [progress,  setProgress]  = useState(null);
-  const [activeJob, setActiveJob] = useState(null);
+  const [url,           setUrl]           = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
+  const [progress,      setProgress]      = useState(null);
+  const [activeJob,     setActiveJob]     = useState(null);
+  const [activeAssetId, setActiveAssetId] = useState(null);
+
+  // Delete state
+  const [deleteTarget,  setDeleteTarget]  = useState(null);  // asset object to confirm
+  const [deleting,      setDeleting]      = useState(false);
+  const [deleteError,   setDeleteError]   = useState('');
+
+  const handleDeleteClick = (asset) => {
+    setDeleteTarget(asset);
+    setDeleteError('');
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await archivistService.delete(deleteTarget._id);
+      setDeleteTarget(null);
+      refresh();
+    } catch (err) {
+      setDeleteError(err?.response?.data?.message || 'Delete failed.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!activeJob) return;
-    // Match by jobId OR catch any ingest event if we have an active job
+    // Match by jobId OR assetId — backend now broadcasts globally with both
     const latest = eventLog.find(e =>
       ['ingest:progress', 'ingest:complete', 'ingest:error'].includes(e.type) &&
-      (e.payload?.jobId === activeJob || !e.payload?.jobId)
+      (e.payload?.jobId === activeJob || e.payload?.assetId === activeAssetId)
     );
     if (!latest) return;
     if (latest.type === 'ingest:progress') {
       setProgress({ stage: latest.payload.stage, message: latest.payload.message });
     } else if (latest.type === 'ingest:complete') {
       setProgress({ stage: 'complete', message: `"${latest.payload.title}" — ${latest.payload.frame_count} frames stored.` });
-      setTimeout(() => { setProgress(null); setActiveJob(null); setLoading(false); refresh(); }, 2000);
+      setTimeout(() => { setProgress(null); setActiveJob(null); setActiveAssetId(null); setLoading(false); refresh(); }, 2000);
     } else if (latest.type === 'ingest:error') {
       setError(latest.payload.message);
-      setProgress(null); setActiveJob(null); setLoading(false);
+      setProgress(null); setActiveJob(null); setActiveAssetId(null); setLoading(false);
     }
-  }, [eventLog, activeJob, refresh]);
+  }, [eventLog, activeJob, activeAssetId, refresh]);
 
   const handleIngest = async (e) => {
     e.preventDefault();
@@ -259,6 +369,7 @@ const AssetVault = () => {
       const res = await archivistService.ingest(url.trim());
       const { jobId, assetId } = res.data;
       setActiveJob(jobId);
+      setActiveAssetId(assetId);
       joinIngest(jobId);
       setUrl('');
 
@@ -270,11 +381,11 @@ const AssetVault = () => {
           if (asset?.status === 'complete') {
             clearInterval(pollInterval);
             setProgress({ stage: 'complete', message: `"${asset.title}" — ${asset.frame_count} frames stored.` });
-            setTimeout(() => { setProgress(null); setActiveJob(null); setLoading(false); refresh(); }, 2000);
+            setTimeout(() => { setProgress(null); setActiveJob(null); setActiveAssetId(null); setLoading(false); refresh(); }, 2000);
           } else if (asset?.status === 'failed') {
             clearInterval(pollInterval);
             setError(asset.error_message || 'Ingest failed.');
-            setProgress(null); setActiveJob(null); setLoading(false);
+            setProgress(null); setActiveJob(null); setActiveAssetId(null); setLoading(false);
           } else if (asset?.status === 'processing') {
             setProgress({ stage: 'processing', message: `Processing frames… (${asset.frame_count || 0} extracted so far)` });
           } else if (asset?.status === 'downloading') {
@@ -399,7 +510,28 @@ const AssetVault = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          {assets.map(asset => <AssetCard key={asset._id} asset={asset} />)}
+          {assets.map(asset => <AssetCard key={asset._id} asset={asset} onDelete={handleDeleteClick} />)}
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <DeleteConfirm
+            asset={deleteTarget}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => { setDeleteTarget(null); setDeleteError(''); }}
+            deleting={deleting}
+          />
+        )}
+      </AnimatePresence>
+      {deleteError && (
+        <div style={{
+          marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+          borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+          fontSize: 12, color: '#ef4444',
+        }}>
+          <AlertTriangle size={14} />{deleteError}
         </div>
       )}
 

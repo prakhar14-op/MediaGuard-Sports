@@ -339,12 +339,13 @@ const ThreatHunter = () => {
       </div>
 
       {/* ── Map + live log ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, minHeight: 420 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, height: 480 }}>
 
         {/* Map */}
         <div style={{
           borderRadius: 20, overflow: 'hidden',
           border: `1px solid ${G.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+          height: 480,
         }}>
           <ThreatMap />
         </div>
@@ -385,9 +386,9 @@ const ThreatHunter = () => {
             <AnimatePresence initial={false}>
               {jobLog.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px 0', textAlign: 'center' }}>
-                  <Shield size={28} style={{ color: '#1e293b', marginBottom: 10 }} />
-                  <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>No activity yet.</p>
-                  <p style={{ fontSize: 10, color: '#334155', margin: '4px 0 0' }}>Launch a swarm to see live events.</p>
+                  <Shield size={28} style={{ color: '#334155', marginBottom: 10 }} />
+                  <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>No activity yet.</p>
+                  <p style={{ fontSize: 10, color: '#64748b', margin: '4px 0 0' }}>Launch a swarm to see live events.</p>
                 </div>
               ) : (
                 jobLog.map((e, i) => <LogEntry key={`${e.type}-${e.ts}-${i}`} event={e} />)

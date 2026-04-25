@@ -6,6 +6,7 @@ crewai
 crewai-tools
 google-generativeai
 litellm
+groq
 yt-dlp
 opencv-python
 torch

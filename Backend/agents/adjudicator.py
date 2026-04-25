@@ -4,34 +4,76 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import json
 import re
+import time
+import logging
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, LLM
 
 load_dotenv()
 
-gemini_brain = LLM(
-    model="gemini/gemini-2.5-flash",
-    temperature=0.1,
-    api_key=os.getenv("GEMINI_API_KEY"),
-)
+logger = logging.getLogger(__name__)
 
-adjudicator_agent = Agent(
-    role="Chief IP Adjudicator",
-    goal="Analyze flagged media metadata and classify it as SEVERE PIRACY or FAIR USE with a numeric risk score.",
-    backstory=(
-        "You are an elite, cold, and highly logical legal AI trained on IP law. "
-        "You receive Sentinel alerts and analyze the context of flagged videos. "
-        "Raw unaltered footage = SEVERE PIRACY. "
-        "Heavy commentary, transformative editing, parody, or reaction content = FAIR USE / FAN CONTENT. "
-        "You always output strict JSON. No prose. No markdown."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    llm=gemini_brain,
-)
+# ─── Direct LLM call — no CrewAI agent loop needed for JSON classification ────
+# CrewAI's agent loop causes "Maximum iterations reached" errors on simple tasks.
+# We call Groq/Gemini directly for reliability and speed.
 
-_VERDICT_PROMPT = """
-Analyze this IP infringement incident and return ONLY a JSON object with no markdown, no explanation outside the JSON.
+_QUOTA_SIGNALS = ("429", "quota", "resource_exhausted", "rate_limit", "too many requests")
+
+def _is_quota(e: Exception) -> bool:
+    return any(s in str(e).lower() for s in _QUOTA_SIGNALS)
+
+
+def _call_llm(prompt: str) -> str:
+    """
+    Try Groq first (llama-3.1-8b-instant — 20k TPM),
+    fall back to Groq 70b, then Gemini 2.0-flash-lite.
+    """
+    groq_key   = os.getenv("GROQ_API_KEY",   "").strip()
+    gemini_key = os.getenv("GEMINI_API_KEY",  "").strip()
+
+    # ── Attempt 1 & 2: Groq ──────────────────────────────────────────────────
+    if groq_key:
+        from groq import Groq
+        client = Groq(api_key=groq_key)
+
+        for model, delay in [
+            ("llama-3.1-8b-instant",    0),
+            ("llama-3.3-70b-versatile", 15),
+        ]:
+            try:
+                if delay:
+                    logger.warning(f"[Adjudicator] Groq rate limit — retrying with {model} in {delay}s…")
+                    time.sleep(delay)
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": "You are a strict IP law AI. Output ONLY valid JSON. No markdown, no explanation."},
+                        {"role": "user",   "content": prompt},
+                    ],
+                    temperature=0.1,
+                    max_tokens=512,
+                )
+                return resp.choices[0].message.content.strip()
+            except Exception as e:
+                if _is_quota(e):
+                    continue   # try next model
+                raise          # non-quota error — propagate
+
+    # ── Attempt 3: Gemini fallback ────────────────────────────────────────────
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model  = genai.GenerativeModel("gemini-2.0-flash-lite")
+            result = model.generate_content(prompt)
+            return result.text.strip()
+        except Exception as e:
+            raise RuntimeError(f"[Adjudicator] All LLM backends failed. Last error: {e}")
+
+    raise RuntimeError("[Adjudicator] No API keys configured (GROQ_API_KEY or GEMINI_API_KEY).")
+
+
+_VERDICT_PROMPT = """Analyze this IP infringement incident and return ONLY a JSON object.
+No markdown fences, no explanation outside the JSON.
 
 INCIDENT CONTEXT:
 - Sentinel Report: {sentinel_report}
@@ -49,18 +91,20 @@ Return exactly this JSON structure:
   "risk_score": <integer 0-100, where 100 = definite piracy>,
   "justification": "<1-2 sentences>",
   "routing": "Enforcer" or "Broker",
-  "legal_basis": "<brief legal principle, e.g. 17 U.S.C. 107 fair use factors>",
+  "legal_basis": "<brief legal principle>",
   "recommended_action": "<one concrete action>"
-}}
-"""
+}}"""
 
 
 def _parse_verdict(raw: str) -> dict:
-    """Extract JSON from Gemini output even if it wraps it in markdown."""
+    """Extract JSON from LLM output even if wrapped in markdown fences."""
     raw = raw.strip()
+    # Strip markdown fences if present
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if not match:
-        raise ValueError(f"No JSON found in Adjudicator output: {raw[:200]}")
+        raise ValueError(f"No JSON in Adjudicator output: {raw[:300]}")
     return json.loads(match.group())
 
 
@@ -80,25 +124,16 @@ def adjudicate(
         platform=platform,
         account_handle=account_handle,
         video_title=video_title,
-        description=description or "Not provided",
+        description=(description or "Not provided")[:400],  # truncate long descriptions
         country=country or "Unknown",
         confidence_score=confidence_score,
         low_confidence=low_confidence,
     )
 
-    task = Task(
-        description=prompt,
-        expected_output="A strict JSON object with classification, risk_score, justification, routing, legal_basis, recommended_action.",
-        agent=adjudicator_agent,
-    )
-
-    crew   = Crew(agents=[adjudicator_agent], tasks=[task], verbose=False)
-    result = crew.kickoff()
-
-    raw_text = str(result)
+    raw_text = _call_llm(prompt)
     verdict  = _parse_verdict(raw_text)
 
-    # Enforce low-confidence leniency — downgrade DMCA to review if Sentinel wasn't sure
+    # Low-confidence leniency — don't issue DMCA if Sentinel wasn't sure
     if low_confidence and verdict.get("routing") == "Enforcer":
         verdict["routing"]            = "Broker"
         verdict["recommended_action"] = "Flag for human review before issuing DMCA (low Sentinel confidence)"
@@ -107,9 +142,12 @@ def adjudicate(
 
 
 def batch_adjudicate(incidents: list) -> list:
-    """Adjudicate multiple incidents. Each item must have the same keys as adjudicate()."""
+    """Adjudicate multiple incidents sequentially with a small inter-call delay."""
     results = []
-    for inc in incidents:
+    for i, inc in enumerate(incidents):
+        # Small delay between calls to avoid TPM bursts
+        if i > 0:
+            time.sleep(2)
         try:
             verdict = adjudicate(
                 sentinel_report  = inc.get("sentinel_report", ""),
@@ -122,5 +160,6 @@ def batch_adjudicate(incidents: list) -> list:
             )
             results.append({"incident_id": inc.get("incident_id"), "verdict": verdict, "error": None})
         except Exception as e:
+            logger.error(f"[Adjudicator] Failed for {inc.get('account_handle')}: {e}")
             results.append({"incident_id": inc.get("incident_id"), "verdict": None, "error": str(e)})
     return results
