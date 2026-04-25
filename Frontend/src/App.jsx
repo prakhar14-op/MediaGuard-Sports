@@ -8,31 +8,27 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-[#020617]">
+      <div className="min-h-screen" style={{ background: '#f6f7fc' }}>
         <Toaster 
           position="top-right"
           toastOptions={{
             style: {
-              background: '#0f172a',
-              color: '#f1f5f9',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '1rem',
-              backdropFilter: 'blur(10px)',
-              fontSize: '0.8rem',
-              fontWeight: '600'
+              background: '#ffffff',
+              color: '#0f172a',
+              border: '1px solid rgba(148,163,184,0.25)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+              fontSize: '0.82rem',
+              fontWeight: '600',
             },
             success: {
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#0f172a',
-              },
+              iconTheme: { primary: '#0d9488', secondary: '#ffffff' },
+              style: { borderLeft: '3px solid #0d9488' },
             },
             error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#0f172a',
-              },
-            }
+              iconTheme: { primary: '#ef4444', secondary: '#ffffff' },
+              style: { borderLeft: '3px solid #ef4444' },
+            },
           }}
         />
         <Routes>
