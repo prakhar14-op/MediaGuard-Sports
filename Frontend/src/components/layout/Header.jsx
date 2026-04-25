@@ -4,6 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '../../context/DashboardContext';
 import { useSocket } from '../../context/SocketContext';
 
+const G = {
+  teal:    '#0d9488',
+  tealBg:  'rgba(13,148,136,0.08)',
+  tealBdr: 'rgba(13,148,136,0.2)',
+  bg:      '#ffffff',
+  border:  'rgba(148,163,184,0.15)',
+  text:    '#0f172a',
+  sub:     '#64748b',
+  muted:   '#94a3b8',
+};
+
 const Header = ({ title }) => {
   const navigate = useNavigate();
   const { notifications, swarmRunning, swarmPhase } = useDashboard();
@@ -11,92 +22,93 @@ const Header = ({ title }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header
-      className="h-16 flex items-center justify-between px-6 sticky top-0 z-40"
-      style={{
-        background: 'rgba(12,13,18,0.92)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-      }}
-    >
+    <header style={{
+      height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 24px', position: 'sticky', top: 0, zIndex: 40,
+      background: 'rgba(255,255,255,0.95)', borderBottom: `1px solid ${G.border}`,
+      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    }}>
       {/* Left */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-[15px] font-bold text-white tracking-tight">{title}</h1>
-        <div className="h-4 w-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-
-        {/* Live status pill */}
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-          style={{
-            background: swarmRunning ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.04)',
-            border: swarmRunning ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.06)',
-            color: swarmRunning ? '#10b981' : '#475569',
-          }}>
-          <Zap className="w-3 h-3" style={{ fill: swarmRunning ? '#10b981' : 'none' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <h1 style={{ fontSize: '0.95rem', fontWeight: 700, color: G.text, margin: 0 }}>{title}</h1>
+        <div style={{ width: 1, height: 16, background: G.border }} />
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px',
+          borderRadius: 999, fontSize: '0.68rem', fontWeight: 700,
+          background: swarmRunning ? G.tealBg : '#f1f5f9',
+          border: `1px solid ${swarmRunning ? G.tealBdr : G.border}`,
+          color: swarmRunning ? G.teal : G.sub,
+        }}>
+          <Zap size={11} style={{ fill: swarmRunning ? G.teal : 'none', color: swarmRunning ? G.teal : G.muted }} />
           {swarmRunning ? `${swarmPhase?.agent || 'Swarm'} Running` : 'Live Agent Swarm'}
         </div>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {/* Search */}
-        <div className="relative hidden md:block group">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 transition-colors"
-            style={{ color: '#334155' }} />
+        <div style={{ position: 'relative', display: 'none' }} className="md:block">
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
           <input
             type="text"
             placeholder="Search assets, incidents..."
-            className="text-sm rounded-xl pl-10 pr-4 py-2 focus:outline-none transition-all w-72"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              color: '#e2e8f0',
+              fontSize: '0.8rem', borderRadius: 10, paddingLeft: 36, paddingRight: 16, paddingTop: 7, paddingBottom: 7,
+              border: `1px solid ${G.border}`, background: '#f8fafc', color: G.text, outline: 'none', width: 260,
             }}
-            onFocus={e => { e.target.style.borderColor = 'rgba(16,185,129,0.4)'; }}
-            onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+            onFocus={e => e.target.style.borderColor = G.tealBdr}
+            onBlur={e => e.target.style.borderColor = G.border}
           />
         </div>
 
         {/* Socket indicator */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold"
-          style={{
-            background: isConnected ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-            border: isConnected ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.2)',
-            color: isConnected ? '#10b981' : '#ef4444',
-          }}>
-          {isConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+          borderRadius: 8, fontSize: '0.68rem', fontWeight: 700,
+          background: isConnected ? G.tealBg : 'rgba(245,158,11,0.08)',
+          border: `1px solid ${isConnected ? G.tealBdr : 'rgba(245,158,11,0.25)'}`,
+          color: isConnected ? G.teal : '#f59e0b',
+        }}>
+          {isConnected ? <Wifi size={11} /> : <WifiOff size={11} />}
           {isConnected ? 'Live' : 'Offline'}
         </div>
 
-        {/* Notifications */}
+        {/* Bell */}
         <button
           onClick={() => navigate('/dashboard/notifications')}
-          className="relative p-2 rounded-xl transition-colors"
-          style={{ color: '#64748b' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
+          style={{
+            position: 'relative', padding: 8, borderRadius: 10, border: `1px solid ${G.border}`,
+            background: 'transparent', cursor: 'pointer', color: G.sub, display: 'flex', alignItems: 'center',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = G.text; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = G.sub; }}
         >
-          <Bell className="w-5 h-5" />
+          <Bell size={18} />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                style={{ background: '#ef4444' }} />
-              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#ef4444' }} />
-            </span>
+            <span style={{
+              position: 'absolute', top: 6, right: 6,
+              width: 7, height: 7, borderRadius: '50%', background: '#ef4444',
+              boxShadow: '0 0 0 2px #fff',
+            }} />
           )}
         </button>
 
         {/* Avatar */}
-        <button className="flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-full transition-colors"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px 5px 5px',
+          borderRadius: 999, border: `1px solid ${G.border}`, background: 'transparent', cursor: 'pointer',
+          transition: 'all 0.15s',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
-            MG
-          </div>
-          <span className="text-sm font-medium text-white">Admin</span>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
+            fontSize: '0.65rem', fontWeight: 800, color: '#fff',
+          }}>MG</div>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: G.text }}>Admin</span>
         </button>
       </div>
     </header>
