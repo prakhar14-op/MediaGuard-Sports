@@ -212,12 +212,11 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
             ydl_opts = {
                 "outtmpl":  os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-                "format":   "best[ext=mp4]/best[ext=webm]/best",
+                "format":   "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
                 "quiet":    True,
                 "no_warnings": True,
                 "merge_output_format": "mp4",
                 "postprocessors": [],
-                # Try multiple player clients — web_creator is less restricted
                 "extractor_args": {
                     "youtube": {
                         "player_client": ["web_creator", "web", "android"],
