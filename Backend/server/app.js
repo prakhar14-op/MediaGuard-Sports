@@ -30,7 +30,22 @@ const PORT = process.env.PORT || 8000;
 
 initSocket(httpServer);
 
-app.use(cors({ origin: process.env.CLIENT_URL || "*", credentials: true }));
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    cb(null, true); // permissive for now — tighten in production if needed
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
