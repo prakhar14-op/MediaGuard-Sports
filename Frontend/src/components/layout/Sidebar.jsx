@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, LayoutDashboard, Database, Search,
   ShieldAlert, Gavel, Coins, Bell, Settings,
-  HelpCircle, Zap, ChevronLeft, ChevronRight,
+  HelpCircle, Zap, ChevronLeft, ChevronRight, BarChart3,
 } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 import { useSocket } from '../../context/SocketContext';
@@ -28,7 +28,8 @@ const navItems = [
   { id: 'incidents',     label: 'Incidents',     icon: ShieldAlert,     color: '#f97316', path: '/dashboard/incidents'     },
   { id: 'enforcer',      label: 'Enforcement',   icon: Gavel,           color: '#ef4444', path: '/dashboard/enforcer'      },
   { id: 'broker',        label: 'Monetization',  icon: Coins,           color: '#0d9488', path: '/dashboard/broker'        },
-  { id: 'notifications', label: 'Swarm Logs',    icon: Bell,            color: '#a855f7', path: '/dashboard/notifications' },
+  { id: 'notifications', label: 'Swarm Logs',    icon: Bell,     color: '#a855f7', path: '/dashboard/notifications' },
+  { id: 'analytics',    label: 'Analytics',     icon: BarChart3,color: '#f59e0b', path: '/dashboard/analytics'    },
 ];
 
 const Sidebar = () => {

@@ -13,6 +13,7 @@ import IncidentTable from '../components/dashboard/IncidentTable';
 import LegalPanel    from '../components/dashboard/LegalPanel';
 import BrokerPanel   from '../components/dashboard/BrokerPanel';
 import Notifications from '../components/dashboard/Notifications';
+import Analytics     from '../components/dashboard/Analytics';
 
 const TITLES = {
   overview:      'Command Overview',
@@ -22,6 +23,7 @@ const TITLES = {
   enforcer:      'Legal Enforcement',
   broker:        'Monetization Broker',
   notifications: 'Intelligence Logs',
+  analytics:     'Intelligence Analytics',
 };
 
 const DashboardContent = () => {
@@ -55,6 +57,7 @@ const DashboardContent = () => {
                 <Route path="enforcer"      element={<LegalPanel />}    />
                 <Route path="broker"        element={<BrokerPanel />}   />
                 <Route path="notifications" element={<Notifications />} />
+                <Route path="analytics"     element={<Analytics />}     />
                 <Route path="/"             element={<Navigate to="overview" replace />} />
               </Routes>
             </motion.div>

@@ -338,68 +338,6 @@ const ThreatHunter = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── Live confidence chart ── */}
-      <div style={{
-        background: G.card, borderRadius: 20, padding: '18px 20px',
-        border: `1px solid ${G.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Activity size={16} style={{ color: G.teal }} />
-            <p style={{ fontSize: 13, fontWeight: 700, color: G.text, margin: 0 }}>Live Confidence Scores</p>
-            <span style={{
-              fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-              background: G.tealBg, border: `1px solid ${G.tealBdr}`, color: G.teal,
-              textTransform: 'uppercase', letterSpacing: '0.1em',
-            }}>
-              {incidents.length} incidents
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: G.muted }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: G.teal, display: 'inline-block' }} />
-              Confidence
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
-              Critical
-            </span>
-          </div>
-        </div>
-
-        {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="confGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={G.teal} stopOpacity={0.2} />
-                  <stop offset="95%" stopColor={G.teal} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="critGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={G.border} />
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: G.muted }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: G.muted }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <ReferenceLine y={55} stroke="#f59e0b" strokeDasharray="4 2" strokeWidth={1}
-                label={{ value: 'Threshold', position: 'right', fontSize: 8, fill: '#f59e0b' }} />
-              <Area type="monotone" dataKey="confidence" name="Confidence" stroke={G.teal}
-                strokeWidth={2} fill="url(#confGrad)" dot={{ r: 3, fill: G.teal, strokeWidth: 0 }} />
-              <Area type="monotone" dataKey="critical" name="Critical" stroke="#ef4444"
-                strokeWidth={2} fill="url(#critGrad)" dot={{ r: 4, fill: '#ef4444', strokeWidth: 0 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
-            <TrendingUp size={28} style={{ color: G.muted, opacity: 0.4 }} />
-            <p style={{ fontSize: 12, color: G.muted, margin: 0 }}>Chart populates as incidents are detected</p>
-          </div>
-        )}
-      </div>
-
       {/* ── Map + live log ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, minHeight: 420 }}>
 
