@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
-const NAV = [
-  { label: 'Technology', id: 'agents' },
-  { label: 'Pipeline',   id: 'pipeline' },
-  { label: 'Stack',      id: 'stack' },
-];
+const cn = (...c) => c.filter(Boolean).join(' ');
 
-const LandingNav = () => {
-  const navigate = useNavigate();
+const LandingNav = ({ onLaunch }) => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 40);
+    const fn = () => setScrolled(window.scrollY > 24);
     window.addEventListener('scroll', fn);
     return () => window.removeEventListener('scroll', fn);
   }, []);
@@ -22,48 +15,50 @@ const LandingNav = () => {
   const scroll = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   return (
-    <motion.header
+    <motion.nav
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-[#020617]/90 backdrop-blur-xl border-b border-white/5 shadow-xl shadow-black/20' : 'bg-transparent'
-      }`}
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5"
     >
-      <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
+      <div className={cn(
+        'flex items-center gap-1 backdrop-blur-xl border rounded-full px-3 py-2 transition-all duration-300',
+        scrolled
+          ? 'bg-[#020c0b]/90 border-teal-500/20 shadow-[0_4px_30px_rgba(20,184,166,0.12)]'
+          : 'bg-[#020c0b]/50 border-white/5',
+      )}>
+        {/* Logo */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-center gap-3 group"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors"
         >
-          <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20 group-hover:border-blue-500/40 transition-colors">
-            <Shield className="w-5 h-5 text-blue-400" />
-          </div>
-          <span className="text-lg font-black text-white tracking-tight">
-            MediaGuard<span className="text-blue-500">Sports</span>
+          <span className="text-sm font-black text-white tracking-tight">
+            MediaGuard<span className="text-teal-400">'26</span>
           </span>
         </button>
 
-        <nav className="hidden md:flex items-center gap-8">
-          {NAV.map(n => (
-            <button
-              key={n.id}
-              onClick={() => scroll(n.id)}
-              className="text-[11px] font-bold text-slate-500 hover:text-white uppercase tracking-[0.18em] transition-colors"
-            >
-              {n.label}
-            </button>
-          ))}
-        </nav>
+        <div className="w-px h-4 bg-white/10 mx-1" />
 
-        <button
-          onClick={() => navigate('/dashboard/overview')}
-          className="group px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.2)]"
+        {[['agents', 'Agents'], ['pipeline', 'Pipeline'], ['stack', 'Tech Stack']].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => scroll(id)}
+            className="px-3.5 py-1.5 text-[11px] font-semibold text-slate-400 hover:text-white rounded-full hover:bg-white/5 transition-all"
+          >
+            {label}
+          </button>
+        ))}
+
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={onLaunch}
+          className="ml-2 px-5 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 text-[11px] font-black rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(20,184,166,0.35)]"
         >
-          Launch
-          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-        </button>
+          Launch →
+        </motion.button>
       </div>
-    </motion.header>
+    </motion.nav>
   );
 };
 

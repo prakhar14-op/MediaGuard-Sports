@@ -13,6 +13,7 @@
     "@tanem/react-nprogress": "^6.0.3",
     "axios": "^1.15.1",
     "clsx": "^2.1.1",
+    "cobe": "^2.0.1",
     "framer-motion": "^12.38.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.8.0",
