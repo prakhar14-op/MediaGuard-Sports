@@ -1,131 +1,251 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSocket } from './SocketContext';
 import { sentinelService, archivistService, enforcerService, brokerService } from '../services/api';
 import toast from 'react-hot-toast';
 
 const DashboardContext = createContext(null);
 
+// ─── Seed mock data (shown when backend is offline) ───────────────────────────
 const MOCK_INCIDENTS = [
-  { _id: 'm1', title: 'Champions League Final Live Stream', platform: 'YouTube', severity: 'CRITICAL', confidence_score: 98, coordinates: { lat: 51.5074, lng: -0.1278 }, status: 'detected', thumbnail_url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&h=225&fit=crop' },
-  { _id: 'm2', title: 'UFC 300 Main Event Restream', platform: 'TikTok', severity: 'CRITICAL', confidence_score: 94, coordinates: { lat: 34.0522, lng: -118.2437 }, status: 'reviewing', thumbnail_url: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=225&fit=crop' },
-  { _id: 'm3', title: 'NBA Playoffs Highlights (Unlicensed)', platform: 'Twitter', severity: 'WARNING', confidence_score: 82, coordinates: { lat: 40.7128, lng: -74.0060 }, status: 'detected', thumbnail_url: 'https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=400&h=225&fit=crop' },
-  { _id: 'm4', title: 'Formula 1 Live Paddock View', platform: 'Telegram', severity: 'CRITICAL', confidence_score: 96, coordinates: { lat: 25.2048, lng: 55.2708 }, status: 'detected', thumbnail_url: 'https://images.unsplash.com/photo-1533107862482-0e6974b06ec4?w=400&h=225&fit=crop' },
-];
-
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'threat', title: 'Critical Detection', message: 'Unauthorized restream of CL Final detected on YouTube.', severity: 'CRITICAL', timestamp: new Date(Date.now() - 1000 * 60 * 5) },
-  { id: 2, type: 'agent', title: 'Spider Crawl Success', message: 'The Spider successfully indexed 14 Telegram piracy nodes.', timestamp: new Date(Date.now() - 1000 * 60 * 12) },
-  { id: 3, type: 'agent', title: 'Adjudicator Verdict', message: 'Detected TikTok clip classified as Fair Use (Reaction Video).', timestamp: new Date(Date.now() - 1000 * 60 * 25) },
-  { id: 4, type: 'success', title: 'DMCA Sent', message: 'Takedown notice dispatched to Telegram Legal Dept.', timestamp: new Date(Date.now() - 1000 * 60 * 45) },
-  { id: 5, type: 'agent', title: 'Broker Activation', message: 'Rev-Share contract deployed for viral NBA highlights clip.', timestamp: new Date(Date.now() - 1000 * 60 * 60) },
-  { id: 6, type: 'threat', title: 'High Confidence Match', message: 'Sentinel matched pHash with 99.8% confidence on UFC 300 feed.', severity: 'CRITICAL', timestamp: new Date(Date.now() - 1000 * 60 * 120) },
+  { _id: 'm1', title: 'Champions League Final Live Stream', platform: 'YouTube',   severity: 'CRITICAL', confidence_score: 98, coordinates: { lat: 51.5074,  lng: -0.1278  }, status: 'detected',  thumbnail_url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&h=225&fit=crop' },
+  { _id: 'm2', title: 'UFC 300 Main Event Restream',        platform: 'TikTok',    severity: 'CRITICAL', confidence_score: 94, coordinates: { lat: 34.0522,  lng: -118.2437 }, status: 'reviewing', thumbnail_url: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=225&fit=crop' },
+  { _id: 'm3', title: 'NBA Playoffs Highlights (Unlicensed)',platform: 'Twitter',   severity: 'WARNING',  confidence_score: 82, coordinates: { lat: 40.7128,  lng: -74.0060  }, status: 'detected',  thumbnail_url: 'https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=400&h=225&fit=crop' },
+  { _id: 'm4', title: 'Formula 1 Live Paddock View',        platform: 'Telegram',  severity: 'CRITICAL', confidence_score: 96, coordinates: { lat: 25.2048,  lng: 55.2708   }, status: 'detected',  thumbnail_url: 'https://images.unsplash.com/photo-1533107862482-0e6974b06ec4?w=400&h=225&fit=crop' },
 ];
 
 export const DashboardProvider = ({ children }) => {
-  const { lastEvent } = useSocket();
-  const [incidents, setIncidents] = useState(MOCK_INCIDENTS);
-  const [assets, setAssets] = useState([]);
-  const [dmcas, setDmcas] = useState([]);
-  const [contracts, setContracts] = useState([]);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  const [loading, setLoading] = useState(true);
+  const { lastEvent, joinRoom, joinIngest } = useSocket();
+
+  const [incidents,      setIncidents]      = useState(MOCK_INCIDENTS);
+  const [assets,         setAssets]         = useState([]);
+  const [dmcas,          setDmcas]          = useState([]);
+  const [contracts,      setContracts]      = useState([]);
+  const [notifications,  setNotifications]  = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [backendOnline,  setBackendOnline]  = useState(false);
+
+  // Active swarm job tracking
+  const [activeJobId,    setActiveJobId]    = useState(null);
+  const [swarmPhase,     setSwarmPhase]     = useState(null);   // { phase, agent, message }
+  const [swarmRunning,   setSwarmRunning]   = useState(false);
+  const [swarmComplete,  setSwarmComplete]  = useState(null);   // final summary
+
   const [stats, setStats] = useState({
-    totalDetections: MOCK_INCIDENTS.length + 142,
-    criticalThreats: MOCK_INCIDENTS.filter(i => i.severity === 'CRITICAL').length + 28,
-    revenueProtected: 124500,
-    assetsInVault: 12
+    totalDetections:  MOCK_INCIDENTS.length,
+    criticalThreats:  MOCK_INCIDENTS.filter(i => i.severity === 'CRITICAL').length,
+    revenueProtected: 0,
+    assetsInVault:    0,
   });
 
-  const addNotification = (notif) => {
-    const newNotif = {
-      id: Date.now(),
-      timestamp: new Date(),
-      read: false,
-      ...notif
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    
-    // Flash notification (Toast)
-    if (notif.type === 'threat') {
-      toast.error(notif.message, {
-        duration: 5000,
-        style: { border: '1px solid #ef4444', background: '#0f172a', color: '#fff' },
-        icon: '🚨'
-      });
-    } else if (notif.type === 'agent') {
-      toast.success(notif.message, {
-        style: { border: '1px solid #3b82f6', background: '#0f172a', color: '#fff' },
-        icon: '🤖'
-      });
-    } else {
-      toast(notif.message, {
-        style: { border: '1px solid #10b981', background: '#0f172a', color: '#fff' },
-        icon: '✅'
-      });
-    }
-  };
+  // ─── Toast helpers ──────────────────────────────────────────────────────────
+  const addNotification = useCallback((notif) => {
+    const entry = { id: Date.now(), timestamp: new Date(), read: false, ...notif };
+    setNotifications(prev => [entry, ...prev].slice(0, 100));
 
-  const fetchData = async () => {
+    if (notif.type === 'threat') {
+      toast.error(notif.message, { duration: 5000, icon: '🚨',
+        style: { border: '1px solid #ef4444', background: '#0f172a', color: '#fff' } });
+    } else if (notif.type === 'agent') {
+      toast.success(notif.message, { icon: '🤖',
+        style: { border: '1px solid #3b82f6', background: '#0f172a', color: '#fff' } });
+    } else if (notif.type === 'success') {
+      toast.success(notif.message, { icon: '✅',
+        style: { border: '1px solid #10b981', background: '#0f172a', color: '#fff' } });
+    } else {
+      toast(notif.message, { style: { border: '1px solid #6366f1', background: '#0f172a', color: '#fff' } });
+    }
+  }, []);
+
+  // ─── Fetch all data from backend ────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [incRes, assetRes, dmcaRes, brokerRes] = await Promise.all([
         sentinelService.getIncidents(),
         archivistService.getAll(),
         enforcerService.getAll(),
-        brokerService.getAll()
+        brokerService.getAll(),
       ]);
 
-      const realIncidents = incRes.data || [];
-      setIncidents([...realIncidents, ...MOCK_INCIDENTS]);
-      setAssets(assetRes.data || []);
-      setDmcas(dmcaRes.data || []);
-      setContracts(brokerRes.data || []);
+      const realIncidents = incRes?.data?.data || [];
+      const realAssets    = assetRes?.data?.data || [];
+      const realDmcas     = dmcaRes?.data?.data || [];
+      const realContracts = brokerRes?.data?.data || [];
 
+      // Only show real data when backend is online; keep mocks as fallback
+      setIncidents(realIncidents.length > 0 ? realIncidents : MOCK_INCIDENTS);
+      setAssets(realAssets);
+      setDmcas(realDmcas);
+      setContracts(realContracts);
+      setBackendOnline(true);
+
+      const allInc = realIncidents.length > 0 ? realIncidents : MOCK_INCIDENTS;
       setStats({
-        totalDetections: (realIncidents.length || 0) + MOCK_INCIDENTS.length + 142,
-        criticalThreats: [...realIncidents, ...MOCK_INCIDENTS].filter(i => i.severity === 'CRITICAL').length + 28,
-        revenueProtected: (brokerRes.data || []).reduce((acc, curr) => acc + (curr.projected_revenue || 0), 0) + 124500,
-        assetsInVault: (assetRes.data || []).length + 12
+        totalDetections:  allInc.length,
+        criticalThreats:  allInc.filter(i => i.severity === 'CRITICAL').length,
+        revenueProtected: realContracts.reduce((s, c) => s + (c.estimated_monthly_revenue || 0), 0),
+        assetsInVault:    realAssets.length,
       });
-    } catch (err) {
-      console.warn('Backend offline, using mock mode.');
+    } catch {
+      setBackendOnline(false);
+      // Keep mock data as-is
     } finally {
       setLoading(false);
     }
-  };
-
-  const notify = addNotification; // Alias for backward compatibility if needed
-
-  useEffect(() => {
-    fetchData();
   }, []);
 
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ─── Socket event handler ───────────────────────────────────────────────────
   useEffect(() => {
-    if (lastEvent) {
-      if (lastEvent.type === 'incident_new') {
-        setIncidents(prev => [lastEvent.payload, ...prev]);
-        addNotification({
-          type: lastEvent.payload.severity === 'CRITICAL' ? 'threat' : 'agent',
-          title: 'New Incident Detected',
-          message: `${lastEvent.payload.title} on ${lastEvent.payload.platform}`,
-          severity: lastEvent.payload.severity
+    if (!lastEvent) return;
+    const { type, payload } = lastEvent;
+
+    switch (type) {
+
+      // ── Swarm phase transitions ──────────────────────────────────────────
+      case 'swarm:phase':
+        setSwarmPhase({ phase: payload.phase, agent: payload.agent, message: payload.message });
+        setSwarmRunning(true);
+        addNotification({ type: 'agent', title: `Phase ${payload.phase}: ${payload.agent}`, message: payload.message });
+        break;
+
+      case 'swarm:complete':
+        setSwarmRunning(false);
+        setSwarmPhase(null);
+        setSwarmComplete(payload);
+        addNotification({ type: 'success', title: 'Swarm Complete', message: `${payload.total_suspects || 0} suspects processed. ${payload.dmca_drafted || 0} DMCA notices drafted.` });
+        fetchData(); // refresh all data
+        break;
+
+      case 'swarm:error':
+        setSwarmRunning(false);
+        setSwarmPhase(null);
+        addNotification({ type: 'threat', title: 'Swarm Error', message: payload.message });
+        break;
+
+      // ── Spider ───────────────────────────────────────────────────────────
+      case 'spider:complete':
+        addNotification({ type: 'agent', title: 'Spider Complete', message: `Found ${payload.total || 0} suspects across the web.` });
+        break;
+
+      // ── Sentinel ─────────────────────────────────────────────────────────
+      case 'sentinel:threat_found': {
+        const sev = payload.severity;
+        const newInc = {
+          _id:              payload.incidentId,
+          title:            payload.title,
+          platform:         payload.platform,
+          account_handle:   payload.account_handle,
+          confidence_score: payload.confidence_score,
+          severity:         sev,
+          status:           'detected',
+          coordinates:      payload.coordinates,
+          match_confirmed:  payload.match_confirmed,
+        };
+        setIncidents(prev => {
+          if (prev.find(i => i._id === newInc._id)) return prev;
+          return [newInc, ...prev];
         });
+        if (sev === 'CRITICAL') {
+          addNotification({ type: 'threat', title: 'Critical Threat Detected', message: `${payload.title} on ${payload.platform} — ${payload.confidence_score}% confidence` });
+        }
+        break;
       }
-      if (lastEvent.type === 'asset_new') {
-        setAssets(prev => [lastEvent.payload, ...prev]);
-        addNotification({
-          type: 'agent',
-          title: 'Asset Vaulted',
-          message: 'Digital fingerprint stored in FAISS vault.'
+
+      case 'sentinel:batch_complete':
+        addNotification({ type: 'agent', title: 'Sentinel Scan Complete', message: `${payload.total || 0} incidents found. ${payload.piracy_count || 0} piracy, ${payload.fair_use_count || 0} fair use.` });
+        break;
+
+      // ── Adjudicator ──────────────────────────────────────────────────────
+      case 'adjudicator:verdict':
+        setIncidents(prev => prev.map(inc =>
+          inc._id === payload.incident_id
+            ? { ...inc, classification: payload.verdict?.classification, status: payload.verdict?.routing === 'Enforcer' ? 'takedown_pending' : 'reviewing' }
+            : inc
+        ));
+        addNotification({ type: 'agent', title: 'Adjudicator Verdict', message: `${payload.verdict?.classification} → routed to ${payload.next_agent}` });
+        break;
+
+      case 'adjudicator:batch_complete':
+        addNotification({ type: 'agent', title: 'Adjudication Complete', message: `${payload.enforcer_count || 0} DMCA, ${payload.broker_count || 0} contracts queued.` });
+        break;
+
+      // ── Enforcer ─────────────────────────────────────────────────────────
+      case 'enforcer:notice_ready': {
+        const newDmca = {
+          _id:            payload.dmca_id,
+          incident_id:    payload.incident_id,
+          status:         'drafted',
+          tier:           payload.tier,
+          offence_number: payload.offence_number,
+          legal_contact:  payload.legal_contact,
+          notice_content: payload.notice_preview,
+          platform:       payload.platform,
+        };
+        setDmcas(prev => {
+          if (prev.find(d => d._id === newDmca._id)) return prev;
+          return [newDmca, ...prev];
         });
+        addNotification({ type: 'agent', title: 'DMCA Notice Drafted', message: `Tier: ${payload.tier} — awaiting your approval.` });
+        break;
       }
+
+      case 'enforcer:dmca_sent':
+        setDmcas(prev => prev.map(d => d._id === payload.dmca_id ? { ...d, status: 'sent' } : d));
+        addNotification({ type: 'success', title: 'DMCA Sent', message: `Notice dispatched to ${payload.platform} legal team.` });
+        break;
+
+      // ── Broker ───────────────────────────────────────────────────────────
+      case 'broker:contract_ready': {
+        const newContract = {
+          _id:                     payload.contract_id,
+          incident_id:             payload.incident_id,
+          tier:                    payload.tier,
+          copyright_holder_share:  payload.copyright_holder_share,
+          creator_share:           payload.creator_share,
+          tx_hash:                 payload.tx_hash,
+          estimated_monthly_revenue: payload.estimated_monthly_revenue,
+          status:                  'minted',
+        };
+        setContracts(prev => {
+          if (prev.find(c => c._id === newContract._id)) return prev;
+          return [newContract, ...prev];
+        });
+        addNotification({ type: 'success', title: 'Contract Minted', message: `${payload.tier} tier rev-share contract ready for activation.` });
+        break;
+      }
+
+      case 'broker:contract_activated':
+        setContracts(prev => prev.map(c => c._id === payload.contract_id ? { ...c, status: 'active' } : c));
+        addNotification({ type: 'success', title: 'Contract Activated', message: `Rev-share contract is now live on Polygon.` });
+        break;
+
+      // ── Ingest ───────────────────────────────────────────────────────────
+      case 'ingest:complete':
+        addNotification({ type: 'success', title: 'Asset Vaulted', message: `"${payload.title}" — ${payload.frame_count} frames stored in FAISS vault.` });
+        fetchData();
+        break;
+
+      case 'ingest:error':
+        addNotification({ type: 'threat', title: 'Ingest Failed', message: payload.message });
+        break;
+
+      default:
+        break;
     }
-  }, [lastEvent]);
+  }, [lastEvent, addNotification, fetchData]);
 
   return (
-    <DashboardContext.Provider value={{ 
-      incidents, assets, dmcas, contracts, notifications, stats, loading, 
-      refresh: fetchData, addNotification, notify
+    <DashboardContext.Provider value={{
+      // data
+      incidents, assets, dmcas, contracts, notifications, stats, loading, backendOnline,
+      // swarm state
+      activeJobId, setActiveJobId, swarmPhase, swarmRunning, swarmComplete, setSwarmComplete,
+      // actions
+      refresh: fetchData, addNotification, notify: addNotification,
+      // socket helpers
+      joinRoom, joinIngest,
     }}>
       {children}
     </DashboardContext.Provider>
