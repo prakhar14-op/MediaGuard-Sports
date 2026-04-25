@@ -3,7 +3,7 @@ import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
-import { DashboardProvider, useDashboard } from '../context/DashboardContext';
+import { DashboardProvider } from '../context/DashboardContext';
 import { SocketProvider } from '../context/SocketContext';
 
 import Overview      from '../components/dashboard/Overview';
@@ -25,14 +25,14 @@ const TITLES = {
 };
 
 const DashboardContent = () => {
-  const navigate   = useNavigate();
-  const location   = useLocation();
-  const parts      = location.pathname.split('/');
-  const activeTab  = parts[parts.length - 1] || 'overview';
-  const title      = TITLES[activeTab] || 'Command Center';
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const parts     = location.pathname.split('/');
+  const activeTab = parts[parts.length - 1] || 'overview';
+  const title     = TITLES[activeTab] || 'Command Center';
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'oklch(0.12 0 0)' }}>
+    <div className="flex min-h-screen" style={{ background: '#f6f7fc' }}>
       <Sidebar activeTab={activeTab} setActiveTab={(tab) => navigate(`/dashboard/${tab}`)} />
 
       <div className="flex-1 flex flex-col min-w-0">
