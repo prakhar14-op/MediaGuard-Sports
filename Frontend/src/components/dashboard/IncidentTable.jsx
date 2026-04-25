@@ -23,6 +23,9 @@ const STATUS_ICON = {
   cleared:         <CheckCircle className="w-3 h-3 text-slate-400" />,
 };
 
+const VALID_PLATFORMS = ['YouTube', 'TikTok', 'Twitter', 'Instagram', 'Telegram', 'Reddit', 'Other'];
+const safePlatform = (p) => VALID_PLATFORMS.includes(p) ? p : 'Other';
+
 // ─── Action menu for a single incident ───────────────────────────────────────
 const ActionMenu = ({ incident, onDone }) => {
   const [open,       setOpen]       = useState(false);
@@ -49,11 +52,11 @@ const ActionMenu = ({ incident, onDone }) => {
     adjudicatorService.adjudicate({
       incident_id:      incident._id,
       sentinel_report:  `[SCAN] Confidence: ${incident.confidence_score}% | Severity: ${incident.severity}`,
-      platform:         incident.platform || 'YouTube',
+      platform:         safePlatform(incident.platform),
       account_handle:   incident.account_handle || 'unknown',
       video_title:      incident.title || 'Unknown',
       description:      '',
-      country:          incident.country || '',
+      country:          (incident.country || '').toUpperCase().slice(0, 2) || undefined,
       confidence_score: incident.confidence_score || 50,
     })
   );
@@ -62,11 +65,12 @@ const ActionMenu = ({ incident, onDone }) => {
     enforcerService.enforce({
       incident_id:      incident._id,
       target_account:   incident.account_handle || 'unknown',
-      platform:         incident.platform || 'YouTube',
+      platform:         safePlatform(incident.platform),
       video_title:      incident.title || 'Unknown',
       video_url:        incident.url || '',
       confidence_score: incident.confidence_score || 50,
-      classification:   incident.classification || 'SEVERE PIRACY',
+      classification:   (incident.classification === 'SEVERE PIRACY' || incident.classification === 'FAIR USE / FAN CONTENT')
+                          ? incident.classification : 'SEVERE PIRACY',
       justification:    incident.adjudicator_justification || 'High confidence match detected by Sentinel.',
       integrity_hash:   '',
     })
@@ -76,7 +80,7 @@ const ActionMenu = ({ incident, onDone }) => {
     brokerService.broker({
       incident_id:    incident._id,
       target_account: incident.account_handle || 'unknown',
-      platform:       incident.platform || 'YouTube',
+      platform:       safePlatform(incident.platform),
       video_title:    incident.title || 'Unknown',
       video_url:      incident.url || '',
       justification:  incident.adjudicator_justification || 'Fair use content identified.',

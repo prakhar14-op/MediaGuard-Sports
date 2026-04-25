@@ -67,9 +67,9 @@ export const DashboardProvider = ({ children }) => {
         brokerService.getAll(),
       ]);
 
-      const realIncidents = incRes?.data?.data || [];
+      const realIncidents = incRes?.data?.data  || [];
       const realAssets    = assetRes?.data?.data || [];
-      const realDmcas     = dmcaRes?.data?.data || [];
+      const realDmcas     = dmcaRes?.data?.data  || [];
       const realContracts = brokerRes?.data?.data || [];
 
       // Only show real data when backend is online; keep mocks as fallback
@@ -114,8 +114,13 @@ export const DashboardProvider = ({ children }) => {
         setSwarmRunning(false);
         setSwarmPhase(null);
         setSwarmComplete(payload);
-        addNotification({ type: 'success', title: 'Swarm Complete', message: `${payload.total_suspects || 0} suspects processed. ${payload.dmca_drafted || 0} DMCA notices drafted.` });
-        fetchData(); // refresh all data
+        addNotification({
+          type: 'success',
+          title: 'Swarm Complete',
+          message: `${payload.total_suspects || 0} suspects · ${payload.dmca_drafted || 0} DMCA drafted · ${payload.contracts_minted || 0} contracts minted`,
+        });
+        // Delay refresh slightly so all DB writes finish before we pull fresh data
+        setTimeout(() => fetchData(), 1500);
         break;
 
       case 'swarm:error':
@@ -158,10 +163,28 @@ export const DashboardProvider = ({ children }) => {
         break;
 
       // ── Adjudicator ──────────────────────────────────────────────────────
+      case 'adjudicator:thinking':
+        // Update the specific incident to show it's being analysed
+        setIncidents(prev => prev.map(inc =>
+          inc._id === payload.incident_id
+            ? { ...inc, status: 'reviewing' }
+            : inc
+        ));
+        break;
+
+      case 'adjudicator:batch_started':
+        addNotification({ type: 'agent', title: 'Adjudicator Started', message: `Analysing ${payload.total || 0} suspects (${payload.skipped || 0} below threshold).` });
+        break;
+
       case 'adjudicator:verdict':
         setIncidents(prev => prev.map(inc =>
           inc._id === payload.incident_id
-            ? { ...inc, classification: payload.verdict?.classification, status: payload.verdict?.routing === 'Enforcer' ? 'takedown_pending' : 'reviewing' }
+            ? {
+                ...inc,
+                classification:            payload.verdict?.classification,
+                adjudicator_justification: payload.verdict?.justification,
+                status: payload.verdict?.routing === 'Enforcer' ? 'takedown_pending' : 'reviewing',
+              }
             : inc
         ));
         addNotification({ type: 'agent', title: 'Adjudicator Verdict', message: `${payload.verdict?.classification} → routed to ${payload.next_agent}` });
@@ -172,6 +195,10 @@ export const DashboardProvider = ({ children }) => {
         break;
 
       // ── Enforcer ─────────────────────────────────────────────────────────
+      case 'enforcer:drafting':
+        addNotification({ type: 'agent', title: 'Enforcer Drafting', message: payload.message || 'Drafting DMCA notice...' });
+        break;
+
       case 'enforcer:notice_ready': {
         const newDmca = {
           _id:            payload.dmca_id,
@@ -180,13 +207,18 @@ export const DashboardProvider = ({ children }) => {
           tier:           payload.tier,
           offence_number: payload.offence_number,
           legal_contact:  payload.legal_contact,
-          notice_content: payload.notice_preview,
+          notice_text:    payload.notice_preview,   // truncated preview until fetchData runs
           platform:       payload.platform,
+          target_account: payload.target_account,
         };
         setDmcas(prev => {
           if (prev.find(d => d._id === newDmca._id)) return prev;
           return [newDmca, ...prev];
         });
+        // Also update the incident status in state
+        setIncidents(prev => prev.map(inc =>
+          inc._id === payload.incident_id ? { ...inc, status: 'takedown_pending' } : inc
+        ));
         addNotification({ type: 'agent', title: 'DMCA Notice Drafted', message: `Tier: ${payload.tier} — awaiting your approval.` });
         break;
       }
@@ -197,21 +229,29 @@ export const DashboardProvider = ({ children }) => {
         break;
 
       // ── Broker ───────────────────────────────────────────────────────────
+      case 'broker:minting':
+        addNotification({ type: 'agent', title: 'Broker Minting', message: payload.message || 'Calculating rev-share...' });
+        break;
+
       case 'broker:contract_ready': {
         const newContract = {
-          _id:                     payload.contract_id,
-          incident_id:             payload.incident_id,
-          tier:                    payload.tier,
-          copyright_holder_share:  payload.copyright_holder_share,
-          creator_share:           payload.creator_share,
-          tx_hash:                 payload.tx_hash,
-          estimated_monthly_revenue: payload.estimated_monthly_revenue,
-          status:                  'minted',
+          _id:                      payload.contract_id,
+          incident_id:              payload.incident_id,
+          tier:                     payload.tier,
+          copyright_holder_share:   payload.copyright_holder_share,
+          creator_share:            payload.creator_share,
+          tx_hash:                  payload.tx_hash,
+          estimated_monthly_revenue: payload.estimated_monthly_revenue || 0,
+          status:                   'minted',
         };
         setContracts(prev => {
           if (prev.find(c => c._id === newContract._id)) return prev;
           return [newContract, ...prev];
         });
+        // Update incident status in state
+        setIncidents(prev => prev.map(inc =>
+          inc._id === payload.incident_id ? { ...inc, status: 'monetized' } : inc
+        ));
         addNotification({ type: 'success', title: 'Contract Minted', message: `${payload.tier} tier rev-share contract ready for activation.` });
         break;
       }

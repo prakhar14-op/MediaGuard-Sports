@@ -23,18 +23,24 @@ const LogEntry = ({ event }) => {
   const { type, payload, ts } = event;
 
   const config = {
-    'swarm:phase':            { icon: '⚡', color: '#818cf8', text: `Phase ${payload.phase}: ${payload.agent} — ${payload.message}` },
-    'spider:complete':        { icon: '🕷️', color: '#818cf8', text: `Spider found ${payload.total || 0} suspects` },
-    'sentinel:threat_found':  { icon: '👁️', color: payload.severity === 'CRITICAL' ? '#f87171' : '#fbbf24', text: `${payload.severity}: ${payload.title} on ${payload.platform} (${payload.confidence_score}%)` },
-    'sentinel:batch_complete':{ icon: '✅', color: '#2dd4bf', text: `Sentinel done — ${payload.piracy_count || 0} piracy, ${payload.fair_use_count || 0} fair use` },
-    'adjudicator:thinking':   { icon: '⚖️', color: '#c084fc', text: `Adjudicator analysing ${payload.message || '...'}` },
-    'adjudicator:verdict':    { icon: '⚖️', color: '#c084fc', text: `Verdict: ${payload.verdict?.classification} → ${payload.next_agent}` },
-    'enforcer:notice_ready':  { icon: '🔨', color: '#f87171', text: `DMCA drafted (${payload.tier}) — awaiting approval` },
-    'broker:contract_ready':  { icon: '💰', color: '#34d399', text: `Contract minted: ${payload.tier} tier` },
-    'swarm:complete':         { icon: '🏁', color: '#2dd4bf', text: `Swarm complete — ${payload.total_suspects || 0} suspects, ${payload.dmca_drafted || 0} DMCA, ${payload.contracts_minted || 0} contracts` },
-    'swarm:error':            { icon: '❌', color: '#f87171', text: `Error: ${payload.message}` },
-    'ingest:progress':        { icon: '📥', color: '#818cf8', text: payload.message },
-    'ingest:complete':        { icon: '✅', color: '#34d399', text: `Vaulted: "${payload.title}" — ${payload.frame_count} frames` },
+    'swarm:phase':              { icon: '⚡', color: '#818cf8', text: `Phase ${payload.phase}: ${payload.agent} — ${payload.message}` },
+    'spider:complete':          { icon: '🕷️', color: '#818cf8', text: `Spider found ${payload.total || 0} suspects` },
+    'sentinel:threat_found':    { icon: '👁️', color: payload.severity === 'CRITICAL' ? '#f87171' : '#fbbf24', text: `${payload.severity}: ${payload.title} on ${payload.platform} (${payload.confidence_score}%)` },
+    'sentinel:batch_complete':  { icon: '✅', color: '#2dd4bf', text: `Sentinel done — ${payload.total || 0} scanned` },
+    'adjudicator:batch_started':{ icon: '⚖️', color: '#c084fc', text: `Adjudicator: ${payload.total || 0} to analyse, ${payload.skipped || 0} below threshold` },
+    'adjudicator:thinking':     { icon: '🧠', color: '#c084fc', text: payload.message || 'Adjudicator thinking...' },
+    'adjudicator:verdict':      { icon: '⚖️', color: '#c084fc', text: `Verdict: ${payload.verdict?.classification} → ${payload.next_agent}` },
+    'adjudicator:batch_complete':{ icon: '✅', color: '#c084fc', text: `Adjudication done — ${payload.enforcer_count || 0} DMCA, ${payload.broker_count || 0} contracts` },
+    'enforcer:drafting':        { icon: '📝', color: '#f87171', text: payload.message || 'Drafting DMCA notice...' },
+    'enforcer:notice_ready':    { icon: '🔨', color: '#f87171', text: `DMCA drafted (${payload.tier}) — awaiting approval` },
+    'enforcer:batch_complete':  { icon: '✅', color: '#f87171', text: `${payload.total || 0} DMCA notices drafted` },
+    'broker:minting':           { icon: '💎', color: '#34d399', text: payload.message || 'Calculating rev-share...' },
+    'broker:contract_ready':    { icon: '💰', color: '#34d399', text: `Contract minted: ${payload.tier} tier` },
+    'broker:batch_complete':    { icon: '✅', color: '#34d399', text: `${payload.total || 0} contracts minted` },
+    'swarm:complete':           { icon: '🏁', color: '#2dd4bf', text: `Swarm complete — ${payload.total_suspects || 0} suspects, ${payload.dmca_drafted || 0} DMCA, ${payload.contracts_minted || 0} contracts` },
+    'swarm:error':              { icon: '❌', color: '#f87171', text: `Error: ${payload.message}` },
+    'ingest:progress':          { icon: '📥', color: '#818cf8', text: payload.message },
+    'ingest:complete':          { icon: '✅', color: '#34d399', text: `Vaulted: "${payload.title}" — ${payload.frame_count} frames` },
   }[type] || { icon: '•', color: '#64748b', text: type };
 
   return (

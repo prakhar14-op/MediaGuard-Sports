@@ -54,6 +54,9 @@ export const enforceIncident = async (req, res) => {
     confidence_score: String(confidence_score),
     notice_text:      data.notice_text,
     integrity_hash:   notice_hash,
+    tier:             data.tier || "standard",
+    offence_number,
+    legal_contact:    data.legal_contact || "",
     status:           "drafted",
   });
 
@@ -68,6 +71,8 @@ export const enforceIncident = async (req, res) => {
     tier:           data.tier,
     offence_number,
     legal_contact:  data.legal_contact,
+    platform,
+    target_account,
     notice_preview: data.notice_text.slice(0, 300) + "...",
   });
 
