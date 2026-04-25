@@ -125,11 +125,14 @@ const ThreatHunter = () => {
     setSwarmComplete(null);
 
     try {
+      // Join room BEFORE calling the API so we don't miss early events
+      // We'll get the jobId from the response and re-join with the real ID
       const res = await swarmService.run(url.trim());
       const { jobId } = res.data;
       setActiveJobId(jobId);
-      joinRoom(jobId);
-      addNotification({ type: 'agent', title: 'Swarm Deployed', message: `Job ${jobId.slice(0, 8)} — monitoring all phases.` });
+      joinRoom(jobId);   // join immediately after getting jobId
+      setUrl('');
+      addNotification({ type: 'agent', title: 'Swarm Deployed', message: `Job ${jobId.slice(0, 8)}… — monitoring all 5 phases.` });
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to launch swarm. Is the backend running?');
     } finally {

@@ -63,11 +63,17 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   const joinRoom = useCallback((jobId) => {
-    if (socket) socket.emit('join:hunt', jobId);
+    if (socket) {
+      socket.emit('join:hunt', jobId);
+      console.log(`[Socket] Joined room: hunt:${jobId}`);
+    }
   }, [socket]);
 
   const joinIngest = useCallback((jobId) => {
-    if (socket) socket.emit('join:ingest', jobId);
+    if (socket) {
+      socket.emit('join:ingest', jobId);
+      console.log(`[Socket] Joined room: ingest:${jobId}`);
+    }
   }, [socket]);
 
   return (
