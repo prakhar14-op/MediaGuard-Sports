@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, ArrowRight, Database, Globe, Eye, Brain, Gavel, Coins,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { FlipWords } from '../components/ui/FlipWords';
 import createGlobe from 'cobe';
+import Navbar from '../components/landing/Navbar';
 
 // ─── COBE Globe ───────────────────────────────────────────────────────────────
 const CobeGlobe = () => {
@@ -219,40 +220,6 @@ const StatCard = ({ label, value, sub, tag, delay = 0, rotate = 0 }) => (
     </motion.div>
   </motion.div>
 );
-
-// ─── Nav ──────────────────────────────────────────────────────────────────────
-const Nav = ({ onLaunch }) => {
-  const scroll = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  return (
-    <motion.nav
-      initial={{ y: -70, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5"
-    >
-      <div className="flex items-center gap-1 bg-white/95 backdrop-blur-xl border border-slate-200/70 rounded-full px-3 py-2 shadow-lg shadow-slate-200/50">
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-slate-50 transition-colors"
-        >
-          <Shield className="w-4 h-4 text-teal-600" />
-          <span className="text-sm font-black text-slate-900 tracking-tight">MediaGuard<span className="text-teal-600">'26</span></span>
-        </button>
-        <div className="w-px h-5 bg-slate-200 mx-1" />
-        {[['agents', 'Agent Swarm'], ['pipeline', 'Pipeline'], ['stack', 'Tech Stack']].map(([id, label]) => (
-          <button key={id} onClick={() => scroll(id)}
-            className="px-4 py-1.5 text-[12px] font-semibold text-slate-500 hover:text-slate-900 rounded-full hover:bg-slate-50 transition-all">
-            {label}
-          </button>
-        ))}
-        <button onClick={onLaunch}
-          className="ml-2 px-5 py-2 bg-slate-900 hover:bg-teal-600 text-white text-[12px] font-bold rounded-full transition-all duration-200">
-          Launch →
-        </button>
-      </div>
-    </motion.nav>
-  );
-};
 
 // ─── Live Activity Ticker ─────────────────────────────────────────────────────
 const TICKER_EVENTS = [
@@ -994,7 +961,7 @@ const Landing = () => {
 
   return (
     <div className="bg-white min-h-screen overflow-x-hidden selection:bg-teal-500/20">
-      <Nav onLaunch={onLaunch} />
+      <Navbar onLaunch={onLaunch} />
       <Hero onLaunch={onLaunch} />
       <AgentsSection />
       <PipelineSection />
