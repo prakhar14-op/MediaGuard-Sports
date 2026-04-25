@@ -7,8 +7,6 @@ import numpy as np
 import json
 import os
 from PIL import Image
-from crewai.tools import tool
-from crewai import Agent
 
 VAULT_DIR = os.path.join(os.path.dirname(__file__), "..", "vault")
 os.makedirs(VAULT_DIR, exist_ok=True)
@@ -66,7 +64,6 @@ def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
     return embedding
 
 
-@tool("Ingest Official Video")
 def tool_ingest_video(video_path: str) -> str:
     """Extracts 1 frame every 5 seconds from an official video, embeds via MobileNetV3, stores in FAISS vault."""
     global vector_db, metadata_store
@@ -112,14 +109,3 @@ def embed_image_for_sentinel(pil_image: Image.Image) -> np.ndarray:
     embedding = _embed_pil_image(pil_image)
     faiss.normalize_L2(embedding)
     return embedding
-
-
-archivist_agent = Agent(
-    role="The Archivist",
-    goal="Ingest official media, extract MobileNetV3 embeddings, and store them in the FAISS vault.",
-    backstory="A meticulous digital librarian converting video frames into immutable mathematical DNA.",
-    verbose=True,
-    allow_delegation=False,
-    tools=[tool_ingest_video],
-    llm=None,
-)

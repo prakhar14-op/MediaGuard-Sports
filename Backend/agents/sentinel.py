@@ -7,8 +7,6 @@ import requests
 import imagehash
 from PIL import Image
 from io import BytesIO
-from crewai.tools import tool
-from crewai import Agent
 
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
@@ -99,9 +97,8 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
     }
 
 
-@tool("Scan Suspect Thumbnail")
 def tool_scan_thumbnail(thumbnail_url: str) -> str:
-    """Fetches a suspect thumbnail, runs CLIP + pHash dual detection against the FAISS vault."""
+    """Fetches a suspect thumbnail, runs MobileNetV3 + pHash dual detection against the FAISS vault."""
     result = scan_thumbnail(thumbnail_url)
 
     if "error" in result:
@@ -121,14 +118,3 @@ def tool_scan_thumbnail(thumbnail_url: str) -> str:
         return f"[SUSPECT] Partial match. Confidence: {result['confidence_score']}% — flagged for review."
 
     return f"[CLEAN] No match. Confidence: {result['confidence_score']}%"
-
-
-sentinel_agent = Agent(
-    role="The Sentinel",
-    goal="Scan suspect thumbnails using CLIP + pHash dual-layer detection against the FAISS vault.",
-    backstory="A relentless digital radar that never sleeps. Finds stolen frames in milliseconds.",
-    verbose=True,
-    allow_delegation=False,
-    tools=[tool_scan_thumbnail],
-    llm=None,
-)
