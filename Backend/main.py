@@ -198,20 +198,33 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
         import yt_dlp
         try:
             ydl_opts = {
-                "outtmpl": os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-                "format":  "best[ext=mp4]/best",
-                "quiet":   True,
+                "outtmpl":  os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
+                # Force a single-file format that doesn't need ffmpeg merging
+                "format":   "best[ext=mp4]/best[ext=webm]/best",
+                "quiet":    True,
+                "no_warnings": True,
+                # Merge into mp4 if ffmpeg available, otherwise skip merge
+                "merge_output_format": "mp4",
+                "postprocessors": [],
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info  = ydl.extract_info(url, download=True)
                 title = info.get("title", "Unknown")
 
+            # Find the downloaded file — extension may vary
             matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
             if not matches:
                 _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found"}
                 return
 
             local_path = matches[0]
+
+            # Rename to .mp4 if it has an unrecognised extension so OpenCV can open it
+            ext = os.path.splitext(local_path)[1].lower()
+            if ext not in (".mp4", ".webm", ".mkv", ".avi", ".mov"):
+                new_path = os.path.splitext(local_path)[0] + ".mp4"
+                os.rename(local_path, new_path)
+                local_path = new_path
             _ingest_jobs[job_id] = {"status": "processing", "message": "Embedding frames…"}
 
             result = tool_ingest_video(local_path)

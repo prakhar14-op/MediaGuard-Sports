@@ -68,9 +68,19 @@ def tool_ingest_video(video_path: str) -> str:
     """Extracts 1 frame every 5 seconds from an official video, embeds via MobileNetV3, stores in FAISS vault."""
     global vector_db, metadata_store
 
+    # Normalise path
+    video_path = os.path.realpath(video_path)
+
+    if not os.path.exists(video_path):
+        return f"[ERROR] File does not exist: {video_path}"
+
+    file_size = os.path.getsize(video_path)
+    if file_size < 1024:
+        return f"[ERROR] File too small ({file_size} bytes) — likely a failed download: {video_path}"
+
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        return f"[ERROR] Could not open video: {video_path}"
+        return f"[ERROR] OpenCV could not open video (size={file_size} bytes, ext={os.path.splitext(video_path)[1]}): {video_path}"
 
     frame_rate      = int(cap.get(cv2.CAP_PROP_FPS)) or 1
     sample_interval = frame_rate * 5   # 1 frame every 5 seconds
