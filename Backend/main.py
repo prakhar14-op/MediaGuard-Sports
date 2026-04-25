@@ -196,17 +196,38 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
     def _run():
         import yt_dlp
+        import base64
         try:
+            COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
+
+            # Support cookies via env var (base64 encoded) — for cloud deployments
+            # where cookies.txt can't be committed to git
+            cookies_b64 = os.getenv("YOUTUBE_COOKIES_B64", "").strip()
+            if cookies_b64 and not os.path.exists(COOKIES_PATH):
+                try:
+                    with open(COOKIES_PATH, "w") as f:
+                        f.write(base64.b64decode(cookies_b64).decode("utf-8"))
+                except Exception:
+                    pass
+
             ydl_opts = {
                 "outtmpl":  os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-                # Force a single-file format that doesn't need ffmpeg merging
                 "format":   "best[ext=mp4]/best[ext=webm]/best",
                 "quiet":    True,
                 "no_warnings": True,
-                # Merge into mp4 if ffmpeg available, otherwise skip merge
                 "merge_output_format": "mp4",
                 "postprocessors": [],
+                # Try multiple player clients — web_creator is less restricted
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["web_creator", "web", "android"],
+                    }
+                },
             }
+
+            # Use cookies if available
+            if os.path.exists(COOKIES_PATH):
+                ydl_opts["cookiefile"] = COOKIES_PATH
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info  = ydl.extract_info(url, download=True)
                 title = info.get("title", "Unknown")
