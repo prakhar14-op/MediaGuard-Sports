@@ -206,7 +206,7 @@ def ingest_asset(payload: IngestRequest):
     local_path = matches[0]
 
     # Call the Archivist tool directly (not via CrewAI agent — no LLM needed here)
-    result = tool_ingest_video.func(local_path)
+    result = tool_ingest_video(local_path)
 
     if "[ERROR]" in result:
         raise HTTPException(status_code=500, detail=result)

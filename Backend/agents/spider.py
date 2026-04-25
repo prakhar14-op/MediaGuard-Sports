@@ -7,10 +7,6 @@ import random
 import json
 import re
 from dotenv import load_dotenv
-from crewai import Agent
-from crewai.tools import tool
-
-from agents.llm_factory import get_primary_llm
 
 load_dotenv()
 
@@ -51,20 +47,6 @@ COUNTRY_CENTROIDS = {
     "VN": {"lat": 14.0583,  "lng": 108.2772},
     "TR": {"lat": 38.9637,  "lng": 35.2433},
 }
-
-spider_agent = Agent(
-    role="Threat Intelligence Crawler",
-    goal="Generate optimized OSINT search queries and map piracy suspects to geographic coordinates for the UI.",
-    backstory=(
-        "You are a silent, sprawling global OSINT specialist. "
-        "You generate smart search variants, scour platforms, deduplicate results, "
-        "and map every suspect to a country centroid. Zero disk usage. Maximum coverage."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    tools=[],
-    llm=get_primary_llm(temperature=0.4),
-)
 
 
 def _fallback_queries(title: str) -> list[str]:
@@ -191,7 +173,6 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
     return map_payload
 
 
-@tool("Crawl and Extract Metadata")
 def tool_crawl_web(search_query: str) -> str:
     """Generates optimized search queries, crawls YouTube for suspects, maps them to country centroids."""
     try:
@@ -202,6 +183,3 @@ def tool_crawl_web(search_query: str) -> str:
         return f"[SUCCESS] Found {count} unique suspects across {len(result.get('search_queries_used', []))} search variants. Payload saved."
     except Exception as e:
         return f"[ERROR] Crawl failed: {e}"
-
-
-spider_agent.tools = [tool_crawl_web]
