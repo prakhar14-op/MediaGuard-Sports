@@ -1,0 +1,37 @@
+services:
+  # ── Node.js API + Socket.io ──────────────────────────────────────────────────
+  - type: web
+    name: mediaguard-node
+    runtime: node
+    rootDir: Backend/server
+    buildCommand: npm ci --omit=dev
+    startCommand: node app.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: MONGO_URI
+        sync: false          # set manually in Render dashboard
+      - key: REDIS_URL
+        sync: false          # set manually in Render dashboard
+      - key: FASTAPI_URL
+        sync: false          # set to your FastAPI service URL after deploying it
+      - key: CLIENT_URL
+        sync: false          # set to your Vercel frontend URL
+
+  # ── FastAPI ML backend ───────────────────────────────────────────────────────
+  - type: web
+    name: mediaguard-fastapi
+    runtime: docker
+    rootDir: Backend
+    dockerfilePath: Dockerfile.fastapi
+    plan: standard            # needs 2GB RAM for CLIP — free plan only has 512MB
+    envVars:
+      - key: PORT
+        value: 8001
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
