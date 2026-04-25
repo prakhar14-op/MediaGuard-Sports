@@ -197,32 +197,50 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
     def _run():
         import yt_dlp
         import base64
+        import tempfile
         try:
-            COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
-
-            # Support cookies via env var (base64 encoded) — for cloud deployments
-            # where cookies.txt can't be committed to git
+            # ── Cookie setup ──────────────────────────────────────────────────
+            cookie_file = None
             cookies_b64 = os.getenv("YOUTUBE_COOKIES_B64", "").strip()
-            if cookies_b64 and not os.path.exists(COOKIES_PATH):
-                try:
-                    with open(COOKIES_PATH, "w") as f:
-                        f.write(base64.b64decode(cookies_b64).decode("utf-8"))
-                except Exception:
-                    pass
 
+            if cookies_b64:
+                try:
+                    # Write to a temp file so yt-dlp can read it
+                    tmp = tempfile.NamedTemporaryFile(
+                        mode="w", suffix=".txt", delete=False, encoding="utf-8"
+                    )
+                    tmp.write(base64.b64decode(cookies_b64).decode("utf-8"))
+                    tmp.flush()
+                    tmp.close()
+                    cookie_file = tmp.name
+                    print(f"[Ingest] Cookies written to {cookie_file}")
+                except Exception as ce:
+                    print(f"[Ingest] Cookie decode failed: {ce}")
+
+            # Also check for a cookies.txt file on disk
+            disk_cookies = os.path.join(os.path.dirname(__file__), "cookies.txt")
+            if not cookie_file and os.path.exists(disk_cookies):
+                cookie_file = disk_cookies
+
+            # ── yt-dlp options ────────────────────────────────────────────────
             ydl_opts = {
-                "outtmpl":  os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
-                "format":   "best",
-                "quiet":    True,
-                "no_warnings": True,
+                "outtmpl":     os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
+                "format":      "best",
+                "quiet":       False,   # show errors in logs
+                "no_warnings": False,
             }
 
-            # Use cookies if available
-            if os.path.exists(COOKIES_PATH):
-                ydl_opts["cookiefile"] = COOKIES_PATH
+            if cookie_file:
+                ydl_opts["cookiefile"] = cookie_file
+                print(f"[Ingest] Using cookiefile: {cookie_file}")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info  = ydl.extract_info(url, download=True)
                 title = info.get("title", "Unknown")
+
+            # Clean up temp cookie file
+            if cookie_file and cookies_b64:
+                try: os.unlink(cookie_file)
+                except Exception: pass
 
             # Find the downloaded file — extension may vary
             matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
