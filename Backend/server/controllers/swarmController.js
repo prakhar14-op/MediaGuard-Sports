@@ -12,9 +12,12 @@ const FASTAPI = process.env.FASTAPI_URL || "http://127.0.0.1:8001";
 
 const spider    = axios.create({ baseURL: FASTAPI, timeout: 5 * 60_000 });
 const sentinel  = axios.create({ baseURL: FASTAPI, timeout: 60_000 });
-const adjClient = axios.create({ baseURL: FASTAPI, timeout: 120_000 });
-const enforcer  = axios.create({ baseURL: FASTAPI, timeout: 120_000 });
-const broker    = axios.create({ baseURL: FASTAPI, timeout: 120_000 });
+const adjClient = axios.create({ baseURL: FASTAPI, timeout: 180_000 }); // 3 min per Gemini call
+const enforcer  = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
+const broker    = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
+
+// Only adjudicate suspects above this confidence — avoids wasting Gemini quota on noise
+const ADJ_CONFIDENCE_THRESHOLD = 55;
 
 const velocityKey = (h) => `sentinel:velocity:${h}`;
 const offenceKey  = (a, p) => `enforcer:offences:${p}:${a}`.toLowerCase();
@@ -116,7 +119,20 @@ export const runSwarm = async (req, res) => {
     const toEnforce = [];
     const toBroker  = [];
 
-    for (const { incident, node, scan } of incidents) {
+    // Only adjudicate incidents above confidence threshold — skip noise
+    const adjudicatable = incidents.filter(({ scan }) => scan.confidence_score >= ADJ_CONFIDENCE_THRESHOLD);
+    const skipped       = incidents.filter(({ scan }) => scan.confidence_score < ADJ_CONFIDENCE_THRESHOLD);
+
+    // Mark skipped incidents as cleared
+    for (const { incident } of skipped) {
+      await Incident.findByIdAndUpdate(incident._id, { status: "cleared", classification: "UNREVIEWED" });
+    }
+
+    io.to(`hunt:${jobId}`).emit("adjudicator:batch_started", {
+      jobId, total: adjudicatable.length, skipped: skipped.length,
+    });
+
+    for (const { incident, node, scan } of adjudicatable) {
       io.to(`hunt:${jobId}`).emit("adjudicator:thinking", {
         incident_id: incident._id, message: `Analysing ${node.account_handle}...`,
       });
