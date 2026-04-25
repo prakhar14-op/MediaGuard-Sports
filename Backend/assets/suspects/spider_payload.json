@@ -1,8 +1,8 @@
 {
   "official_source": {
     "node_id": "official_01",
-    "title": "Every Way Humans Tried to Cheat Death (One Is Still Happening)",
-    "url": "https://youtu.be/OnBFCpLQzm4?si=Xz7yc3qPYQYArA4R",
+    "title": "Every Avatars Biggest Mistake",
+    "url": "https://youtu.be/gu5Uyv93V4g?si=mrjBpBLcbTr4tbhV",
     "country": "US",
     "coordinates": {
       "lat": 37.0902,
@@ -11,313 +11,219 @@
     "status": "System Online: Global Node Monitoring Active"
   },
   "country_threat_counts": {
-    "ZA": 1,
-    "EG": 1,
-    "US": 2,
     "PH": 1,
-    "NG": 2,
-    "FR": 1,
-    "RU": 2,
-    "ES": 1,
-    "MX": 1,
-    "IN": 1,
-    "CN": 2,
-    "TR": 1,
+    "ID": 2,
     "AU": 1,
-    "BR": 1,
-    "CA": 1
+    "IT": 1,
+    "CA": 2,
+    "FR": 1,
+    "IN": 1,
+    "ES": 1,
+    "EG": 1,
+    "NG": 1,
+    "KR": 1
   },
   "threat_nodes": [
     {
-      "title": "This Much Will Kill You",
+      "title": "(thatistheplan reupload) What is Rickrolling?",
       "platform": "YouTube",
-      "account_handle": "AsapSCIENCE",
-      "url": "https://www.youtube.com/watch?v=vPszR0-vTqc",
-      "thumbnail_url": "https://i.ytimg.com/vi/vPszR0-vTqc/maxresdefault.jpg",
-      "country": "ZA",
-      "coordinates": {
-        "lat": -30.5595,
-        "lng": 22.9375
-      },
-      "view_count": 22974794,
-      "description": "A lot of things can kill you - but here are some surprising ones!\nThis Much Will Kill You PART 2: https://youtu.be/IPrndNZ4m6w\nThis Is 200 Calories: https://youtu.be/KMGUmcveQeg\n\nSUBSCRIBE (it's free): http://bit.ly/asapsci\nGET THE ASAPSCIENCE BOOK: http://asapscience.com/book/\n\nWritten by Rachel Sa",
-      "search_query": "Every Way Humans Tried to Cheat Death reupload"
-    },
-    {
-      "title": "Getting Over It Yeet's TAS (38.679s) FWR Reupload",
-      "platform": "YouTube",
-      "account_handle": "Yeet Archive",
-      "url": "https://www.youtube.com/watch?v=rSKOVohamx4",
-      "thumbnail_url": "https://i.ytimg.com/vi/rSKOVohamx4/maxresdefault.jpg",
-      "country": "EG",
-      "coordinates": {
-        "lat": 26.8206,
-        "lng": 30.8025
-      },
-      "view_count": 1230235,
-      "description": "Yeet was a Getting Over It Youtuber who has made the fastest GOI TAS ever (has been beaten now). His Youtube account was terminated because of hate speech. This is his 38.679s TAS Reuploaded. Yeet's TAS has been archived on the wayback machine, but the videos there don't load. There are reuploads of",
-      "search_query": "Every Way Humans Tried to Cheat Death reupload"
-    },
-    {
-      "title": "Man Who Killed Victim With Single Punch Jailed CCTV",
-      "platform": "YouTube",
-      "account_handle": "Sky News",
-      "url": "https://www.youtube.com/watch?v=W_KNCGypkUE",
-      "thumbnail_url": "https://i.ytimg.com/vi/W_KNCGypkUE/maxresdefault.jpg",
-      "country": "US",
-      "coordinates": {
-        "lat": 37.0902,
-        "lng": -95.7129
-      },
-      "view_count": 5034023,
-      "description": "A man has been jailed after his single punch led to the death of a stranger after an argument about cycling on the pavement.\n\nLewis Gill, 20, was given a four-year sentence at Salisbury Crown Court after his attack gave 40-year-old Andrew Young a fatal head injury when he fell.\n\nCCTV cameras recorde",
-      "search_query": "Every Way Humans Tried to Cheat Death reupload"
-    },
-    {
-      "title": "Stupid Video",
-      "platform": "YouTube",
-      "account_handle": "Markiplier",
-      "url": "https://www.youtube.com/watch?v=nnkyInAj6Z8",
-      "thumbnail_url": "https://i.ytimg.com/vi/nnkyInAj6Z8/maxresdefault.jpg",
+      "account_handle": "DeletedVideos",
+      "url": "https://www.youtube.com/watch?v=46Ma7cF39rc",
+      "thumbnail_url": "https://i.ytimg.com/vi/46Ma7cF39rc/sddefault.jpg",
       "country": "PH",
       "coordinates": {
         "lat": 12.8797,
         "lng": 121.774
       },
-      "view_count": 12675508,
-      "description": "I use stupidity as a method of procrastination.",
-      "search_query": "Every Way Humans Tried to Cheat Death reupload"
+      "view_count": 3941,
+      "description": "This is not my video, it was originally uploaded by theneedledrop\u2019s now terminated thatistheplan channel",
+      "search_query": "\"Every Avatars Biggest Mistake\" reupload"
     },
     {
-      "title": "Punchmade Dev - Wire Fraud Tutorial (Official Music Video Reupload)",
+      "title": "The WORST Elden Ring player of all time",
       "platform": "YouTube",
-      "account_handle": "Windows4L",
-      "url": "https://www.youtube.com/watch?v=SkgZlRucsK0",
-      "thumbnail_url": "https://i.ytimg.com/vi/SkgZlRucsK0/maxresdefault.jpg",
-      "country": "NG",
+      "account_handle": "Flashgitz",
+      "url": "https://www.youtube.com/watch?v=xU7bwDBGkK0",
+      "thumbnail_url": "https://i.ytimg.com/vi/xU7bwDBGkK0/maxresdefault.jpg",
+      "country": "ID",
       "coordinates": {
-        "lat": 9.082,
-        "lng": 8.6753
+        "lat": -0.7893,
+        "lng": 113.9213
       },
-      "view_count": 241719,
-      "description": "idk why it got removed but this og 4k quality",
-      "search_query": "Every Way Humans Tried to Cheat Death reupload"
+      "view_count": 10597985,
+      "description": "PRAISE BE TO SPACE KING \u25ba https://youtu.be/lknNsZgzG1g?feature=shared\n\nSpecial thanks to our Patron Producers!\nAlbert Hutchins\nJaven Mcadam Villenueve\nBrandon William Thomas\n\nCreated by \u25ba \nTom Hinchliffe & Don Greger\n\nWritten by \u25ba \nTom Hinchliffe & Russell Denney\n\nCast \u25ba \nKai Cenat - Jair Robinson\nD",
+      "search_query": "\"Every Avatars Biggest Mistake\" reupload"
     },
     {
-      "title": "Every Way Humans Tried to Cheat Death (One Is Still Happening)",
+      "title": "\"dont look up groovydominoes in gif search\"",
       "platform": "YouTube",
-      "account_handle": "Dave Explains",
-      "url": "https://www.youtube.com/watch?v=OnBFCpLQzm4",
-      "thumbnail_url": "https://i.ytimg.com/vi/OnBFCpLQzm4/maxresdefault.jpg",
-      "country": "NG",
-      "coordinates": {
-        "lat": 9.082,
-        "lng": 8.6753
-      },
-      "view_count": 845988,
-      "description": "Exploring humanity's relentless pursuit of immortality, this video examines various approaches to cheat death, from ancient elixirs to modern science. We examine how far medicine has come and the ethical implications of manipulating the human body in the quest for eternal life!\n\n\n\n\u25b6\ufe0f Subscribe for m",
-      "search_query": "Humans Cheat Death full video"
-    },
-    {
-      "title": "Every Way Humans Tried to Cheat Death (Pt. 2)",
-      "platform": "YouTube",
-      "account_handle": "Dave Explains",
-      "url": "https://www.youtube.com/watch?v=ECFmtOpayt8",
-      "thumbnail_url": "https://i.ytimg.com/vi/ECFmtOpayt8/maxresdefault.jpg",
-      "country": "FR",
-      "coordinates": {
-        "lat": 46.2276,
-        "lng": 2.2137
-      },
-      "view_count": 15914,
-      "description": "From Emperor Jiajing drinking mercury elixirs to Countess B\u00e1thory bathing in virgin blood, from the ancient Epic of Gilgamesh to Alexander Bogdanov's fatal blood transfusions \u2014 humanity has always searched for immortality. Now tech millionaire Bryan Johnson spends $2 million a year trying to reverse",
-      "search_query": "Humans Cheat Death full video"
-    },
-    {
-      "title": "Unbelievable Moments People Cheated Death Caught on Camera!",
-      "platform": "YouTube",
-      "account_handle": "100M",
-      "url": "https://www.youtube.com/watch?v=x8yFTB88-3A",
-      "thumbnail_url": "https://i.ytimg.com/vi/x8yFTB88-3A/maxresdefault.jpg",
-      "country": "RU",
-      "coordinates": {
-        "lat": 61.524,
-        "lng": 105.3188
-      },
-      "view_count": 2615,
-      "description": "Unbelievable Moments People Cheated Death Caught on Camera!\n\n\u25ba For copyright queries or general inquiries please get in touch: top5bestmgmt@gmail.com",
-      "search_query": "Humans Cheat Death full video"
-    },
-    {
-      "title": "Can Humans Cheat Death? | Science Of Living Forever | Karan Sachdeva",
-      "platform": "YouTube",
-      "account_handle": "Karan Sachdeva",
-      "url": "https://www.youtube.com/watch?v=mP-L79lDDXg",
-      "thumbnail_url": "https://i.ytimg.com/vi/mP-L79lDDXg/maxresdefault.jpg",
-      "country": "ES",
-      "coordinates": {
-        "lat": 40.4637,
-        "lng": -3.7492
-      },
-      "view_count": 205,
-      "description": "In this video, we break down the real science behind ageing, lifespan limits, and whether it's biologically possible to stop or reverse ageing. \n\nYou'll understand what actually happens inside the body as we grow older, what research says about living beyond 100 years, and whether modern science can",
-      "search_query": "Humans Cheat Death full video"
-    },
-    {
-      "title": "Every Way Humans Tried to Cheat Death",
-      "platform": "YouTube",
-      "account_handle": "God Explains          ",
-      "url": "https://www.youtube.com/watch?v=_Fa_0NgOeds",
-      "thumbnail_url": "https://i.ytimg.com/vi/_Fa_0NgOeds/maxresdefault.jpg",
-      "country": "RU",
-      "coordinates": {
-        "lat": 61.524,
-        "lng": 105.3188
-      },
-      "view_count": 14,
-      "description": "Every Way Humans Tried to Cheat Death \n\nExploring humanity's relentless pursuit of immortality, this video examines various approaches to cheat death, from ancient elixirs to modern science. We examine how far medicine has come and the ethical implications of manipulating the human body in the quest",
-      "search_query": "Humans Cheat Death full video"
-    },
-    {
-      "title": "Shadow of War How To Get A Captain To Cheat Death",
-      "platform": "YouTube",
-      "account_handle": "SOW Gameplay & CONTENT!",
-      "url": "https://www.youtube.com/watch?v=KLGpilSJKvs",
-      "thumbnail_url": "https://i.ytimg.com/vi/KLGpilSJKvs/maxresdefault.jpg",
-      "country": "MX",
-      "coordinates": {
-        "lat": 23.6345,
-        "lng": -102.5528
-      },
-      "view_count": 30386,
-      "description": "Welcome back to another shadow of war video guys today i am answering a question i have been asked alot my viewers from the channel hope you guys enjoy the video.\n\n\u25baCheck Out Dubby Energy Gives You Energy With No Crash or Jitters: https://www.dubby.gg/discount/PenguinGame\n\n\u25baSocial Media\nMy twitter-h",
-      "search_query": "Cheat Death explained"
-    },
-    {
-      "title": "There is a Way to CHEAT The Death Curse - Something Very Bad is Going to Happen Explained - Part 2",
-      "platform": "YouTube",
-      "account_handle": "Haunting Tube",
-      "url": "https://www.youtube.com/watch?v=PD3DVlZjfOc",
-      "thumbnail_url": "https://i.ytimg.com/vi/PD3DVlZjfOc/maxresdefault.jpg",
-      "country": "IN",
-      "coordinates": {
-        "lat": 20.5937,
-        "lng": 78.9629
-      },
-      "view_count": 187173,
-      "description": "Watch Part 1: https://youtu.be/JQ3247qztO8\n\nWatch on Netflix: https://www.netflix.com/in/title/81667463\n\nSomething Very Bad Is Going to Happen is an American horror miniseries[1] created by Haley Z. Boston for Netflix. Boston serves as the series showrunner and is also an executive producer along wi",
-      "search_query": "Cheat Death explained"
-    },
-    {
-      "title": "Cheating Death",
-      "platform": "YouTube",
-      "account_handle": "Buttered Side Down",
-      "url": "https://www.youtube.com/watch?v=25DoE3Z2oGI",
-      "thumbnail_url": "https://i.ytimg.com/vi/25DoE3Z2oGI/maxresdefault.jpg",
-      "country": "US",
-      "coordinates": {
-        "lat": 37.0902,
-        "lng": -95.7129
-      },
-      "view_count": 28477741,
-      "description": "Forgot to chew my food..\n\n~LIKE & SUBSCRIBE~ \n\nJOIN for Discord and Benefits!: https://www.youtube.com/butteredsidedown/join\n\nPATREON: \nhttps://patreon.com/butteredsidedown\nTWITTER: \nhttps://twitter.com/ButteredSideDwn\nINSTAGRAM:\nhttps://www.instagram.com/thebutteredsidedown/\nREDDIT: \nhttps://www.re",
-      "search_query": "Cheat Death explained"
-    },
-    {
-      "title": "You Can\u2019t Cheat Death \u2013 Mind-Blowing Thriller Movie Ending Explained",
-      "platform": "YouTube",
-      "account_handle": "CineClue",
-      "url": "https://www.youtube.com/watch?v=PvhVcU2XS5w",
-      "thumbnail_url": "https://i.ytimg.com/vi/PvhVcU2XS5w/maxresdefault.jpg",
-      "country": "CN",
-      "coordinates": {
-        "lat": 35.8617,
-        "lng": 104.1954
-      },
-      "view_count": 574,
-      "description": "Can you really escape fate? In this mind-bending thriller, a group of people tries to cheat death\u2014but soon realizes the consequences are far deadlier than they imagined. In this video, we break down the full plot, twists, hidden clues, and shocking ending explained in detail.\n\nWhat you\u2019ll learn:\n\nFu",
-      "search_query": "Cheat Death explained"
-    },
-    {
-      "title": "[1-23] He Was Treated Like Trash, But He Was Actually a Trillionaire | Manhwa in Hindi",
-      "platform": "YouTube",
-      "account_handle": "Pick Me Manhwa",
-      "url": "https://www.youtube.com/watch?v=NXaPKN8K8IY",
-      "thumbnail_url": "https://i.ytimg.com/vi/NXaPKN8K8IY/maxresdefault.jpg",
-      "country": "TR",
-      "coordinates": {
-        "lat": 38.9637,
-        "lng": 35.2433
-      },
-      "view_count": 11290,
-      "description": "Rich CEO revenge\u2014OP MC comeback after betrayal \ud83d\udcb8\ud83d\udd25\n\n\ud83d\udcd6 Welcome to * Pick Me Manhwa *!  \nAapko yahan milega ** best Manhwa Recaps in Hindi ** \u2013 jaha hum manhwa, manhua, manga aur webtoon ki kahaniyan simple aur engaging style mein explain karte hain.  \n\nTimestamps \n00:00:00 :- Old Parts\n02:13:32 :- New",
-      "search_query": "Every Way Humans Tried to Cheat Death mirror"
-    },
-    {
-      "title": "Let's Kill You a Billion Times to Make You Immortal",
-      "platform": "YouTube",
-      "account_handle": "Kurzgesagt \u2013 In a Nutshell",
-      "url": "https://www.youtube.com/watch?v=7wK4peez9zE",
-      "thumbnail_url": "https://i.ytimg.com/vi/7wK4peez9zE/maxresdefault.jpg",
+      "account_handle": "GroovyDominoes52",
+      "url": "https://www.youtube.com/watch?v=RttrZyKIEpw",
+      "thumbnail_url": "https://i.ytimg.com/vi/RttrZyKIEpw/maxresdefault.jpg",
       "country": "AU",
       "coordinates": {
         "lat": -25.2744,
         "lng": 133.7751
       },
-      "view_count": 4511869,
-      "description": "Go to https://ground.news/KiN to get 40% off unlimited access to Ground News so you can compare coverage and think critically about the news you read.\n\nSources & further reading:\nhttps://sites.google.com/view/sources-quantum-immortality/\n\nNo matter how likely your death is, there will always be a ve",
-      "search_query": "Every Way Humans Tried to Cheat Death mirror"
+      "view_count": 3903646,
+      "description": "worst mistake of my life\n\nOriginal Video: https://www.youtube.com/watch?v=IK4cXSo_Po8\n\nSong: https://www.youtube.com/watch?v=R4MUPVWMnDQ\n\nyoutube stop disabling the comments im not underage\n\nIMG_6799\n\u200eMonday, \u200eMay \u200e6 \u200e2019, \u200f\u200e6:19:08 PM\nUntitled2\n\u200eTuesday, \u200eMarch \u200e8 \u200e2022, \u200f\u200e8:04:32 PM",
+      "search_query": "\"Every Avatars Biggest Mistake\" reupload"
     },
     {
-      "title": "\"Developers knew you would try this...\"",
+      "title": "Logan Paul Finding A Dead Body 18+",
       "platform": "YouTube",
-      "account_handle": "Muaxh03",
-      "url": "https://www.youtube.com/watch?v=HiuO1epV8Vo",
-      "thumbnail_url": "https://i.ytimg.com/vi/HiuO1epV8Vo/maxresdefault.jpg",
-      "country": "CN",
+      "account_handle": "hamish duff",
+      "url": "https://www.youtube.com/watch?v=8NX4KOZ5nvI",
+      "thumbnail_url": "https://i.ytimg.com/vi/8NX4KOZ5nvI/sddefault.jpg",
+      "country": "IT",
       "coordinates": {
-        "lat": 35.8617,
-        "lng": 104.1954
+        "lat": 41.8719,
+        "lng": 12.5674
       },
-      "view_count": 4003716,
-      "description": "This is Hogwarts Legacy gameplay",
-      "search_query": "Every Way Humans Tried to Cheat Death mirror"
+      "view_count": 6041461,
+      "description": "just wow",
+      "search_query": "\"Every Avatars Biggest Mistake\" reupload"
     },
     {
-      "title": "Physics \u0915\u094b \u092d\u0940 Fail \u0915\u0930 \u0926\u0947\u0928\u0947 \u0935\u093e\u0932\u093e Case \u0915\u0948\u0938\u0947 Crack \u0915\u0930\u0947\u0917\u0940\u00a0CID\u00a0Force? | CID | Latest Episode | 2 Mar 2024",
+      "title": "[This video is Endless]",
       "platform": "YouTube",
-      "account_handle": "LIV Crime",
-      "url": "https://www.youtube.com/watch?v=yPcSxZKPB7Y",
-      "thumbnail_url": "https://i.ytimg.com/vi/yPcSxZKPB7Y/maxresdefault.jpg",
-      "country": "BR",
-      "coordinates": {
-        "lat": -14.235,
-        "lng": -51.9253
-      },
-      "view_count": 7530789,
-      "description": "Click here to Subscribe to LIV Crime: \nhttps://www.youtube.com/channel/UCzXpAx4v6rFLYXkJZ5nmSvQ?sub_confirmation=1\n\nA man is talking to his wife on the phone and he hears her scream. Someone has attacked her in her home. CID comes to the scene and it\u2019s evident from the geography of the room that the",
-      "search_query": "Every Way Humans Tried to Cheat Death mirror"
-    },
-    {
-      "title": "9 Things That Will Happen to Someone Who Messes with a Chosen One",
-      "platform": "YouTube",
-      "account_handle": "the chosen seer",
-      "url": "https://www.youtube.com/watch?v=-Y23oYamq8Q",
-      "thumbnail_url": "https://i.ytimg.com/vi/-Y23oYamq8Q/maxresdefault.jpg",
+      "account_handle": "InsertBruh",
+      "url": "https://www.youtube.com/watch?v=9wafxM-vA0E",
+      "thumbnail_url": "https://i.ytimg.com/vi/9wafxM-vA0E/maxresdefault.jpg",
       "country": "CA",
       "coordinates": {
         "lat": 56.1304,
         "lng": -106.3468
       },
-      "view_count": 410219,
-      "description": "Messing with a Chosen One is never without consequences.\nThey may look quiet, gentle, or even misunderstood \u2014 but Chosen Ones carry divine energy that activates spiritual laws. When someone betrays, mocks, manipulates, or curses a Chosen One, life responds in brutal and mysterious ways.\n\nIn this pow",
-      "search_query": "Every Way Humans Tried to Cheat Death mirror"
+      "view_count": 15071138,
+      "description": "This video is Endless...\n\nSUBSCRIBE FOR MORE \u27a4 https://bit.ly/InsertBruh\n\nWATCH MORE:\nNew Year Resolutions \u27a4 https://youtu.be/fAmOpUB_VuY\nBees Are Actually Fish!? \u27a4 https://youtu.be/PNlDs58AuHw\nWhales Have Fingers!? \u27a4 https://youtu.be/MjDrs9m11pw\nThis is NOT an Ant! \u27a4 https://youtu.be/MCJp-w3kRz0\nFi",
+      "search_query": "\"Every Avatars Biggest Mistake\" reupload"
+    },
+    {
+      "title": "Every Avatars Biggest Mistake",
+      "platform": "YouTube",
+      "account_handle": "Melloart",
+      "url": "https://www.youtube.com/watch?v=gu5Uyv93V4g",
+      "thumbnail_url": "https://i.ytimg.com/vi/gu5Uyv93V4g/maxresdefault.jpg",
+      "country": "FR",
+      "coordinates": {
+        "lat": 46.2276,
+        "lng": 2.2137
+      },
+      "view_count": 3716,
+      "description": "okay so this is Simple we have tons of avatars . each one of them made mistakes and did good for the world lol I am going to tell you about the ones we know even my favorite avatar yangchen.\n\nso the avatars we know are\navatar wan\navatar setzo\navatar yangchen \navatar kuruk\navatar kyoshi\navatar aang\na",
+      "search_query": "\"Every Avatar's Biggest Mistake\" full"
+    },
+    {
+      "title": "All 11 Known Avatars in History Explained",
+      "platform": "YouTube",
+      "account_handle": "SenshiSquad",
+      "url": "https://www.youtube.com/watch?v=L0q--TvPYFY",
+      "thumbnail_url": "https://i.ytimg.com/vi/L0q--TvPYFY/maxresdefault.jpg",
+      "country": "IN",
+      "coordinates": {
+        "lat": 20.5937,
+        "lng": 78.9629
+      },
+      "view_count": 670418,
+      "description": "The Avatar universe is so vast that some of the Avatars are barely known by fans. I\u2019ve gathered all the information I could find from the novels, comics, games, and shows and put it together in this video. Hope you enjoy it!\n\nIMPORTANT: The artworks in this thumbnail are exclusive to this channel an",
+      "search_query": "\"Every Avatar's Biggest Mistake\" full"
+    },
+    {
+      "title": "Fixing Avatar's Biggest Mistake",
+      "platform": "YouTube",
+      "account_handle": "B-WHERE",
+      "url": "https://www.youtube.com/watch?v=ZLg4QbtoCDw",
+      "thumbnail_url": "https://i.ytimg.com/vi/ZLg4QbtoCDw/maxresdefault.jpg",
+      "country": "ID",
+      "coordinates": {
+        "lat": -0.7893,
+        "lng": 113.9213
+      },
+      "view_count": 96073,
+      "description": "Avatar the Last Airbender is perfect. ...almost. Let's talk about it. \n\n\ud83d\udc49 What if I told you I fixed Sakura from Naruto... in under 15 minutes? https://www.youtube.com/watch?v=ID8MYsv9180&list=PLSm-NmcGj_o3TIT2MN0eN3yVDmRimYCGm&index=10\n\n\ud83d\udc49 Follow Me on Twitter: https://x.com/B_WHEREtweets\n\n\nV I D E ",
+      "search_query": "\"Every Avatar's Biggest Mistake\" full"
+    },
+    {
+      "title": "Aang Gets Advice From Past Avatars \u2b07\ufe0f Full Scene | Avatar: The Last Airbender",
+      "platform": "YouTube",
+      "account_handle": "Avatar Legends",
+      "url": "https://www.youtube.com/watch?v=EGw2_Namw1M",
+      "thumbnail_url": "https://i.ytimg.com/vi/EGw2_Namw1M/maxresdefault.jpg",
+      "country": "CA",
+      "coordinates": {
+        "lat": 56.1304,
+        "lng": -106.3468
+      },
+      "view_count": 2584371,
+      "description": "While Aang was struggling to come to terms with his role in ending the 100 Years War and the implications of his final battle against Firelord Ozai \u2013 he called upon his prior Avatar incarnations for help.  Avatar Roku, Avatar Kyoshi, Avatar Kuruk, and Avatar Yangchen didn't exacty tell Aang what he ",
+      "search_query": "\"Every Avatar's Biggest Mistake\" full"
+    },
+    {
+      "title": "All 18 Special & FORBIDDEN Bending Abilities in Avatar Explained",
+      "platform": "YouTube",
+      "account_handle": "SenshiSquad",
+      "url": "https://www.youtube.com/watch?v=1wF4W8PAtf0",
+      "thumbnail_url": "https://i.ytimg.com/vi/1wF4W8PAtf0/maxresdefault.jpg",
+      "country": "ES",
+      "coordinates": {
+        "lat": 40.4637,
+        "lng": -3.7492
+      },
+      "view_count": 3822925,
+      "description": "In the Avatar universe, there's more to bending than just the four basic elements. Here are all the unique and forbidden bending abilities, including some rare ones that most Avatar fans have never even heard of.\n\nIMPORTANT: The artworks in this thumbnail are exclusive to this channel and are NOT to",
+      "search_query": "\"Every Avatar's Biggest Mistake\" full"
+    },
+    {
+      "title": "Everything Wrong With Avatar The Way of Water in 25 Minutes or Less",
+      "platform": "YouTube",
+      "account_handle": "CinemaSins",
+      "url": "https://www.youtube.com/watch?v=o_HjXetUZq4",
+      "thumbnail_url": "https://i.ytimg.com/vi/o_HjXetUZq4/maxresdefault.jpg",
+      "country": "EG",
+      "coordinates": {
+        "lat": 26.8206,
+        "lng": 30.8025
+      },
+      "view_count": 1334828,
+      "description": "Avatar: The Way of Water is a sequel to Avatar. It took 100 years to make and some people loved it. All I can see is sins. \n\nOur website has more about us (https://www.cinemasins.com) including other channels on YouTube:   @TVSins @commercialsins @cinemasinspodcastnetwork \n\nFor the most up-to-date i",
+      "search_query": "\"Every Avatars Biggest Mistake\" reaction OR mirror"
+    },
+    {
+      "title": "The Death of the STRONGEST Avatar Revealed | Avatar Kyoshi",
+      "platform": "YouTube",
+      "account_handle": "TheAvatarist",
+      "url": "https://www.youtube.com/watch?v=eoXwa7HYqn0",
+      "thumbnail_url": "https://i.ytimg.com/vi/eoXwa7HYqn0/maxresdefault.jpg",
+      "country": "NG",
+      "coordinates": {
+        "lat": 9.082,
+        "lng": 8.6753
+      },
+      "view_count": 511169,
+      "description": "How the strongest Avatar - Avatar Kyoshi died in Avatar: The Last Airbender\n\nChapters: \n00:00 Intro\n00:28 Kyoshi's Age Explanation \n02:13 Fire nation foul play?\n03:15 Kyoshi's Death explained \n\nFan art used: \nhttps://www.reddit.com/r/Avatar_Kyoshi/comments/i02pyh/frozen_heart_the_shadow_of_kyoshi/\nh",
+      "search_query": "\"Every Avatars Biggest Mistake\" reaction OR mirror"
+    },
+    {
+      "title": "How THIS Character Solved Big Bang's Biggest Problem",
+      "platform": "YouTube",
+      "account_handle": "Nerdstalgic",
+      "url": "https://www.youtube.com/watch?v=HoeWLkkw4aY",
+      "thumbnail_url": "https://i.ytimg.com/vi/HoeWLkkw4aY/maxresdefault.jpg",
+      "country": "KR",
+      "coordinates": {
+        "lat": 35.9078,
+        "lng": 127.7669
+      },
+      "view_count": 3110382,
+      "description": "The Big Bang Theory is one of CBS's biggest shows of all time.  Lasting 12 seasons, with a successful spin-off in Young Sheldon, The Big Bang Theory had a reach most sitcoms can only dream of.  But going into Big Bang Theory's 3rd season, the show was at a tipping point.  They needed something fresh",
+      "search_query": "\"Every Avatars Biggest Mistake\" reaction OR mirror"
     }
   ],
   "search_queries_used": [
-    "Every Way Humans Tried to Cheat Death reupload",
-    "Humans Cheat Death full video",
-    "Cheat Death explained",
-    "Every Way Humans Tried to Cheat Death mirror"
+    "\"Every Avatars Biggest Mistake\" reupload",
+    "\"Every Avatars Biggest Mistake\" clip OR highlight",
+    "\"Every Avatar's Biggest Mistake\" full",
+    "\"Every Avatars Biggest Mistake\" reaction OR mirror"
   ]
 }

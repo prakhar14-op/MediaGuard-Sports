@@ -159,10 +159,10 @@ const LogEntry = ({ event }) => {
       }}
     >
       <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{cfg.icon}</span>
-      <p style={{ fontSize: 11, color: G.text, flex: 1, lineHeight: 1.4, margin: 0, fontWeight: 500 }}>
+      <p style={{ fontSize: 11, color: '#e2e8f0', flex: 1, lineHeight: 1.4, margin: 0, fontWeight: 500 }}>
         {text}
       </p>
-      <span style={{ fontSize: 9, color: G.muted, flexShrink: 0, fontFamily: 'monospace' }}>
+      <span style={{ fontSize: 9, color: '#475569', flexShrink: 0, fontFamily: 'monospace' }}>
         {new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
       </span>
     </motion.div>
@@ -386,8 +386,8 @@ const ThreatHunter = () => {
               {jobLog.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px 0', textAlign: 'center' }}>
                   <Shield size={28} style={{ color: '#1e293b', marginBottom: 10 }} />
-                  <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>No activity yet.</p>
-                  <p style={{ fontSize: 10, color: '#1e293b', margin: '4px 0 0' }}>Launch a swarm to see live events.</p>
+                  <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>No activity yet.</p>
+                  <p style={{ fontSize: 10, color: '#334155', margin: '4px 0 0' }}>Launch a swarm to see live events.</p>
                 </div>
               ) : (
                 jobLog.map((e, i) => <LogEntry key={`${e.type}-${e.ts}-${i}`} event={e} />)

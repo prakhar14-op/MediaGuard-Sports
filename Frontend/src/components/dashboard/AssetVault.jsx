@@ -232,9 +232,10 @@ const AssetVault = () => {
 
   useEffect(() => {
     if (!activeJob) return;
+    // Match by jobId OR catch any ingest event if we have an active job
     const latest = eventLog.find(e =>
       ['ingest:progress', 'ingest:complete', 'ingest:error'].includes(e.type) &&
-      e.payload?.jobId === activeJob
+      (e.payload?.jobId === activeJob || !e.payload?.jobId)
     );
     if (!latest) return;
     if (latest.type === 'ingest:progress') {
@@ -252,14 +253,38 @@ const AssetVault = () => {
     e.preventDefault();
     if (!url.trim()) return;
     setError('');
-    setProgress({ stage: 'queued', message: 'Starting ingest job…' });
+    setProgress({ stage: 'queued', message: 'Starting ingest job… (this takes 2–10 min for long videos)' });
     setLoading(true);
     try {
       const res = await archivistService.ingest(url.trim());
-      const { jobId } = res.data;
+      const { jobId, assetId } = res.data;
       setActiveJob(jobId);
       joinIngest(jobId);
       setUrl('');
+
+      // Polling fallback — if socket events don't arrive, poll every 15s
+      const pollInterval = setInterval(async () => {
+        try {
+          const assetRes = await archivistService.getById(assetId);
+          const asset = assetRes?.data?.data;
+          if (asset?.status === 'complete') {
+            clearInterval(pollInterval);
+            setProgress({ stage: 'complete', message: `"${asset.title}" — ${asset.frame_count} frames stored.` });
+            setTimeout(() => { setProgress(null); setActiveJob(null); setLoading(false); refresh(); }, 2000);
+          } else if (asset?.status === 'failed') {
+            clearInterval(pollInterval);
+            setError(asset.error_message || 'Ingest failed.');
+            setProgress(null); setActiveJob(null); setLoading(false);
+          } else if (asset?.status === 'processing') {
+            setProgress({ stage: 'processing', message: `Processing frames… (${asset.frame_count || 0} extracted so far)` });
+          } else if (asset?.status === 'downloading') {
+            setProgress({ stage: 'downloading', message: 'Downloading video via yt-dlp…' });
+          }
+        } catch { /* ignore poll errors */ }
+      }, 15000);
+
+      // Clear poll after 35 minutes max
+      setTimeout(() => clearInterval(pollInterval), 35 * 60 * 1000);
     } catch (err) {
       setError(err?.response?.data?.message || 'Ingest failed. Is the backend running?');
       setProgress(null); setLoading(false);
