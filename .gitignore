@@ -38,3 +38,6 @@ __pycache__/
 *.faiss
 *.pkl
 Backend/assets/official/
+
+# YouTube cookies — contains session tokens, never commit
+Backend/cookies.txt
