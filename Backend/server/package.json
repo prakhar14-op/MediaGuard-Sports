@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node --env-file=../.env app.js",
+    "start": "node app.js",
     "dev":   "node --watch --env-file=../.env app.js",
     "test":  "node --env-file=../.env test.js"
   },

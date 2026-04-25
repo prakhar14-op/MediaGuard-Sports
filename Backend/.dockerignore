@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+*.pyo
+.env
+node_modules
+assets/official/*.mp4
+vault/faiss_vault.index
+vault/vault_metadata.json
+.git
