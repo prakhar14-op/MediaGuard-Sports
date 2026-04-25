@@ -34,6 +34,7 @@ export const sentinelService = {
 
 // ─── Adjudicator ──────────────────────────────────────────────────────────────
 export const adjudicatorService = {
+  // payload must include: incident_id, sentinel_report, platform, account_handle, video_title
   adjudicate: (payload) => api.post('/adjudicate', payload),
   getVerdict: (id)      => api.get(`/adjudicate/${id}`),
 };
