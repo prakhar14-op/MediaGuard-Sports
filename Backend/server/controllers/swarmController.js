@@ -4,6 +4,7 @@ import HuntJob from "../models/HuntJob.js";
 import Incident from "../models/Incident.js";
 import DMCARecord from "../models/DMCARecord.js";
 import ContractRecord from "../models/ContractRecord.js";
+import IngestedAsset from "../models/IngestedAsset.js";
 import { getIO } from "../config/socket.js";
 import redis, { safeRedis } from "../config/redis.js";
 import { generateHash } from "../utils/blockchain.js";
@@ -56,7 +57,11 @@ export const runSwarm = async (req, res) => {
 
     let huntData;
     try {
-      const r = await spider.post("/hunt", { official_video_url });
+      // Look up the ingested asset title so Spider can search even for non-YouTube URLs
+      const ingestedAsset = await IngestedAsset.findOne({ official_video_url }).sort({ createdAt: -1 });
+      const official_title = ingestedAsset?.title || "";
+
+      const r = await spider.post("/hunt", { official_video_url, official_title });
       huntData = r.data;
       if (!huntData.success) throw new Error("Spider returned failure");
     } catch (err) {
@@ -92,11 +97,12 @@ export const runSwarm = async (req, res) => {
 
     let batchScanResults = [];
     try {
-      const r = await sentinel.post("/scan/batch", { threat_nodes, jobId });
+      // Strip search_query field — Sentinel only needs thumbnail_url and basic metadata
+      const sentinelNodes = threat_nodes.map(({ search_query, ...node }) => node);
+      const r = await sentinel.post("/scan/batch", { threat_nodes: sentinelNodes, jobId });
       if (r.data?.results) batchScanResults = r.data.results;
     } catch (err) {
       console.error("[Swarm] Sentinel batch failed:", err.message);
-      // Continue with empty results — don't crash the whole swarm
     }
 
     const incidents = [];

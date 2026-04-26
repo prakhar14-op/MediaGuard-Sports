@@ -65,6 +65,7 @@ class IngestRequest(BaseModel):
 
 class HuntRequest(BaseModel):
     official_video_url: str
+    official_title: str = ""  # optional — used when URL is not YouTube
 
 
 class ScanRequest(BaseModel):
@@ -359,13 +360,12 @@ def ingest_status(job_id: str):
 
 @app.post("/hunt")
 def trigger_hunt(payload: HuntRequest):
-    result = crawl(payload.official_video_url)
+    result = crawl(payload.official_video_url, official_title=payload.official_title)
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
 
     return {"success": True, "data": result}
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8001))

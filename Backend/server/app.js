@@ -4,9 +4,12 @@ import cors from "cors";
 import axios from "axios";
 import mongoose from "mongoose";
 import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
 
-// Load .env in development; in production env vars come from Render
-config({ path: "../.env" });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Load .env from Backend/.env — works both locally and on Render
+config({ path: path.join(__dirname, "../.env") });
 
 import connectDB from "./config/db.js";
 import redis, { isRedisAvailable } from "./config/redis.js";

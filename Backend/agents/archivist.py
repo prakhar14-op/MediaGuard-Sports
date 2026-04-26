@@ -100,7 +100,7 @@ def tool_ingest_video(video_path: str) -> str:
             db_id = vector_db.ntotal
             vector_db.add(embedding)
             metadata_store[str(db_id)] = {
-                "video_path":    video_path,
+                "video_path":    os.path.relpath(video_path),  # relative — works on any OS
                 "timestamp_sec": extracted_count * 5,
             }
             extracted_count += 1
