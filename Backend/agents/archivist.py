@@ -107,9 +107,24 @@ def tool_ingest_video(video_path: str) -> str:
 
     cap.release()
 
-    faiss.write_index(vector_db, VAULT_INDEX_PATH)
-    with open(VAULT_META_PATH, "w") as f:
-        json.dump(metadata_store, f)
+    if extracted_count == 0:
+        return f"[ERROR] No frames extracted from video — file may be corrupted or have no readable frames: {video_path}"
+
+    # Atomic write: write to temp files first, then rename
+    tmp_index = VAULT_INDEX_PATH + ".tmp"
+    tmp_meta  = VAULT_META_PATH  + ".tmp"
+    try:
+        faiss.write_index(vector_db, tmp_index)
+        with open(tmp_meta, "w") as f:
+            json.dump(metadata_store, f)
+        os.replace(tmp_index, VAULT_INDEX_PATH)
+        os.replace(tmp_meta,  VAULT_META_PATH)
+    except Exception as e:
+        # Clean up temp files on failure
+        for p in [tmp_index, tmp_meta]:
+            try: os.remove(p)
+            except: pass
+        return f"[ERROR] Failed to save vault: {e}"
 
     return f"[SUCCESS] Extracted {extracted_count} frames. Vault size: {vector_db.ntotal}."
 

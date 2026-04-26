@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from agents.archivist import tool_ingest_video, vector_db
 from agents.spider import crawl
-from agents.sentinel import scan_thumbnail
+from agents.sentinel import scan_thumbnail, MATCH_THRESHOLD, SUSPECT_THRESHOLD
 from agents.adjudicator import adjudicate, batch_adjudicate
 from agents.enforcer import issue_dmca
 from agents.broker import deploy_contract
@@ -31,9 +31,7 @@ app.add_middleware(
 OFFICIAL_DIR = os.path.join(os.path.dirname(__file__), "assets", "official")
 os.makedirs(OFFICIAL_DIR, exist_ok=True)
 
-# ── Write YouTube cookies to disk at startup ──────────────────────────────────
-# Render env vars support long values — we decode once at startup so every
-# yt-dlp call can use the same file path without re-decoding each time.
+# ── YouTube cookies setup ─────────────────────────────────────────────────────
 COOKIES_PATH = os.path.join(os.path.dirname(__file__), "yt_cookies.txt")
 
 def _setup_cookies():
@@ -46,8 +44,7 @@ def _setup_cookies():
         decoded = base64.b64decode(cookies_b64).decode("utf-8")
         with open(COOKIES_PATH, "w", encoding="utf-8") as f:
             f.write(decoded)
-        lines = decoded.count("\n")
-        print(f"[Ingest] Cookies written to {COOKIES_PATH} ({lines} lines)")
+        print(f"[Ingest] Cookies written ({decoded.count(chr(10))} lines)")
     except Exception as e:
         print(f"[Ingest] Failed to decode YOUTUBE_COOKIES_B64: {e}")
 
@@ -57,16 +54,16 @@ _setup_cookies()
 _ingest_jobs: dict = {}
 
 
+# ─── Request models ───────────────────────────────────────────────────────────
+
 class IngestRequest(BaseModel):
     official_video_url: str
     job_id: str
-    video_title: str = ""  # optional — used by Spider for search queries when URL has no metadata
-
+    video_title: str = ""
 
 class HuntRequest(BaseModel):
     official_video_url: str
-    official_title: str = ""  # optional — used when URL is not YouTube
-
+    official_title: str = ""
 
 class ScanRequest(BaseModel):
     thumbnail_url:  str
@@ -76,10 +73,8 @@ class ScanRequest(BaseModel):
     url:            str = ""
     country:        str = ""
 
-
 class BatchScanRequest(BaseModel):
     threat_nodes: list
-
 
 class AdjudicateRequest(BaseModel):
     sentinel_report:  str
@@ -90,10 +85,8 @@ class AdjudicateRequest(BaseModel):
     country:          str = ""
     confidence_score: float = 100.0
 
-
 class BatchAdjudicateRequest(BaseModel):
     incidents: list
-
 
 class EnforceRequest(BaseModel):
     target_account:   str
@@ -106,6 +99,49 @@ class EnforceRequest(BaseModel):
     integrity_hash:   str = ""
     offence_number:   int = 1
 
+class BrokerRequest(BaseModel):
+    target_account:   str
+    platform:         str
+    video_title:      str
+    video_url:        str = ""
+    justification:    str = ""
+    view_count:       int = 0
+    risk_score:       int = 30
+
+
+# ─── Health & debug ───────────────────────────────────────────────────────────
+
+@app.get("/")
+def health():
+    return {"status": "MediaGuard ML API online", "vault_size": vector_db.ntotal}
+
+@app.get("/vault/status")
+def vault_status():
+    return {"vault_size": vector_db.ntotal, "status": "ready" if vector_db.ntotal > 0 else "empty"}
+
+@app.get("/debug/cookies")
+def debug_cookies():
+    """Check if YouTube cookies are loaded correctly."""
+    exists  = os.path.exists(COOKIES_PATH)
+    size    = os.path.getsize(COOKIES_PATH) if exists else 0
+    env_set = bool(os.getenv("YOUTUBE_COOKIES_B64", "").strip())
+    return {"cookies_file_exists": exists, "cookies_file_size_bytes": size,
+            "env_var_set": env_set, "cookies_path": COOKIES_PATH}
+
+@app.get("/debug/sentinel")
+def debug_sentinel(thumbnail_url: str):
+    """Scan a thumbnail and return raw CLIP similarity scores — useful for threshold tuning."""
+    if vector_db.ntotal == 0:
+        return {"error": "Vault is empty — ingest a video first", "vault_size": 0}
+    result = scan_thumbnail(thumbnail_url)
+    return {
+        "vault_size":  vector_db.ntotal,
+        "thresholds":  {"match": MATCH_THRESHOLD, "suspect": SUSPECT_THRESHOLD},
+        **result,
+    }
+
+
+# ─── Agent endpoints ──────────────────────────────────────────────────────────
 
 @app.post("/enforce")
 def enforce_incident(payload: EnforceRequest):
@@ -125,17 +161,6 @@ def enforce_incident(payload: EnforceRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Enforcer failed: {e}")
 
-
-class BrokerRequest(BaseModel):
-    target_account:   str
-    platform:         str
-    video_title:      str
-    video_url:        str = ""
-    justification:    str = ""
-    view_count:       int = 0
-    risk_score:       int = 30
-
-
 @app.post("/broker")
 def broker_incident(payload: BrokerRequest):
     try:
@@ -151,7 +176,6 @@ def broker_incident(payload: BrokerRequest):
         return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Broker failed: {e}")
-
 
 @app.post("/adjudicate")
 def adjudicate_incident(payload: AdjudicateRequest):
@@ -169,12 +193,10 @@ def adjudicate_incident(payload: AdjudicateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Adjudicator failed: {e}")
 
-
 @app.post("/adjudicate/batch")
 def adjudicate_batch(payload: BatchAdjudicateRequest):
     results = batch_adjudicate(payload.incidents)
     return {"success": True, "results": results, "total": len(results)}
-
 
 @app.post("/scan")
 def scan_suspect(payload: ScanRequest):
@@ -182,7 +204,6 @@ def scan_suspect(payload: ScanRequest):
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return {"success": True, **result}
-
 
 @app.post("/scan/batch")
 def batch_scan(payload: BatchScanRequest):
@@ -196,108 +217,63 @@ def batch_scan(payload: BatchScanRequest):
     return {"success": True, "results": results, "total": len(results)}
 
 
-@app.get("/")
-def health():
-    return {"status": "MediaGuard ML API online", "vault_size": vector_db.ntotal}
-
-
-@app.get("/debug/sentinel")
-def debug_sentinel(thumbnail_url: str):
-    """Debug endpoint — scan a thumbnail and return raw similarity scores."""
-    from agents.archivist import vector_db
-    if vector_db.ntotal == 0:
-        return {"error": "Vault is empty", "vault_size": 0}
-    result = scan_thumbnail(thumbnail_url)
-    return {
-        "vault_size":       vector_db.ntotal,
-        "confidence_score": result.get("confidence_score"),
-        "match_confirmed":  result.get("match_confirmed"),
-        "severity":         result.get("severity"),
-        "top_matches":      result.get("top_matches", [])[:3],
-        "thresholds": {
-            "match":   0.70,
-            "suspect": 0.45,
-            "adj_min": 40,
-        }
-    }
-    """Check if YouTube cookies are loaded correctly."""
-    exists = os.path.exists(COOKIES_PATH)
-    size   = os.path.getsize(COOKIES_PATH) if exists else 0
-    env_set = bool(os.getenv("YOUTUBE_COOKIES_B64", "").strip())
-    return {
-        "cookies_file_exists": exists,
-        "cookies_file_size_bytes": size,
-        "env_var_set": env_set,
-        "cookies_path": COOKIES_PATH,
-    }
-
-
-@app.get("/vault/status")
-def vault_status():
-    return {"vault_size": vector_db.ntotal, "status": "ready" if vector_db.ntotal > 0 else "empty"}
-
-
-@app.get("/debug/sentinel")
-def debug_sentinel(thumbnail_url: str):
-    """Debug — scan a thumbnail and return raw similarity scores to tune thresholds."""
-    if vector_db.ntotal == 0:
-        return {"error": "Vault is empty — ingest a video first", "vault_size": 0}
-    result = scan_thumbnail(thumbnail_url)
-    return {"vault_size": vector_db.ntotal, **result}
-
+# ─── Ingest (async) ───────────────────────────────────────────────────────────
 
 @app.post("/ingest")
 def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
     """
-    Returns immediately with job_id.
-    The actual download + embedding runs in a background thread.
-    Poll /ingest/status/{job_id} to check progress.
+    Returns immediately. Download + embedding runs in a background thread.
+    Poll GET /ingest/status/{job_id} for progress.
     """
-    job_id = payload.job_id
-    url    = payload.official_video_url
+    job_id         = payload.job_id
+    url            = payload.official_video_url
     provided_title = payload.video_title.strip()
 
-    # Mark job as started
-    _ingest_jobs[job_id] = {"status": "downloading", "message": "Downloading via yt-dlp…"}
+    _ingest_jobs[job_id] = {"status": "downloading", "message": "Starting download…"}
 
     def _run():
         import yt_dlp
-        import urllib.request
         try:
-            # ── Detect direct video file URL vs platform URL ──────────────────
-            is_direct = any(url.lower().split("?")[0].endswith(ext) for ext in
-                           ('.mp4', '.webm', '.mkv', '.avi', '.mov', '.m4v'))
+            # ── Detect direct file URL vs platform URL ────────────────────────
+            url_clean = url.lower().split("?")[0]
+            is_direct = any(url_clean.endswith(ext) for ext in
+                            ('.mp4', '.webm', '.mkv', '.avi', '.mov', '.m4v'))
             is_direct = is_direct or any(host in url for host in [
                 'drive.google.com/uc', 'dl.dropboxusercontent.com',
                 'storage.googleapis.com', 'amazonaws.com', 'cloudfront.net',
             ])
 
             if is_direct:
-                # ── Direct download — handle Google Drive confirmation page ───
+                # ── Direct download (Google Drive, CDN, etc.) ─────────────────
                 local_path = os.path.join(OFFICIAL_DIR, f"{job_id}.mp4")
-                print(f"[Ingest] Direct URL — downloading")
-                _ingest_jobs[job_id]["message"] = "Downloading video file..."
+                _ingest_jobs[job_id]["message"] = "Downloading video file directly…"
 
-                # Google Drive: convert share URL to direct download URL
+                # Convert Google Drive share URL to direct download URL
                 gdrive_match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
-                if gdrive_match or 'drive.google.com' in url:
-                    file_id = gdrive_match.group(1) if gdrive_match else re.search(r'id=([a-zA-Z0-9_-]+)', url).group(1)
+                if gdrive_match:
+                    file_id    = gdrive_match.group(1)
                     direct_url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
-                    print(f"[Ingest] Google Drive file_id={file_id} → {direct_url}")
+                elif 'drive.google.com' in url:
+                    id_match = re.search(r'id=([a-zA-Z0-9_-]+)', url)
+                    if not id_match:
+                        raise ValueError("Could not extract Google Drive file ID from URL")
+                    file_id    = id_match.group(1)
+                    direct_url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
                 else:
                     direct_url = url
 
-                # Use requests with session to handle redirects properly
                 import requests as req_lib
                 session = req_lib.Session()
                 resp = session.get(direct_url, stream=True, timeout=300,
                                    headers={"User-Agent": "Mozilla/5.0"})
                 resp.raise_for_status()
 
-                # Check we got actual video content, not HTML
                 content_type = resp.headers.get("Content-Type", "")
                 if "text/html" in content_type:
-                    raise ValueError(f"Got HTML instead of video — Drive link may require sign-in or 'Anyone with link' sharing. Content-Type: {content_type}")
+                    raise ValueError(
+                        "Got HTML instead of video. Make sure Drive sharing is "
+                        "'Anyone with the link' and the link is a direct download URL."
+                    )
 
                 with open(local_path, "wb") as f:
                     for chunk in resp.iter_content(chunk_size=1024 * 1024):
@@ -305,13 +281,13 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                             f.write(chunk)
 
                 file_size = os.path.getsize(local_path)
-                print(f"[Ingest] Downloaded {file_size} bytes to {local_path}")
-
                 if file_size < 100_000:
-                    raise ValueError(f"Downloaded file too small ({file_size} bytes) — likely not a video. Make sure Drive sharing is set to 'Anyone with the link'.")
+                    raise ValueError(
+                        f"Downloaded file too small ({file_size:,} bytes) — "
+                        "likely not a video or download was blocked."
+                    )
 
-                # Use filename as title, strip extension
-                title = url.split("/")[-1].split("?")[0].rsplit(".", 1)[0] or "Official Video"
+                title = provided_title or url.split("/")[-1].split("?")[0].rsplit(".", 1)[0] or "Official Video"
 
             else:
                 # ── Platform URL — use yt-dlp ─────────────────────────────────
@@ -323,19 +299,16 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                 }
                 if os.path.exists(COOKIES_PATH):
                     ydl_opts["cookiefile"] = COOKIES_PATH
-                    print(f"[Ingest] Using cookies from {COOKIES_PATH}")
-                else:
-                    print("[Ingest] No cookies — attempting unauthenticated download")
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info  = ydl.extract_info(url, download=True)
-                    title = info.get("title", "Unknown")
+                    title = provided_title or info.get("title", "Unknown")
 
-                # Find downloaded file and normalise extension
                 matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
                 if not matches:
-                    _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found"}
+                    _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found on disk"}
                     return
+
                 local_path = matches[0]
                 ext = os.path.splitext(local_path)[1].lower()
                 if ext not in (".mp4", ".webm", ".mkv", ".avi", ".mov"):
@@ -343,7 +316,8 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                     os.rename(local_path, new_path)
                     local_path = new_path
 
-            _ingest_jobs[job_id] = {"status": "processing", "message": "Embedding frames…"}
+            # ── Embed frames ──────────────────────────────────────────────────
+            _ingest_jobs[job_id] = {"status": "processing", "message": "Extracting and embedding frames…"}
 
             result = tool_ingest_video(local_path)
             if "[ERROR]" in result:
@@ -356,20 +330,28 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
             except Exception:
                 pass
 
+            if frame_count == 0:
+                _ingest_jobs[job_id] = {
+                    "status":  "failed",
+                    "message": "No frames extracted — video may be corrupted or too short",
+                }
+                return
+
             _ingest_jobs[job_id] = {
                 "status":      "complete",
-                "title":       provided_title or title,
+                "title":       title,
                 "local_path":  local_path,
                 "frame_count": frame_count,
                 "vault_size":  vector_db.ntotal,
                 "tx_hash":     "0x" + np.random.bytes(32).hex(),
                 "message":     result,
             }
+
         except Exception as e:
+            print(f"[Ingest] Error: {e}")
             _ingest_jobs[job_id] = {"status": "failed", "message": str(e)}
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
+    threading.Thread(target=_run, daemon=True).start()
 
     return {"success": True, "job_id": job_id, "status": "downloading",
             "message": "Ingest started. Poll /ingest/status/{job_id} for progress."}
@@ -377,21 +359,21 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
 @app.get("/ingest/status/{job_id}")
 def ingest_status(job_id: str):
-    """Poll this endpoint to check ingest progress."""
     job = _ingest_jobs.get(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
     return {"success": True, "job_id": job_id, **job}
 
+
+# ─── Hunt ─────────────────────────────────────────────────────────────────────
 
 @app.post("/hunt")
 def trigger_hunt(payload: HuntRequest):
     result = crawl(payload.official_video_url, official_title=payload.official_title)
-
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
-
     return {"success": True, "data": result}
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8001))

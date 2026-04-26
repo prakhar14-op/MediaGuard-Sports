@@ -363,6 +363,12 @@ const AssetVault = () => {
   const handleIngest = async (e) => {
     e.preventDefault();
     if (!url.trim()) return;
+    // Require title for non-YouTube URLs so Spider can search correctly
+    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+    if (!isYouTube && !title.trim()) {
+      setError('Please enter the video title — required for non-YouTube URLs so the Spider can search for pirated copies.');
+      return;
+    }
     setError('');
     setProgress({ stage: 'queued', message: 'Starting ingest job… (this takes 2–10 min for long videos)' });
     setLoading(true);
