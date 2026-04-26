@@ -16,11 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Pre-download EfficientNet-B0 weights (~20MB — baked into image for fast cold start)
+# Pre-download CLIP ViT-B/32 weights (~350MB) so cold starts are fast
 RUN python -c "\
-import torchvision.models as m; \
-m.efficientnet_b0(weights=m.EfficientNet_B0_Weights.DEFAULT); \
-print('EfficientNet-B0 weights cached')"
+from transformers import CLIPProcessor, CLIPModel; \
+CLIPModel.from_pretrained('openai/clip-vit-base-patch32'); \
+CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32'); \
+print('CLIP ViT-B/32 cached')"
 
 EXPOSE 8001
 CMD ["python", "main.py"]

@@ -8,6 +8,7 @@ yt-dlp
 opencv-python-headless
 torch
 torchvision
+transformers
 faiss-cpu
 Pillow
 numpy

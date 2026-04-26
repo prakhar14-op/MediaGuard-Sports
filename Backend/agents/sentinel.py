@@ -10,11 +10,11 @@ from io import BytesIO
 
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
-# ─── Cosine similarity thresholds (after L2 normalisation, inner product = cosine) ──
-# 1.0 = identical, 0.0 = completely different
-# EfficientNet-B0 is much more discriminative than MobileNetV3
-MATCH_THRESHOLD   = 0.82   # above this = confirmed match (piracy)
-SUSPECT_THRESHOLD = 0.65   # above this = suspect (needs adjudication)
+# ─── CLIP cosine similarity thresholds ───────────────────────────────────────
+# CLIP is trained for semantic similarity — scores are naturally higher than
+# classification backbones. These thresholds are calibrated for CLIP ViT-B/32.
+MATCH_THRESHOLD   = 0.82   # confirmed piracy — very high visual similarity
+SUSPECT_THRESHOLD = 0.65   # flagged for adjudication
 
 
 def _fetch_image(url: str) -> Image.Image:
