@@ -11,204 +11,33 @@
     "status": "System Online: Global Node Monitoring Active"
   },
   "country_threat_counts": {
-    "NG": 2,
-    "KR": 1,
-    "IT": 1,
-    "MX": 1,
-    "IN": 2,
-    "PK": 1,
-    "SG": 1,
-    "AE": 3,
-    "BD": 1,
-    "ZA": 1,
-    "FR": 1,
-    "CO": 1,
-    "CN": 1,
-    "PH": 1,
-    "NZ": 1
+    "MX": 2,
+    "VN": 1,
+    "NZ": 1,
+    "DE": 1,
+    "SG": 2,
+    "BR": 1,
+    "CA": 2,
+    "ID": 1,
+    "TR": 2,
+    "IN": 1,
+    "AU": 1,
+    "AR": 1
   },
   "threat_nodes": [
-    {
-      "title": "Classroom of the Elite Season 4 - Official Teaser Trailer",
-      "platform": "YouTube",
-      "account_handle": "AnimeSelect",
-      "url": "https://www.youtube.com/watch?v=PI3rsW8j_xM",
-      "thumbnail_url": "https://i.ytimg.com/vi/PI3rsW8j_xM/maxresdefault.jpg",
-      "country": "NG",
-      "coordinates": {
-        "lat": 9.082,
-        "lng": 8.6753
-      },
-      "view_count": 979951,
-      "description": "Classroom of the Elite Season 4 Trailer\nYoukoso Jitsuryoku Shijou Shugi no Kyoushitsu e: 2-nensei-hen\n\nReleaseDate: \nAnimation Work: Lerche\nGenres: Drama, Suspense, Psychological, School\nWebsite: https://you-zitsu.com/\nX: @youkosozitsu\n\nSynopsis:\nAs Ayanokouji and his classmates begin their second y"
-    },
-    {
-      "title": "Classroom of the Elite Season 4 | Official Trailer | Crunchyroll",
-      "platform": "YouTube",
-      "account_handle": "Crunchyroll",
-      "url": "https://www.youtube.com/watch?v=QtIvKG8q5iM",
-      "thumbnail_url": "https://i.ytimg.com/vi/QtIvKG8q5iM/maxresdefault.jpg",
-      "country": "KR",
-      "coordinates": {
-        "lat": 35.9078,
-        "lng": 127.7669
-      },
-      "view_count": 870585,
-      "description": "Classroom of the Elite Season 4 is coming to Crunchyroll this April! Watch Classroom of the Elite on Crunchyroll! https://got.cr/cc-cotepv\n\nABOUT CLASSROOM OF THE ELITE\nKiyotaka Ayanokoji has just enrolled at Tokyo Koudo Ikusei Senior High School, where it's said that 100% of students go on to colle"
-    },
-    {
-      "title": "\"Will You Date Me?\" | Classroom of the Elite S3",
-      "platform": "YouTube",
-      "account_handle": "Crunchyroll",
-      "url": "https://www.youtube.com/watch?v=3HohAFWQb1c",
-      "thumbnail_url": "https://i.ytimg.com/vi/3HohAFWQb1c/maxresdefault.jpg",
-      "country": "IT",
-      "coordinates": {
-        "lat": 41.8719,
-        "lng": 12.5674
-      },
-      "view_count": 3689086,
-      "description": "Episode 13: A confession. An answer. It's official! Watch Classroom of the Elite Season 3 on Crunchyroll! https://got.cr/cc-cotes3\n\nKiyotaka Ayanokoji has just enrolled at Tokyo Koudo Ikusei Senior High School, where it's said that 100% of students go on to college or find employment. But he ends up"
-    },
-    {
-      "title": "Who Loves Who in Classroom of the Elite",
-      "platform": "YouTube",
-      "account_handle": "Eva Sariel",
-      "url": "https://www.youtube.com/watch?v=ZtGTOKg-fpo",
-      "thumbnail_url": "https://i.ytimg.com/vi/ZtGTOKg-fpo/maxresdefault.jpg",
-      "country": "MX",
-      "coordinates": {
-        "lat": 23.6345,
-        "lng": -102.5528
-      },
-      "view_count": 830710,
-      "description": "\u27a4 Content Information: In this video I'm gonna show you Who Loves Who in the Classroom of the Elite. My channel is dedicated to anime characters; explanations of anime series, manga and ranobe; tops and comparisons of anime characters and other info. You are watching the Eva Sariel channel. Peace!\n\u27a4"
-    },
-    {
-      "title": "Classroom of the Elite Season 3 - Full Anime Recap (COTE 3)",
-      "platform": "YouTube",
-      "account_handle": "RecommNinja",
-      "url": "https://www.youtube.com/watch?v=D3oyVx9R1Nc",
-      "thumbnail_url": "https://i.ytimg.com/vi/D3oyVx9R1Nc/maxresdefault.jpg",
-      "country": "IN",
-      "coordinates": {
-        "lat": 20.5937,
-        "lng": 78.9629
-      },
-      "view_count": 88643,
-      "description": "Classroom of the Elite Season 3  Anime Recap  (Episode 1 - 13) \n\nThis the full recap of Classroom of the Elite Season 3. I have left out only the episode where Manabu graduates and leaves the school.\n\n\nAnime : Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e 3 (\u3088\u3046\u3053\u305d\u5b9f\u529b\u81f3\u4e0a\u4e3b\u7fa9\u306e\u6559\u5ba4\u3078)\n\nCopyright Disclaimer U"
-    },
-    {
-      "title": "Classroom of the Elite after anime story | Season 2 | Light Novel 4 full summary |",
-      "platform": "YouTube",
-      "account_handle": "Anime Mates",
-      "url": "https://www.youtube.com/watch?v=yTaA9WhnktU",
-      "thumbnail_url": "https://i.ytimg.com/vi/yTaA9WhnktU/maxresdefault.jpg",
-      "country": "IN",
-      "coordinates": {
-        "lat": 20.5937,
-        "lng": 78.9629
-      },
-      "view_count": 34693,
-      "description": "As there is no yet confirmation for the season 2 of this anime. Many of us are really curious about the story that takes place after the inhabited island special exam. This story is mentioned in the 4th volume of the original light novel. And here is the summary for that. Hope you'll enjoy it. \nAs f"
-    },
-    {
-      "title": "Ultimate Adaptation: Ayanokoji vs. Koenji | classroom of the elite|y2v11|spoiler|classroomoftheelite",
-      "platform": "YouTube",
-      "account_handle": "Aria and Jake\u2019s COTE explanation channel ",
-      "url": "https://www.youtube.com/watch?v=vnag-ADmMi4",
-      "thumbnail_url": "https://i.ytimg.com/vi/vnag-ADmMi4/maxresdefault.jpg",
-      "country": "PK",
-      "coordinates": {
-        "lat": 30.3753,
-        "lng": 69.3451
-      },
-      "view_count": 96,
-      "description": "#ayanokoji #classroomoftheelite #cote #spoiler #y2v11\n#anime #ayanokoji #classroomoftheelite  #lightnovel #cote #year2volume11 #y2v12 #explanation \n\nDescription:\n\nWelcome to our \"Classroom of the Elite\" analysis channel! In this video, we dive deep into the story, characters, and themes of the anime"
-    },
-    {
-      "title": "Classroom of the Elite Volume 1 Deconstructed: Ayanokouji's Highlights, with Fresh Reactions",
-      "platform": "YouTube",
-      "account_handle": "Aria and Jake\u2019s COTE explanation channel ",
-      "url": "https://www.youtube.com/watch?v=gDIsoFhQTCU",
-      "thumbnail_url": "https://i.ytimg.com/vi/gDIsoFhQTCU/maxresdefault.jpg",
-      "country": "SG",
-      "coordinates": {
-        "lat": 1.3521,
-        "lng": 103.8198
-      },
-      "view_count": 63,
-      "description": "#anime #ayanokoji #classroomoftheelite  #lightnovel #cote \nDescription:\n\nWelcome to our \"Classroom of the Elite\" analysis channel! In this video, we dive deep into the story, characters, and themes of the anime and light novel series. Join us as we explore the journey of Kiyotaka Ayanokouji and the "
-    },
-    {
-      "title": "Classroom of the Elite Season 2 Recap \u2013 Mind Games, Broken Masks, No Mercy",
-      "platform": "YouTube",
-      "account_handle": "Anime Analyzer",
-      "url": "https://www.youtube.com/watch?v=-cl1FoNt8-U",
-      "thumbnail_url": "https://i.ytimg.com/vi/-cl1FoNt8-U/maxresdefault.jpg",
-      "country": "AE",
-      "coordinates": {
-        "lat": 23.4241,
-        "lng": 53.8478
-      },
-      "view_count": 936,
-      "description": "In Classroom of the Elite Season 2, the gloves come off.\nAyanokoji steps out of the shadows and shows just how dangerous he really is.\nFrom psychological warfare and betrayals to shattered alliances and broken trust, Season 2 raises the stakes in every possible way.\nIn this full recap, we break down"
-    },
-    {
-      "title": "Classroom of the Elite Episode 1 English Dub | What is evil? Whatever springs from weakness",
-      "platform": "YouTube",
-      "account_handle": "Crunchyroll",
-      "url": "https://www.youtube.com/watch?v=cqkn9-DjrY0",
-      "thumbnail_url": "https://i.ytimg.com/vi/cqkn9-DjrY0/maxresdefault.jpg",
-      "country": "BD",
-      "coordinates": {
-        "lat": 23.685,
-        "lng": 90.3563
-      },
-      "view_count": 1640527,
-      "description": "Classroom of the Elite Full Episode 1 English Dubbed. Watch Episode 2 on Crunchyroll! \ud83d\udc49 https://got.cr/cc-cotefd\n\nABOUT CLASSROOM OF THE ELITE \nKiyotaka Ayanokoji has just enrolled at Tokyo Koudo Ikusei Senior High School, where it's said that 100% of students go on to college or find employment. Bu"
-    },
     {
       "title": "The FULL Story Of Classroom of the Elite (so far) - (EVERYTHING Explained in 30 Mins)",
       "platform": "YouTube",
       "account_handle": "AnHeavenRecaps",
       "url": "https://www.youtube.com/watch?v=9brWL7zaRYc",
       "thumbnail_url": "https://i.ytimg.com/vi/9brWL7zaRYc/maxresdefault.jpg",
-      "country": "ZA",
+      "country": "MX",
       "coordinates": {
-        "lat": -30.5595,
-        "lng": 22.9375
+        "lat": 23.6345,
+        "lng": -102.5528
       },
-      "view_count": 27863,
+      "view_count": 27865,
       "description": "\ud83d\udd25 In this video, we recap everything from Classroom of the Elite \u2014 covering Season 1, Season 2, and Season 3, a psychological and strategic journey where elite students fight for survival, status, and control within a ruthless academic system designed to expose human nature at its core.\n\n\ud83d\udc49 LIKE, SUB"
-    },
-    {
-      "title": "\ud83d\udd36\ufe0f300+ IQ Genius Pretends To Be Dumb So No One Knows He is The Mastermind Behind it All!",
-      "platform": "YouTube",
-      "account_handle": "Anime Recap official",
-      "url": "https://www.youtube.com/watch?v=JemfafHw3sg",
-      "thumbnail_url": "https://i.ytimg.com/vi/JemfafHw3sg/maxresdefault.jpg",
-      "country": "FR",
-      "coordinates": {
-        "lat": 46.2276,
-        "lng": 2.2137
-      },
-      "view_count": 2435212,
-      "description": "Name: Classroom of The Elite / Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e\n\nAnime , Anime Recap , Anicap"
-    },
-    {
-      "title": "Classroom of the Elite Year 2 - FULL STORY - (Seasons 4-6) Light Novel Summary",
-      "platform": "YouTube",
-      "account_handle": "Unseen Whispers",
-      "url": "https://www.youtube.com/watch?v=wNWJneSTiZc",
-      "thumbnail_url": "https://i.ytimg.com/vi/wNWJneSTiZc/sddefault.jpg",
-      "country": "AE",
-      "coordinates": {
-        "lat": 23.4241,
-        "lng": 53.8478
-      },
-      "view_count": 926304,
-      "description": "Tired of waiting for Classroom of the Elite Season 4, 5 and 6?  The COTE anime originated from the Classroom of the Elite Light Novels which I've read and have summarized in this video.  Yes Yes this is spoilers for the upcoming Classroom of the Elite seasons so I don't blame you if you prefer to wa"
     },
     {
       "title": "THE most COMPLEX season! \u2013 Classroom of the Elite Season 3 Recap (EVERYTHING Explained in 11 Mins!)",
@@ -216,89 +45,215 @@
       "account_handle": "AnHeavenRecaps",
       "url": "https://www.youtube.com/watch?v=R9-TvrISuLI",
       "thumbnail_url": "https://i.ytimg.com/vi/R9-TvrISuLI/maxresdefault.jpg",
-      "country": "CO",
+      "country": "VN",
       "coordinates": {
-        "lat": 4.5709,
-        "lng": -74.2973
+        "lat": 14.0583,
+        "lng": 108.2772
       },
       "view_count": 36182,
       "description": "\ud83d\udd25 In this video, we recap everything from Classroom of the Elite Season 3 \u2014 where the mind games reach their peak, and Ayanok\u014dji faces his toughest challenges yet.\n\n\ud83d\udc49 LIKE, SUBSCRIBE, and HIT the BELL if you want more anime recaps just like this one!\n\n\u23ed\ufe0f Classroom of the Elite Season 1: https://yout"
     },
     {
-      "title": "The MANIPULATION Begins! \u2013 Classroom of the Elite Season 2 Recap (EVERYTHING Explained in 10 Mins!)",
+      "title": "Classroom of the Elite Year 2 - FULL STORY - (Seasons 4-6) Light Novel Summary",
       "platform": "YouTube",
-      "account_handle": "AnHeavenRecaps",
-      "url": "https://www.youtube.com/watch?v=hweq1_RjDB0",
-      "thumbnail_url": "https://i.ytimg.com/vi/hweq1_RjDB0/maxresdefault.jpg",
-      "country": "CN",
-      "coordinates": {
-        "lat": 35.8617,
-        "lng": 104.1954
-      },
-      "view_count": 14285,
-      "description": "\ud83d\udd25 In this video, we recap everything from Classroom of the Elite Season 2 \u2014 a brutal continuation where alliances crumble, secrets surface, and Ayanok\u014dji\u2019s hidden brilliance finally begins to show.\n\n\ud83d\udc49 LIKE, SUBSCRIBE, and HIT the BELL if you want more anime recaps just like this one!\n\n\u23ed\ufe0f Classroom o"
-    },
-    {
-      "title": "Classroom of the Elite recap seasons 1 & 2 | Survive the Elite School of Geniuses",
-      "platform": "YouTube",
-      "account_handle": "Tiny's Anime Corner",
-      "url": "https://www.youtube.com/watch?v=xeH9mLHzA7w",
-      "thumbnail_url": "https://i.ytimg.com/vi/xeH9mLHzA7w/maxresdefault.jpg",
-      "country": "NG",
-      "coordinates": {
-        "lat": 9.082,
-        "lng": 8.6753
-      },
-      "view_count": 60109,
-      "description": "Anime Name: Classroom of the Elite\n\nDive deep into the captivating world of \"Classroom of the Elite\" with my detailed recap of Seasons 1 and 2! \ud83d\udcda Discover how the point system turns a high school into a strategic battleground and explore the ingenious solutions to the challenges faced by Class D. Fr"
-    },
-    {
-      "title": "Why Deserted Island Is The BEST Arc So Far | Classroom Of The Elite",
-      "platform": "YouTube",
-      "account_handle": "The Anime Observer",
-      "url": "https://www.youtube.com/watch?v=Tp1Fc9vSXmU",
-      "thumbnail_url": "https://i.ytimg.com/vi/Tp1Fc9vSXmU/maxresdefault.jpg",
-      "country": "AE",
-      "coordinates": {
-        "lat": 23.4241,
-        "lng": 53.8478
-      },
-      "view_count": 640,
-      "description": "One of the best arcs in Classroom Of The Elite is the deserted island test. It shows us how each class performs as a team and how well the leaders and hidden geniuses in those classes help the class to move forward.\n\nClassroom Of The Elite has some really good story arcs which shows the thinking and"
-    },
-    {
-      "title": "Character info you NEED to know | Classroom of the Elite Recap Seasons 1 & 2",
-      "platform": "YouTube",
-      "account_handle": "Tiny's Anime Corner",
-      "url": "https://www.youtube.com/watch?v=arPGiuJxM_s",
-      "thumbnail_url": "https://i.ytimg.com/vi/arPGiuJxM_s/maxresdefault.jpg",
-      "country": "PH",
-      "coordinates": {
-        "lat": 12.8797,
-        "lng": 121.774
-      },
-      "view_count": 1597,
-      "description": "Join me as I break down the intriguing characters of Class D and beyond, exploring their motives, secrets, and the psychological warfare they engage in to climb the ranks of their cutthroat school. Whether you're a fan of Ayanokouji\u2019s hidden genius, intrigued by Horikita's cold intellect, or curious"
-    },
-    {
-      "title": "Classroom of the Elite Year 2 | Everything that happens after Season 3",
-      "platform": "YouTube",
-      "account_handle": "Anime Guy BD",
-      "url": "https://www.youtube.com/watch?v=SMot6EiYZc8",
-      "thumbnail_url": "https://i.ytimg.com/vi/SMot6EiYZc8/maxresdefault.jpg",
+      "account_handle": "Unseen Whispers",
+      "url": "https://www.youtube.com/watch?v=wNWJneSTiZc",
+      "thumbnail_url": "https://i.ytimg.com/vi/wNWJneSTiZc/sddefault.jpg",
       "country": "NZ",
       "coordinates": {
         "lat": -40.9006,
         "lng": 174.886
       },
-      "view_count": 2174,
-      "description": "Dive into the intriguing world of \"Classroom of the Elite\" with this comprehensive overview of everything that unfolds after the events of Season 3. This video delves into the second year of high school for the students of Advanced Nurturing High School, where strategic minds clash and hidden agenda"
+      "view_count": 926323,
+      "description": "Tired of waiting for Classroom of the Elite Season 4, 5 and 6?  The COTE anime originated from the Classroom of the Elite Light Novels which I've read and have summarized in this video.  Yes Yes this is spoilers for the upcoming Classroom of the Elite seasons so I don't blame you if you prefer to wa"
+    },
+    {
+      "title": "\ud83d\udd36\ufe0f300+ IQ Genius Pretends To Be Dumb So No One Knows He is The Mastermind Behind it All!",
+      "platform": "YouTube",
+      "account_handle": "Anime Recap official",
+      "url": "https://www.youtube.com/watch?v=JemfafHw3sg",
+      "thumbnail_url": "https://i.ytimg.com/vi/JemfafHw3sg/maxresdefault.jpg",
+      "country": "DE",
+      "coordinates": {
+        "lat": 51.1657,
+        "lng": 10.4515
+      },
+      "view_count": 2435214,
+      "description": "Name: Classroom of The Elite / Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e\n\nAnime , Anime Recap , Anicap"
+    },
+    {
+      "title": "Classroom of the Elite Season 3 in 5 mins | Recap",
+      "platform": "YouTube",
+      "account_handle": "Bums With Expensive Tastes",
+      "url": "https://www.youtube.com/watch?v=Wdz6Kn4GyUA",
+      "thumbnail_url": "https://i.ytimg.com/vi/Wdz6Kn4GyUA/maxresdefault.jpg",
+      "country": "SG",
+      "coordinates": {
+        "lat": 1.3521,
+        "lng": 103.8198
+      },
+      "view_count": 18940,
+      "description": "With Classroom Of The Elite Season 4 airing for the Spring 2026 anime season we wanted to give you a quick recap (summary) of what happened in season 3 with Ayanokoji, Arinsu, Ichinose, and the rest, before you begin the new season!\n\n#classroomoftheelite  #animerecap  #cote \n\nSubscribe for clear ani"
+    },
+    {
+      "title": "Classroom of the Elite Episode 1 English Dub | What is evil? Whatever springs from weakness",
+      "platform": "YouTube",
+      "account_handle": "Crunchyroll",
+      "url": "https://www.youtube.com/watch?v=cqkn9-DjrY0",
+      "thumbnail_url": "https://i.ytimg.com/vi/cqkn9-DjrY0/maxresdefault.jpg",
+      "country": "SG",
+      "coordinates": {
+        "lat": 1.3521,
+        "lng": 103.8198
+      },
+      "view_count": 1640536,
+      "description": "Classroom of the Elite Full Episode 1 English Dubbed. Watch Episode 2 on Crunchyroll! \ud83d\udc49 https://got.cr/cc-cotefd\n\nABOUT CLASSROOM OF THE ELITE \nKiyotaka Ayanokoji has just enrolled at Tokyo Koudo Ikusei Senior High School, where it's said that 100% of students go on to college or find employment. Bu"
+    },
+    {
+      "title": "Classroom of the Elite Season 2 Recap \u2013 Mind Games, Broken Masks, No Mercy",
+      "platform": "YouTube",
+      "account_handle": "Anime Analyzer",
+      "url": "https://www.youtube.com/watch?v=-cl1FoNt8-U",
+      "thumbnail_url": "https://i.ytimg.com/vi/-cl1FoNt8-U/maxresdefault.jpg",
+      "country": "MX",
+      "coordinates": {
+        "lat": 23.6345,
+        "lng": -102.5528
+      },
+      "view_count": 936,
+      "description": "In Classroom of the Elite Season 2, the gloves come off.\nAyanokoji steps out of the shadows and shows just how dangerous he really is.\nFrom psychological warfare and betrayals to shattered alliances and broken trust, Season 2 raises the stakes in every possible way.\nIn this full recap, we break down"
+    },
+    {
+      "title": "Classroom of the Elite Season 1 in Hindi",
+      "platform": "YouTube",
+      "account_handle": "FictionTube",
+      "url": "https://www.youtube.com/watch?v=OLx7-IxAq98",
+      "thumbnail_url": "https://i.ytimg.com/vi/OLx7-IxAq98/maxresdefault.jpg",
+      "country": "BR",
+      "coordinates": {
+        "lat": -14.235,
+        "lng": -51.9253
+      },
+      "view_count": 1731053,
+      "description": "Classroom of the Elite Season 1 in Hindi\nClassroom of the Elite Season 1 Explained in Hindi\n\nWhatsapp Channel:-\nhttps://whatsapp.com/channel/0029Va9lJ6C6RGJDUTDGf71f\n\nClassroom of Eliter all Episodes in Hindi\nhttps://www.youtube.com/playlist?list=PL53A4TED-W3lZ9FMZJ-Op8qiaizSEtWST\n\nJoin this channel"
+    },
+    {
+      "title": "Classroom of Elite kaisa Anime hai Explained in Hindi #anime",
+      "platform": "YouTube",
+      "account_handle": "TOONIME WORLD",
+      "url": "https://www.youtube.com/watch?v=l6NlwJX9zm4",
+      "thumbnail_url": "https://i.ytimg.com/vi/l6NlwJX9zm4/sddefault.jpg",
+      "country": "CA",
+      "coordinates": {
+        "lat": 56.1304,
+        "lng": -106.3468
+      },
+      "view_count": 609,
+      "description": "Classroom of Elite Must-Watch Explained in Hindi Explained in Hindi #anime #classroomoftheelite \n\n\ud83c\udf1f Welcome to TOONIME WORLD: Where Anime Magic Comes to Life! \ud83c\udf1f\n\nDive into a kaleidoscope of anime wonders on our channel! \ud83d\ude80 We're your one-stop hub for everything anime, from thrilling news and mesmeriz"
+    },
+    {
+      "title": "CLASSROOM OF THE DEFECTIVE  | Classroom of the Elite Season 1 Episode 1 Reaction!",
+      "platform": "YouTube",
+      "account_handle": "David & Roiess",
+      "url": "https://www.youtube.com/watch?v=WsVvrKQ56Vw",
+      "thumbnail_url": "https://i.ytimg.com/vi/WsVvrKQ56Vw/maxresdefault.jpg",
+      "country": "ID",
+      "coordinates": {
+        "lat": -0.7893,
+        "lng": 113.9213
+      },
+      "view_count": 3196,
+      "description": "Class D stands for Class Dumb-with-points.\n\n00:00 - Channel Intro\n00:10 - Show Recap\n00:54 - Reaction\n09:09 - Discussion\n\n\ud83d\udd14 Subscribe! \u2022 https://www.youtube.com/channel/UCm14JX0pqE3eI-Q-4hq0-UQ\n\ud83d\udcf8 Instagram \u2022 https://www.instagram.com/davidandroiess/\n\ud83d\udc24 Twitter \u2022 https://twitter.com/DavidNRoiess\n\n\ud83d\udcfa Wa"
+    },
+    {
+      "title": "Classroom of the Elite Season 4 - Official Teaser Trailer",
+      "platform": "YouTube",
+      "account_handle": "AnimeSelect",
+      "url": "https://www.youtube.com/watch?v=PI3rsW8j_xM",
+      "thumbnail_url": "https://i.ytimg.com/vi/PI3rsW8j_xM/maxresdefault.jpg",
+      "country": "TR",
+      "coordinates": {
+        "lat": 38.9637,
+        "lng": 35.2433
+      },
+      "view_count": 979953,
+      "description": "Classroom of the Elite Season 4 Trailer\nYoukoso Jitsuryoku Shijou Shugi no Kyoushitsu e: 2-nensei-hen\n\nReleaseDate: \nAnimation Work: Lerche\nGenres: Drama, Suspense, Psychological, School\nWebsite: https://you-zitsu.com/\nX: @youkosozitsu\n\nSynopsis:\nAs Ayanokouji and his classmates begin their second y"
+    },
+    {
+      "title": "\u3010Complete Series\u3011 Classroom of the Elite",
+      "platform": "YouTube",
+      "account_handle": "Muse Asia",
+      "url": "https://www.youtube.com/watch?v=wwr7XZu98Is",
+      "thumbnail_url": "https://i.ytimg.com/vi/wwr7XZu98Is/sddefault.jpg",
+      "country": "IN",
+      "coordinates": {
+        "lat": 20.5937,
+        "lng": 78.9629
+      },
+      "view_count": 3385660,
+      "description": "\u300aClassroom of the Elite (S1)\u300b English Full Episode Playlist\uff1ahttps://www.youtube.com/playlist?list=PLwLSw1_eDZl37ONxLQx-mIAJu3hdX-brM\n\u300a\u6b22\u8fce\u6765\u5230\u5b9e\u529b\u81f3\u4e0a\u4e3b\u4e49\u7684\u6559\u5ba4 (S1)\u300b \u7b80\u4f53\u4e2d\u6587\u5b57\u5e55\u64ad\u653e\u6e05\u5355\uff1ahttps://www.youtube.com/playlist?list=PLwLSw1_eDZl1OFKmisWM-OowH7gkknZTH\n\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n\ud83d\udcdcSynopsis\nOn the surface, Tokyo Metropol"
+    },
+    {
+      "title": "\"Will You Date Me?\" | Classroom of the Elite S3",
+      "platform": "YouTube",
+      "account_handle": "Crunchyroll",
+      "url": "https://www.youtube.com/watch?v=3HohAFWQb1c",
+      "thumbnail_url": "https://i.ytimg.com/vi/3HohAFWQb1c/maxresdefault.jpg",
+      "country": "CA",
+      "coordinates": {
+        "lat": 56.1304,
+        "lng": -106.3468
+      },
+      "view_count": 3689120,
+      "description": "Episode 13: A confession. An answer. It's official! Watch Classroom of the Elite Season 3 on Crunchyroll! https://got.cr/cc-cotes3\n\nKiyotaka Ayanokoji has just enrolled at Tokyo Koudo Ikusei Senior High School, where it's said that 100% of students go on to college or find employment. But he ends up"
+    },
+    {
+      "title": "A Cute Girl Gets Bullied at Her New School\u2026 Until the Most Popular Guy Falls for Her",
+      "platform": "YouTube",
+      "account_handle": "Recap Kdrama Plus",
+      "url": "https://www.youtube.com/watch?v=pVRkuZtmxHY",
+      "thumbnail_url": "https://i.ytimg.com/vi/pVRkuZtmxHY/maxresdefault.jpg",
+      "country": "TR",
+      "coordinates": {
+        "lat": 38.9637,
+        "lng": 35.2433
+      },
+      "view_count": 962905,
+      "description": "#MovieReview\n#FilmAnalysis\n#MovieBreakdown\n#EmotionalScenes\n#DramaticScenes\n#Kdrama #KdramaRecap #Kdrama2025 #KdramaReview #KdramaEdit #KdramaHighlights #KdramaScene #KdramaShorts #KdramaReaction #KdramaLovers #KdramaAddict #KdramaLife #KdramaFan #KdramaVibes #KdramaMood #KdramaWorld #KdramaCommunit"
+    },
+    {
+      "title": "The MASTERMIND\u2019S Arrival! \u2013 Classroom of the Elite Season 1 Recap (EVERYTHING Explained in 9 Mins!)",
+      "platform": "YouTube",
+      "account_handle": "AnHeavenRecaps",
+      "url": "https://www.youtube.com/watch?v=OR2nu4kGnlQ",
+      "thumbnail_url": "https://i.ytimg.com/vi/OR2nu4kGnlQ/maxresdefault.jpg",
+      "country": "AU",
+      "coordinates": {
+        "lat": -25.2744,
+        "lng": 133.7751
+      },
+      "view_count": 20525,
+      "description": "\ud83d\udd25 In this video, we recap everything from Classroom of the Elite Season 1 - a psychological showdown where intelligence, manipulation, and ambition decide who rises to the top\u2026 and who gets left behind.\n\n\ud83d\udc49 LIKE, SUBSCRIBE, and HIT the BELL if you want more anime recaps just like this one!\n\n\u23ed\ufe0f Classr"
+    },
+    {
+      "title": "Classroom of the Elite RECAP | Story So Far!",
+      "platform": "YouTube",
+      "account_handle": "Anime w Ramish",
+      "url": "https://www.youtube.com/watch?v=gklz6EUlmZg",
+      "thumbnail_url": "https://i.ytimg.com/vi/gklz6EUlmZg/maxresdefault.jpg",
+      "country": "AR",
+      "coordinates": {
+        "lat": -38.4161,
+        "lng": -63.6167
+      },
+      "view_count": 975,
+      "description": "Classroom of the Elite RECAP | Story So Far!\n\nChapters\n\n0:00 Intro\n4:30 Class C Feud\n8:00 Island Exam\n11:21 S2 Recap\n18:48 Ryuen Showdown\n20:15 S3 Recap\n22:55 Class Poll Exam\n29:54 Outro"
     }
   ],
   "search_queries_used": [
-    "Classroom of the Elite RECAP Story So Far! English subtitles",
-    "Classroom of the Elite RECAP | Story So Far! US original",
-    "Classroom of the Elite RECAP | Story So Far! English dubbed",
-    "Classroom of the Elite RECAP | Story So Far! US version"
+    "Classroom of the Elite RECAP Story So Far! English dubbed YouTube",
+    "Classroom of the Elite RECAP Story So Far! US original YouTube",
+    "Classroom of the Elite RECAP Story So Far! English subtitles YouTube",
+    "Classroom of the Elite RECAP Story So Far! Classroom of the Elite anime recap YouTube"
   ]
 }
