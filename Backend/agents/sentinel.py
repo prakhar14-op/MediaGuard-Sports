@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import faiss
@@ -11,9 +12,9 @@ from io import BytesIO
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
 # ─── CLIP cosine similarity thresholds ───────────────────────────────────────
-# CLIP is trained for semantic similarity — scores are naturally higher than
-# classification backbones. These thresholds are calibrated for CLIP ViT-B/32.
-MATCH_THRESHOLD   = 0.82   # confirmed piracy — very high visual similarity
+# CLIP ViT-B/32 is trained for semantic similarity.
+# After L2 normalisation, inner product = cosine similarity (range 0–1).
+MATCH_THRESHOLD   = 0.82   # confirmed piracy
 SUSPECT_THRESHOLD = 0.65   # flagged for adjudication
 
 
@@ -23,8 +24,26 @@ def _fetch_image(url: str) -> Image.Image:
     return Image.open(BytesIO(resp.content)).convert("RGB")
 
 
+def _thumbnail_variants(thumbnail_url: str) -> list:
+    """
+    Return a list of image URLs to try for a given thumbnail URL.
+    For YouTube, we try maxresdefault → hqdefault → original.
+    Higher-res thumbnails often contain actual footage frames rather than
+    designed artwork, which improves CLIP similarity against vault frames.
+    """
+    yt_match = re.search(r'/vi/([a-zA-Z0-9_-]+)/', thumbnail_url)
+    if yt_match:
+        vid_id = yt_match.group(1)
+        return [
+            f"https://i.ytimg.com/vi/{vid_id}/maxresdefault.jpg",
+            f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg",
+            f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg",
+            thumbnail_url,
+        ]
+    return [thumbnail_url]
+
+
 def _cosine_to_confidence(similarity: float) -> float:
-    """Convert cosine similarity (0-1) to a 0-100 confidence score."""
     return round(max(0.0, min(100.0, similarity * 100)), 2)
 
 
@@ -37,31 +56,50 @@ def _severity_from_confidence(confidence: float) -> str:
 
 
 def scan_thumbnail(thumbnail_url: str) -> dict:
+    """
+    Scan a suspect thumbnail against the FAISS vault using CLIP embeddings.
+    Tries multiple thumbnail resolutions and keeps the best match score.
+    """
     if vector_db.ntotal == 0:
         return {"error": "FAISS vault is empty. Ingest an official video first."}
 
-    try:
-        pil_image = _fetch_image(thumbnail_url)
-    except Exception as e:
-        return {"error": f"Could not fetch thumbnail: {e}"}
+    urls = _thumbnail_variants(thumbnail_url)
+    k    = min(3, vector_db.ntotal)
 
-    embedding = embed_image_for_sentinel(pil_image)
+    best_similarity  = -1.0
+    best_sims        = None
+    best_idxs        = None
+    best_pil         = None
 
-    k = min(3, vector_db.ntotal)
-    similarities, indices = vector_db.search(embedding, k=k)
+    # Try each URL variant — keep the one with the highest vault similarity
+    for url in urls:
+        try:
+            img = _fetch_image(url)
+            emb = embed_image_for_sentinel(img)
+            sims, idxs = vector_db.search(emb, k=k)
+            score = float(sims[0][0])
+            if score > best_similarity:
+                best_similarity = score
+                best_sims       = sims
+                best_idxs       = idxs
+                best_pil        = img
+        except Exception:
+            continue
 
-    best_similarity = float(similarities[0][0])
+    if best_pil is None or best_sims is None:
+        return {"error": f"Could not fetch or scan thumbnail: {thumbnail_url}"}
+
     best_confidence = _cosine_to_confidence(best_similarity)
 
     top_matches = []
-    for sim, idx in zip(similarities[0], indices[0]):
+    for sim, idx in zip(best_sims[0], best_idxs[0]):
         if idx == -1:
             continue
         meta = metadata_store.get(str(idx), {})
         top_matches.append({
             "vault_index":   int(idx),
             "similarity":    float(round(float(sim), 4)),
-            "l2_distance":   float(round(1.0 - float(sim), 4)),  # compat field
+            "l2_distance":   float(round(1.0 - float(sim), 4)),
             "confidence":    float(_cosine_to_confidence(float(sim))),
             "source_video":  meta.get("video_path", "unknown"),
             "timestamp_sec": int(meta.get("timestamp_sec", 0)),
@@ -73,12 +111,11 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
     if best_similarity >= SUSPECT_THRESHOLD and top_matches:
         try:
             import cv2
-            suspect_hash = imagehash.phash(pil_image)
-            # Use the best matching vault entry, not hardcoded index 0
+            suspect_hash = imagehash.phash(best_pil)
             best_idx     = top_matches[0]["vault_index"]
             vault_meta   = metadata_store.get(str(best_idx), {})
             video_path   = vault_meta.get("video_path", "")
-            # Resolve relative path from vault dir
+            # Resolve relative path
             if video_path and not os.path.isabs(video_path):
                 video_path = os.path.join(os.path.dirname(__file__), "..", video_path)
             if video_path and os.path.exists(video_path):
@@ -86,9 +123,9 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
                 ret, frame = cap.read()
                 cap.release()
                 if ret:
-                    vault_pil   = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                    vault_hash  = imagehash.phash(vault_pil)
-                    hash_diff   = suspect_hash - vault_hash
+                    vault_pil  = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    vault_hash = imagehash.phash(vault_pil)
+                    hash_diff  = suspect_hash - vault_hash
                     phash_score = max(0, 100 - (hash_diff * 4))
                     phash_match = hash_diff < 15
         except Exception:
@@ -97,7 +134,7 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
     return {
         "match_confirmed":  bool(best_similarity >= MATCH_THRESHOLD),
         "confidence_score": float(best_confidence),
-        "l2_distance":      float(round(1.0 - best_similarity, 4)),  # compat
+        "l2_distance":      float(round(1.0 - best_similarity, 4)),
         "severity":         _severity_from_confidence(best_confidence),
         "phash_match":      bool(phash_match),
         "phash_score":      int(phash_score),
@@ -107,7 +144,7 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
 
 
 def tool_scan_thumbnail(thumbnail_url: str) -> str:
-    """Fetches a suspect thumbnail, runs EfficientNet-B0 + pHash dual detection against the FAISS vault."""
+    """Fetches a suspect thumbnail, runs CLIP + pHash dual detection against the FAISS vault."""
     result = scan_thumbnail(thumbnail_url)
 
     if "error" in result:
