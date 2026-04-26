@@ -309,6 +309,7 @@ const AssetVault = () => {
   const { eventLog, joinIngest } = useSocket();
 
   const [url,           setUrl]           = useState('');
+  const [title,         setTitle]         = useState('');
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
   const [progress,      setProgress]      = useState(null);
@@ -366,12 +367,13 @@ const AssetVault = () => {
     setProgress({ stage: 'queued', message: 'Starting ingest job… (this takes 2–10 min for long videos)' });
     setLoading(true);
     try {
-      const res = await archivistService.ingest(url.trim());
+      const res = await archivistService.ingest(url.trim(), title.trim());
       const { jobId, assetId } = res.data;
       setActiveJob(jobId);
       setActiveAssetId(assetId);
       joinIngest(jobId);
       setUrl('');
+      setTitle('');
 
       // Polling fallback — if socket events don't arrive, poll every 15s
       const pollInterval = setInterval(async () => {
@@ -446,36 +448,51 @@ const AssetVault = () => {
           </button>
         </div>
 
-        <form onSubmit={handleIngest} style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
-            <input
-              type="url" value={url} onChange={e => setUrl(e.target.value)}
-              placeholder="YouTube URL or direct .mp4 link (Google Drive, Dropbox…)"
-              disabled={loading} required
+        <form onSubmit={handleIngest} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
+              <input
+                type="url" value={url} onChange={e => setUrl(e.target.value)}
+                placeholder="YouTube URL or direct .mp4 link (Google Drive, Dropbox…)"
+                disabled={loading} required
+                style={{
+                  width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
+                  borderRadius: 12, border: `1px solid ${G.border}`, background: '#f8fafc',
+                  fontSize: 13, color: G.text, outline: 'none', boxSizing: 'border-box',
+                }}
+                onFocus={e => e.target.style.borderColor = G.tealBdr}
+                onBlur={e => e.target.style.borderColor = G.border}
+              />
+            </div>
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              type="submit" disabled={loading || !url.trim()}
               style={{
-                width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
-                borderRadius: 12, border: `1px solid ${G.border}`, background: '#f8fafc',
+                display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
+                borderRadius: 12, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+                fontWeight: 700, fontSize: 13,
+                background: loading ? G.border : `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
+                color: loading ? G.muted : '#fff',
+                boxShadow: loading ? 'none' : `0 0 20px ${G.teal}25`,
+                opacity: (!url.trim() && !loading) ? 0.5 : 1,
+              }}>
+              {loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
+              Ingest
+            </motion.button>
+          </div>
+          {/* Title field — required for Drive/direct links so Spider can search YouTube */}
+          {url && !url.includes('youtube.com') && !url.includes('youtu.be') && (
+            <input
+              type="text" value={title} onChange={e => setTitle(e.target.value)}
+              placeholder="Video title (required for non-YouTube links — used for piracy search)"
+              disabled={loading}
+              style={{
+                width: '100%', padding: '10px 14px',
+                borderRadius: 12, border: `1px solid ${G.tealBdr}`, background: '#f0fdf9',
                 fontSize: 13, color: G.text, outline: 'none', boxSizing: 'border-box',
               }}
-              onFocus={e => e.target.style.borderColor = G.tealBdr}
-              onBlur={e => e.target.style.borderColor = G.border}
             />
-          </div>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            type="submit" disabled={loading || !url.trim()}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
-              borderRadius: 12, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 700, fontSize: 13,
-              background: loading ? G.border : `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
-              color: loading ? G.muted : '#fff',
-              boxShadow: loading ? 'none' : `0 0 20px ${G.teal}25`,
-              opacity: (!url.trim() && !loading) ? 0.5 : 1,
-            }}>
-            {loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
-            Ingest
-          </motion.button>
+          )}
         </form>
 
         <AnimatePresence>

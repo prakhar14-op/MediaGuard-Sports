@@ -16,7 +16,7 @@ export const swarmService = {
 
 // ─── Archivist ────────────────────────────────────────────────────────────────
 export const archivistService = {
-  ingest:    (url) => api.post('/ingest', { official_video_url: url }),
+  ingest:    (url, title = '') => api.post('/ingest', { official_video_url: url, video_title: title }),
   getAll:    ()    => api.get('/ingest'),
   getById:   (id)  => api.get(`/ingest/${id}`),
   delete:    (id)  => api.delete(`/ingest/${id}`),
