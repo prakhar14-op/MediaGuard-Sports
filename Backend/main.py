@@ -207,13 +207,26 @@ def scan_suspect(payload: ScanRequest):
 
 @app.post("/scan/batch")
 def batch_scan(payload: BatchScanRequest):
+    """Scan multiple thumbnails in parallel using a thread pool."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    nodes = [n for n in payload.threat_nodes if n.get("thumbnail_url")]
+
+    def _scan_one(node):
+        result = scan_thumbnail(node["thumbnail_url"])
+        return {"node": node, "scan": result}
+
     results = []
-    for node in payload.threat_nodes:
-        thumbnail_url = node.get("thumbnail_url", "")
-        if not thumbnail_url:
-            continue
-        result = scan_thumbnail(thumbnail_url)
-        results.append({"node": node, "scan": result})
+    # Use up to 8 workers — CLIP is CPU-bound but I/O (thumbnail fetch) benefits from parallelism
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {pool.submit(_scan_one, node): node for node in nodes}
+        for future in as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception as e:
+                node = futures[future]
+                results.append({"node": node, "scan": {"error": str(e)}})
+
     return {"success": True, "results": results, "total": len(results)}
 
 
