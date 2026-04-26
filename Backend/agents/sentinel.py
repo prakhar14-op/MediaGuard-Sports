@@ -13,8 +13,8 @@ from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 # ─── Cosine similarity thresholds (after L2 normalisation, inner product = cosine) ──
 # 1.0 = identical, 0.0 = completely different
 # EfficientNet-B0 is much more discriminative than MobileNetV3
-MATCH_THRESHOLD   = 0.70   # above this = confirmed match (piracy) — lowered for better recall
-SUSPECT_THRESHOLD = 0.45   # above this = suspect (needs adjudication)
+MATCH_THRESHOLD   = 0.82   # above this = confirmed match (piracy)
+SUSPECT_THRESHOLD = 0.65   # above this = suspect (needs adjudication)
 
 
 def _fetch_image(url: str) -> Image.Image:
@@ -29,9 +29,9 @@ def _cosine_to_confidence(similarity: float) -> float:
 
 
 def _severity_from_confidence(confidence: float) -> str:
-    if confidence >= 75:
+    if confidence >= 85:
         return "CRITICAL"
-    if confidence >= 45:
+    if confidence >= 60:
         return "WARNING"
     return "INFO"
 
