@@ -69,9 +69,13 @@ def _generate_search_queries(title: str, official_country: str) -> list[str]:
     prompt = (
         f'You are an OSINT specialist hunting for pirated copies of a video titled: "{title}"\n'
         f"The original is from country: {official_country}\n\n"
-        f"Generate exactly 4 search query strings that would find pirated/reposted versions on YouTube.\n"
+        f"Generate exactly 4 YouTube search query strings to find pirated/reposted versions.\n"
+        f"Rules:\n"
+        f"- Plain search terms only — NO site: operators, NO quotes around the whole query\n"
+        f"- Think: restream keywords, 'full match', 'full video', 'leaked', language variants\n"
+        f"- Each query should be 3-6 words max\n"
         f"Return ONLY a JSON array of 4 strings. No explanation.\n"
-        f'Example: ["query 1", "query 2", "query 3", "query 4"]'
+        f'Example: ["champions league final full", "ucl final restream 2024", "champions league leaked stream", "final match full hd"]'
     )
     try:
         if groq_key:
