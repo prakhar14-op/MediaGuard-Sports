@@ -17,8 +17,8 @@ const adjClient = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
 const enforcer  = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
 const broker    = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
 
-// Only adjudicate suspects above this confidence — lowered for better recall
-const ADJ_CONFIDENCE_THRESHOLD = 40;
+// Only adjudicate suspects above this confidence — avoids wasting Groq quota on noise
+const ADJ_CONFIDENCE_THRESHOLD = 55;
 
 const velocityKey = (h) => `sentinel:velocity:${h}`;
 const offenceKey  = (a, p) => `enforcer:offences:${p}:${a}`.toLowerCase();
