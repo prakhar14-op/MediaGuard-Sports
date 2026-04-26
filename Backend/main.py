@@ -201,8 +201,25 @@ def health():
     return {"status": "MediaGuard ML API online", "vault_size": vector_db.ntotal}
 
 
-@app.get("/debug/cookies")
-def debug_cookies():
+@app.get("/debug/sentinel")
+def debug_sentinel(thumbnail_url: str):
+    """Debug endpoint — scan a thumbnail and return raw similarity scores."""
+    from agents.archivist import vector_db
+    if vector_db.ntotal == 0:
+        return {"error": "Vault is empty", "vault_size": 0}
+    result = scan_thumbnail(thumbnail_url)
+    return {
+        "vault_size":       vector_db.ntotal,
+        "confidence_score": result.get("confidence_score"),
+        "match_confirmed":  result.get("match_confirmed"),
+        "severity":         result.get("severity"),
+        "top_matches":      result.get("top_matches", [])[:3],
+        "thresholds": {
+            "match":   0.70,
+            "suspect": 0.45,
+            "adj_min": 40,
+        }
+    }
     """Check if YouTube cookies are loaded correctly."""
     exists = os.path.exists(COOKIES_PATH)
     size   = os.path.getsize(COOKIES_PATH) if exists else 0
@@ -218,6 +235,15 @@ def debug_cookies():
 @app.get("/vault/status")
 def vault_status():
     return {"vault_size": vector_db.ntotal, "status": "ready" if vector_db.ntotal > 0 else "empty"}
+
+
+@app.get("/debug/sentinel")
+def debug_sentinel(thumbnail_url: str):
+    """Debug — scan a thumbnail and return raw similarity scores to tune thresholds."""
+    if vector_db.ntotal == 0:
+        return {"error": "Vault is empty — ingest a video first", "vault_size": 0}
+    result = scan_thumbnail(thumbnail_url)
+    return {"vault_size": vector_db.ntotal, **result}
 
 
 @app.post("/ingest")
