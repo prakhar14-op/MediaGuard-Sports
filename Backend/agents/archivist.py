@@ -84,7 +84,7 @@ def tool_ingest_video(video_path: str) -> str:
         return f"[ERROR] OpenCV could not open video (size={file_size}, ext={os.path.splitext(video_path)[1]}): {video_path}"
 
     frame_rate      = int(cap.get(cv2.CAP_PROP_FPS)) or 1
-    sample_interval = frame_rate * 5   # 1 frame every 5 seconds
+    sample_interval = frame_rate * 3   # 1 frame every 3 seconds — better coverage than 5s
     extracted_count = 0
 
     while cap.isOpened():
