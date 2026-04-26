@@ -1,12 +1,11 @@
 import cv2
 import torch
-import torchvision.models as models
-import torchvision.transforms as T
 import faiss
 import numpy as np
 import json
 import os
 from PIL import Image
+from transformers import CLIPProcessor, CLIPModel
 
 VAULT_DIR = os.path.join(os.path.dirname(__file__), "..", "vault")
 os.makedirs(VAULT_DIR, exist_ok=True)
@@ -14,25 +13,21 @@ os.makedirs(VAULT_DIR, exist_ok=True)
 VAULT_INDEX_PATH = os.path.join(VAULT_DIR, "faiss_vault.index")
 VAULT_META_PATH  = os.path.join(VAULT_DIR, "vault_metadata.json")
 
-# ─── EfficientNet-B0 backbone ─────────────────────────────────────────────────
-# ~20MB weights, ~250MB runtime — fits Render free tier (512MB)
-# 1280-dim embeddings — much better than MobileNetV3's 576-dim for visual similarity
-print("[Archivist] Loading EfficientNet-B0 embedding model...")
-_backbone = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
-# Strip the classifier — keep only the feature extractor
-_backbone.classifier = torch.nn.Identity()
-_backbone.eval()
+# ─── CLIP ViT-B/32 ────────────────────────────────────────────────────────────
+# Purpose-built for cross-modal similarity — thumbnails vs video frames works
+# because CLIP learns visual semantics, not just classification features.
+# ~350MB RAM on CPU — fits Render free tier (512MB) with careful loading.
+print("[Archivist] Loading CLIP ViT-B/32...")
+_MODEL_ID  = "openai/clip-vit-base-patch32"
+_processor = CLIPProcessor.from_pretrained(_MODEL_ID)
+_clip      = CLIPModel.from_pretrained(_MODEL_ID)
+_clip.eval()
 
-_transform = T.Compose([
-    T.Resize((224, 224)),
-    T.ToTensor(),
-    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+EMBEDDING_DIM = 512   # CLIP ViT-B/32 image embedding dimension
+print(f"[Archivist] CLIP ready — embedding dim: {EMBEDDING_DIM}")
 
-EMBEDDING_DIM = 1280   # EfficientNet-B0 penultimate layer output
-print(f"[Archivist] Model ready — embedding dim: {EMBEDDING_DIM}")
-
-vector_db      = faiss.IndexFlatIP(EMBEDDING_DIM)  # Inner product (cosine after normalisation)
+# Use IndexFlatIP (inner product) — after L2 normalisation this equals cosine similarity
+vector_db      = faiss.IndexFlatIP(EMBEDDING_DIM)
 metadata_store = {}
 
 # Load existing vault — only if dimension matches
@@ -56,18 +51,23 @@ if os.path.exists(VAULT_META_PATH):
 
 
 def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
-    """Returns a normalised (1, EMBEDDING_DIM) float32 numpy array."""
-    tensor = _transform(pil_image.convert("RGB")).unsqueeze(0)
+    """Returns a normalised (1, 512) float32 CLIP image embedding."""
+    inputs = _processor(
+        text=["dummy"],          # CLIP needs text input too — dummy is fine for image-only
+        images=pil_image.convert("RGB"),
+        return_tensors="pt",
+        padding=True,
+    )
     with torch.no_grad():
-        feat = _backbone(tensor)
-    embedding = feat.cpu().numpy().astype("float32").reshape(1, -1)
-    # L2 normalise so inner product = cosine similarity
-    faiss.normalize_L2(embedding)
+        outputs = _clip(**inputs)
+    embedding = outputs.image_embeds.detach().cpu().numpy().astype("float32")
+    embedding = embedding.reshape(1, -1)
+    faiss.normalize_L2(embedding)   # normalise so IP = cosine similarity
     return embedding
 
 
 def tool_ingest_video(video_path: str) -> str:
-    """Extracts 1 frame every 5 seconds, embeds via EfficientNet-B0, stores in FAISS vault."""
+    """Extracts 1 frame every 5 seconds, embeds via CLIP ViT-B/32, stores in FAISS vault."""
     global vector_db, metadata_store
 
     video_path = os.path.realpath(video_path)
@@ -100,7 +100,7 @@ def tool_ingest_video(video_path: str) -> str:
             db_id = vector_db.ntotal
             vector_db.add(embedding)
             metadata_store[str(db_id)] = {
-                "video_path":    os.path.relpath(video_path),  # relative — works on any OS
+                "video_path":    os.path.relpath(video_path),
                 "timestamp_sec": extracted_count * 5,
             }
             extracted_count += 1
@@ -115,5 +115,5 @@ def tool_ingest_video(video_path: str) -> str:
 
 
 def embed_image_for_sentinel(pil_image: Image.Image) -> np.ndarray:
-    """Returns a normalised (1, EMBEDDING_DIM) embedding — used by the Sentinel."""
+    """Returns a normalised (1, 512) CLIP embedding — used by the Sentinel."""
     return _embed_pil_image(pil_image)
