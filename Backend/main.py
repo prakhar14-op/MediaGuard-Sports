@@ -7,6 +7,7 @@ import glob
 import sys
 import numpy as np
 import threading
+import re
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -59,6 +60,7 @@ _ingest_jobs: dict = {}
 class IngestRequest(BaseModel):
     official_video_url: str
     job_id: str
+    video_title: str = ""  # optional — used by Spider for search queries when URL has no metadata
 
 
 class HuntRequest(BaseModel):
@@ -226,6 +228,7 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
     """
     job_id = payload.job_id
     url    = payload.official_video_url
+    provided_title = payload.video_title.strip()
 
     # Mark job as started
     _ingest_jobs[job_id] = {"status": "downloading", "message": "Downloading via yt-dlp…"}
@@ -243,12 +246,45 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
             ])
 
             if is_direct:
-                # ── Direct download — no yt-dlp, no bot detection ─────────────
+                # ── Direct download — handle Google Drive confirmation page ───
                 local_path = os.path.join(OFFICIAL_DIR, f"{job_id}.mp4")
-                print(f"[Ingest] Direct URL — downloading with urllib")
-                _ingest_jobs[job_id]["message"] = "Downloading video file directly..."
-                urllib.request.urlretrieve(url, local_path)
-                title = url.split("/")[-1].split("?")[0] or "Official Video"
+                print(f"[Ingest] Direct URL — downloading")
+                _ingest_jobs[job_id]["message"] = "Downloading video file..."
+
+                # Google Drive: convert share URL to direct download URL
+                gdrive_match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
+                if gdrive_match or 'drive.google.com' in url:
+                    file_id = gdrive_match.group(1) if gdrive_match else re.search(r'id=([a-zA-Z0-9_-]+)', url).group(1)
+                    direct_url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+                    print(f"[Ingest] Google Drive file_id={file_id} → {direct_url}")
+                else:
+                    direct_url = url
+
+                # Use requests with session to handle redirects properly
+                import requests as req_lib
+                session = req_lib.Session()
+                resp = session.get(direct_url, stream=True, timeout=300,
+                                   headers={"User-Agent": "Mozilla/5.0"})
+                resp.raise_for_status()
+
+                # Check we got actual video content, not HTML
+                content_type = resp.headers.get("Content-Type", "")
+                if "text/html" in content_type:
+                    raise ValueError(f"Got HTML instead of video — Drive link may require sign-in or 'Anyone with link' sharing. Content-Type: {content_type}")
+
+                with open(local_path, "wb") as f:
+                    for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
+
+                file_size = os.path.getsize(local_path)
+                print(f"[Ingest] Downloaded {file_size} bytes to {local_path}")
+
+                if file_size < 100_000:
+                    raise ValueError(f"Downloaded file too small ({file_size} bytes) — likely not a video. Make sure Drive sharing is set to 'Anyone with the link'.")
+
+                # Use filename as title, strip extension
+                title = url.split("/")[-1].split("?")[0].rsplit(".", 1)[0] or "Official Video"
 
             else:
                 # ── Platform URL — use yt-dlp ─────────────────────────────────
@@ -295,7 +331,7 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
             _ingest_jobs[job_id] = {
                 "status":      "complete",
-                "title":       title,
+                "title":       provided_title or title,
                 "local_path":  local_path,
                 "frame_count": frame_count,
                 "vault_size":  vector_db.ntotal,
