@@ -12,7 +12,7 @@ import { generateHash } from "../utils/blockchain.js";
 const FASTAPI = process.env.FASTAPI_URL || "http://127.0.0.1:8001";
 
 const spider    = axios.create({ baseURL: FASTAPI, timeout: 5 * 60_000 });
-const sentinel  = axios.create({ baseURL: FASTAPI, timeout: 90_000 });
+const sentinel  = axios.create({ baseURL: FASTAPI, timeout: 5 * 60_000 });  // 5 min — CLIP batch scan is slow
 const adjClient = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
 const enforcer  = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
 const broker    = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
