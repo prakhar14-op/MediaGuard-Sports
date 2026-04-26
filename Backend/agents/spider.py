@@ -125,7 +125,12 @@ def crawl(official_video_url: str, official_country: str = "US", official_title:
                 title            = info.get("title", "Unknown Video")
                 official_country = info.get("channel_country") or official_country
         except Exception as e:
-            return {"error": f"Could not extract official video metadata: {e}"}
+            # Non-YouTube URL or yt-dlp failed — use URL filename as fallback
+            print(f"[Spider] yt-dlp metadata extraction failed: {e}")
+            fallback = official_video_url.split("/")[-1].split("?")[0].rsplit(".", 1)[0]
+            title = fallback if fallback and len(fallback) > 3 else None
+            if not title:
+                return {"error": "Could not extract video metadata. For non-YouTube URLs, provide official_title."}
         official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
 
     # ── Step 2: Generate search queries ──────────────────────────────────────
