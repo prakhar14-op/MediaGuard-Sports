@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDashboard } from '../../context/DashboardContext';
 import { enforcerService } from '../../services/api';
@@ -330,6 +330,9 @@ const LegalPanel = () => {
   const [processing, setProcessing] = useState(null);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+
+  // Refresh data every time this page is mounted
+  useEffect(() => { refresh(); }, []);
 
   const drafted = dmcas.filter(d => d.status === 'drafted');
   const sent    = dmcas.filter(d => d.status === 'sent');

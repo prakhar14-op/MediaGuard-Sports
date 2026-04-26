@@ -76,6 +76,9 @@ export default function BrokerPanel() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
 
+  // Refresh data every time this page is mounted
+  React.useEffect(() => { refresh(); }, []);
+
   const minted = contracts.filter((c) => c.status === "minted");
   const active = contracts.filter((c) => c.status === "active");
   const other  = contracts.filter((c) => c.status !== "minted" && c.status !== "active");
