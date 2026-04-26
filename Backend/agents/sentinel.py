@@ -70,12 +70,17 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
     # Layer 2 — pHash cross-check for high-similarity candidates
     phash_match = False
     phash_score = 0
-    if best_similarity >= SUSPECT_THRESHOLD:
+    if best_similarity >= SUSPECT_THRESHOLD and top_matches:
         try:
             import cv2
             suspect_hash = imagehash.phash(pil_image)
-            vault_meta   = metadata_store.get("0", {})
+            # Use the best matching vault entry, not hardcoded index 0
+            best_idx     = top_matches[0]["vault_index"]
+            vault_meta   = metadata_store.get(str(best_idx), {})
             video_path   = vault_meta.get("video_path", "")
+            # Resolve relative path from vault dir
+            if video_path and not os.path.isabs(video_path):
+                video_path = os.path.join(os.path.dirname(__file__), "..", video_path)
             if video_path and os.path.exists(video_path):
                 cap = cv2.VideoCapture(video_path)
                 ret, frame = cap.read()

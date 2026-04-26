@@ -48,6 +48,9 @@ COUNTRY_CENTROIDS = {
     "TR": {"lat": 38.9637,  "lng": 35.2433},
 }
 
+# yt-dlp options reused for both metadata extraction and search
+_YDL_OPTS = {"quiet": True, "noplaylist": True, "extract_flat": False}
+
 
 def _fallback_queries(title: str) -> list[str]:
     """Rule-based query generation — used when LLM is unavailable."""
@@ -98,19 +101,31 @@ def _generate_search_queries(title: str, official_country: str) -> list[str]:
     return _fallback_queries(title)
 
 
-def crawl(official_video_url: str, official_country: str = "US") -> dict:
-    ydl_opts = {"quiet": True, "noplaylist": True, "extract_flat": False}
+def crawl(official_video_url: str, official_country: str = "US", official_title: str = "") -> dict:
+    """
+    Crawl YouTube for pirated copies of the given official video.
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info             = ydl.extract_info(official_video_url, download=False)
-            title            = info.get("title", "Unknown Video")
-            official_country = info.get("channel_country") or official_country
-    except Exception as e:
-        return {"error": f"Could not extract official video metadata: {e}"}
+    official_title: if provided (e.g. from a Drive/direct link ingest), skip yt-dlp
+                    metadata extraction and use this title directly for search queries.
+    """
+    # ── Step 1: Get title and country ─────────────────────────────────────────
+    if official_title:
+        # Title provided externally — no yt-dlp metadata needed
+        title           = official_title
+        official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
+    else:
+        # Extract title from the URL via yt-dlp
+        try:
+            with yt_dlp.YoutubeDL(_YDL_OPTS) as ydl:
+                info             = ydl.extract_info(official_video_url, download=False)
+                title            = info.get("title", "Unknown Video")
+                official_country = info.get("channel_country") or official_country
+        except Exception as e:
+            return {"error": f"Could not extract official video metadata: {e}"}
+        official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
 
-    search_queries  = _generate_search_queries(title, official_country)
-    official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
+    # ── Step 2: Generate search queries ──────────────────────────────────────
+    search_queries = _generate_search_queries(title, official_country)
 
     map_payload = {
         "official_source": {
@@ -128,10 +143,11 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
 
     seen_urls = set()
 
+    # ── Step 3: Search YouTube for suspects ───────────────────────────────────
     for query in search_queries:
         search_string = f"ytsearch5:{query}"
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(_YDL_OPTS) as ydl:
                 results = ydl.extract_info(search_string, download=False)
                 entries = results.get("entries", []) if results else []
 
@@ -160,7 +176,7 @@ def crawl(official_video_url: str, official_country: str = "US") -> dict:
                         "coordinates":    COUNTRY_CENTROIDS[country],
                         "view_count":     entry.get("view_count", 0),
                         "description":    description[:300],
-                        "search_query":   query,
+                        # search_query intentionally omitted — swarmController strips it anyway
                     }
                     map_payload["threat_nodes"].append(node)
 

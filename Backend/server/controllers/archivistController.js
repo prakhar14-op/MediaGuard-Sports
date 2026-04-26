@@ -29,29 +29,37 @@ export const ingestAsset = async (req, res) => {
     });
 
     // Kick off async ingest on FastAPI — returns immediately
-    await fastapiClient.post("/ingest", { official_video_url, job_id: jobId });
+    const { official_video_url, video_title = "" } = req.body;
+    await fastapiClient.post("/ingest", { official_video_url, job_id: jobId, video_title });
 
     // Poll FastAPI for status every 10s (max 35 min)
     const MAX_POLLS = 210;  // 210 × 10s = 35 min
     let polls = 0;
 
     const poll = async () => {
-      if (polls >= MAX_POLLS) {
+      polls++;
+      if (polls > MAX_POLLS) {
         await IngestedAsset.findByIdAndUpdate(asset._id, { status: "failed", error_message: "Ingest timed out" });
         io.emit("ingest:error", { jobId, assetId: asset._id, message: "Ingest timed out after 35 minutes" });
         return;
       }
-      polls++;
 
       try {
         const { data: statusData } = await fastapiClient.get(`/ingest/status/${jobId}`);
 
-        if (statusData.status === "processing") {
+        if (statusData.status === "downloading") {
+          io.emit("ingest:progress", {
+            jobId, assetId: asset._id, stage: "downloading",
+            message: statusData.message || "Downloading video...",
+          });
+          setTimeout(poll, 8000);
+
+        } else if (statusData.status === "processing") {
           io.emit("ingest:progress", {
             jobId, assetId: asset._id, stage: "processing",
             message: "Embedding frames into FAISS vault...",
           });
-          setTimeout(poll, 10000);
+          setTimeout(poll, 8000);
 
         } else if (statusData.status === "complete") {
           const integrity_hash = generateHash({
@@ -84,16 +92,15 @@ export const ingestAsset = async (req, res) => {
           io.emit("ingest:error", { jobId, assetId: asset._id, message: statusData.message });
 
         } else {
-          // Still downloading
-          setTimeout(poll, 10000);
+          setTimeout(poll, 8000);
         }
       } catch {
-        setTimeout(poll, 10000);
+        setTimeout(poll, 8000);
       }
     };
 
-    // Start polling after 15s (give yt-dlp time to start)
-    setTimeout(poll, 15000);
+    // Start polling after 5s — fast enough to catch quick downloads
+    setTimeout(poll, 5000);
 
   } catch (err) {
     await IngestedAsset.findByIdAndUpdate(asset._id, { status: "failed", error_message: err.message });

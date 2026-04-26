@@ -11,7 +11,10 @@ const incidentSchema = new mongoose.Schema(
     url:            { type: String },
     thumbnail_url:  { type: String },
     country:        { type: String },
-    coordinates:    { lat: Number, lng: Number },
+    coordinates:    {
+      lat: { type: Number, default: 0 },
+      lng: { type: Number, default: 0 },
+    },
     confidence_score: { type: Number, min: 0, max: 100 },
     severity:       { type: String, enum: ["CRITICAL", "WARNING", "INFO"], default: "WARNING" },
     classification: {
