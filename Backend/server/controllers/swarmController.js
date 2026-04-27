@@ -40,7 +40,7 @@ function escalateSeverity(base, velocity) {
 
 // ─── SWARM ORCHESTRATOR ───────────────────────────────────────────────────────
 export const runSwarm = async (req, res) => {
-  const { official_video_url } = req.body;
+  const { official_video_url, official_title: providedTitle = "" } = req.body;
   const jobId = uuidv4();
   const io    = getIO();
 
@@ -57,9 +57,10 @@ export const runSwarm = async (req, res) => {
 
     let huntData;
     try {
-      // Look up the ingested asset title so Spider can search even for non-YouTube URLs
+      // Title priority: 1) provided in request, 2) previously ingested asset, 3) Spider extracts it
+      // This avoids yt-dlp bot detection on cloud IPs when the URL is YouTube
       const ingestedAsset = await IngestedAsset.findOne({ official_video_url }).sort({ createdAt: -1 });
-      const official_title = ingestedAsset?.title || "";
+      const official_title = providedTitle || ingestedAsset?.title || "";
 
       const r = await spider.post("/hunt", { official_video_url, official_title });
       huntData = r.data;

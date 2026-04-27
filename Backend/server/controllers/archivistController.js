@@ -93,7 +93,19 @@ export const ingestAsset = async (req, res) => {
         } else {
           setTimeout(poll, 8000);
         }
-      } catch {
+      } catch (err) {
+        // If FastAPI returned 404, the job was lost (process restart) — fail fast
+        if (err?.response?.status === 404) {
+          await IngestedAsset.findByIdAndUpdate(asset._id, {
+            status: "failed",
+            error_message: "Ingest job lost — the server restarted during processing. Please try again.",
+          });
+          io.emit("ingest:error", {
+            jobId, assetId: asset._id,
+            message: "Ingest job lost due to server restart. Please re-submit the video.",
+          });
+          return;
+        }
         setTimeout(poll, 8000);
       }
     };
