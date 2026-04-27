@@ -1,17 +1,16 @@
 """
 Archivist — video fingerprinting via MobileNetV3-Large embeddings.
 
-Why MobileNetV3 instead of CLIP?
-- CLIP ViT-B/32 = ~350MB download from HuggingFace → OOM on Render 512MB
-- MobileNetV3-Large = ~22MB, bundled in torchvision → loads in <1s
-- Both produce L2-normalised 512-dim vectors for cosine similarity in FAISS
-- Frame-level visual similarity is sufficient for piracy detection
+Accuracy vs CLIP:
+- CLIP ViT-B/32 is more semantically aware but requires 350MB download
+  from HuggingFace which causes OOM on Render free tier (512MB RAM)
+- MobileNetV3-Large (22MB, bundled in torchvision) produces strong
+  visual feature embeddings — sufficient for frame-level piracy detection
+  (exact copies, re-encodes, minor crops/color changes)
+- We use the raw 960-dim avgpool features WITHOUT a random projection.
+  Random projections reduce accuracy. 960-dim directly in FAISS is better.
 
-Key design decisions:
-- Projection weights are seeded (seed=42) so embeddings are DETERMINISTIC
-  across restarts — vault vectors stay valid after server restart
-- Model is lazy-loaded on first ingest/scan call, not at import time
-- FAISS IndexFlatIP + L2 normalisation = cosine similarity search
+EMBEDDING_DIM = 960 (MobileNetV3-Large avgpool output, no projection)
 """
 
 import cv2
@@ -32,12 +31,11 @@ VAULT_META_PATH  = os.path.join(VAULT_DIR, "vault_metadata.json")
 
 # ─── Model config ─────────────────────────────────────────────────────────────
 _model        = None
-EMBEDDING_DIM = 512   # MobileNetV3-Large avgpool output = 960 → projected to 512
+EMBEDDING_DIM = 960   # MobileNetV3-Large avgpool output — no projection needed
 
-BATCH_SIZE          = 16   # MobileNetV3 is tiny — 16 frames per pass is fine
+BATCH_SIZE          = 16
 SAMPLE_EVERY_N_SECS = 10   # 1 frame per 10s — 90min video ≈ 540 frames
 
-# Standard ImageNet normalisation (MobileNetV3 was trained on ImageNet)
 _TRANSFORM = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
@@ -48,41 +46,30 @@ _TRANSFORM = transforms.Compose([
 
 
 def _load_model():
-    """
-    Load MobileNetV3-Large on first call. Subsequent calls are no-ops.
-
-    IMPORTANT: The linear projection uses a fixed seed (42) so that the
-    same projection matrix is produced on every server start.  Without this,
-    vault vectors from a previous run would be incompatible with the new
-    projection, causing garbage similarity scores.
-    """
+    """Load MobileNetV3-Large on first call. Subsequent calls are no-ops."""
     global _model
     if _model is not None:
         return
 
     print("[Archivist] Loading MobileNetV3-Large (~22MB)...")
+
     base = models.mobilenet_v3_large(
         weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V2
     )
 
+    # Use features + avgpool only — discard the classifier head entirely.
+    # This gives us the raw 960-dim visual feature vector.
+    # No random projection — raw features are more meaningful for similarity.
     class _EmbedNet(nn.Module):
         def __init__(self, backbone):
             super().__init__()
             self.features = backbone.features
             self.avgpool  = backbone.avgpool
-            # Fixed-seed projection: 960 → 512
-            # seed=42 ensures the same matrix every restart
-            gen = torch.Generator()
-            gen.manual_seed(42)
-            proj = nn.Linear(960, EMBEDDING_DIM, bias=False)
-            nn.init.orthogonal_(proj.weight, generator=gen)
-            self.project = proj
 
         def forward(self, x):
             x = self.features(x)
             x = self.avgpool(x)
-            x = torch.flatten(x, 1)
-            x = self.project(x)
+            x = torch.flatten(x, 1)   # (B, 960)
             return x
 
     _model = _EmbedNet(base)
@@ -91,7 +78,6 @@ def _load_model():
 
 
 # ─── FAISS vault ─────────────────────────────────────────────────────────────
-# IndexFlatIP: inner product after L2 normalisation = cosine similarity
 vector_db      = faiss.IndexFlatIP(EMBEDDING_DIM)
 metadata_store = {}
 
@@ -116,8 +102,9 @@ if os.path.exists(VAULT_META_PATH):
 
 def _embed_batch(pil_images: list) -> np.ndarray:
     """
-    Embed a batch of PIL images via MobileNetV3 + fixed projection.
-    Returns float32 array of shape (N, 512), L2-normalised.
+    Embed a batch of PIL images via MobileNetV3-Large.
+    Returns float32 array of shape (N, 960), L2-normalised.
+    After L2 normalisation, FAISS inner product = cosine similarity.
     """
     _load_model()
     tensors = torch.stack([_TRANSFORM(img.convert("RGB")) for img in pil_images])
@@ -128,14 +115,14 @@ def _embed_batch(pil_images: list) -> np.ndarray:
 
 
 def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
-    """Single-image embed — used by Sentinel. Returns (1, 512) float32."""
+    """Single-image embed — used by Sentinel. Returns (1, 960) float32."""
     return _embed_batch([pil_image.convert("RGB")])
 
 
 def tool_ingest_video(video_path: str) -> str:
     """
     Extracts 1 frame every SAMPLE_EVERY_N_SECS seconds, embeds in batches
-    via MobileNetV3-Large + fixed projection, stores in FAISS vault.
+    via MobileNetV3-Large, stores in FAISS vault.
     """
     global vector_db, metadata_store
 
@@ -212,5 +199,5 @@ def tool_ingest_video(video_path: str) -> str:
 
 
 def embed_image_for_sentinel(pil_image: Image.Image) -> np.ndarray:
-    """Returns a normalised (1, 512) embedding — used by the Sentinel."""
+    """Returns a normalised (1, 960) embedding — used by the Sentinel."""
     return _embed_pil_image(pil_image)

@@ -11,15 +11,26 @@ from io import BytesIO
 
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
-# ─── Similarity thresholds (MobileNetV3 + fixed orthogonal projection) ────────
-# MobileNetV3 cosine similarity distribution is different from CLIP.
-# After L2 normalisation, inner product = cosine similarity (range -1 to 1).
-# Empirically for visual duplicates/near-duplicates:
-#   > 0.90 = very high visual overlap → confirmed match
-#   > 0.75 = significant visual similarity → suspect, flag for review
-# These are conservative — better to flag more and let Adjudicator filter.
-MATCH_THRESHOLD   = 0.90   # confirmed piracy (high visual overlap)
-SUSPECT_THRESHOLD = 0.75   # flagged for adjudication
+# ─── Similarity thresholds (MobileNetV3-Large, 960-dim, L2-normalised) ────────
+# After L2 normalisation, FAISS inner product = cosine similarity (range -1 to 1).
+#
+# MobileNetV3 raw feature cosine similarity for visual content:
+#   ~0.95+ = near-identical frames (same video, minor re-encode)
+#   ~0.85-0.95 = very similar (same scene, slight crop/color change)
+#   ~0.75-0.85 = similar content (same sport/event, different angle)
+#   <0.75 = different content
+#
+# We use a 2-layer detection:
+#   Layer 1 (MobileNetV3 cosine): fast approximate match
+#   Layer 2 (pHash): pixel-level cross-check for confirmed matches
+#
+# Thresholds are intentionally conservative (flag more, let Adjudicator filter):
+MATCH_THRESHOLD   = 0.88   # high confidence visual match → confirmed piracy
+SUSPECT_THRESHOLD = 0.75   # moderate similarity → flag for adjudication
+
+# Confidence score mapping: cosine similarity → 0-100 scale
+# We remap so that 0.75 = 75% confidence, 0.88 = 88%, etc.
+# This is intuitive and consistent with the Adjudicator's threshold (55%)
 
 
 def _fetch_image(url: str) -> Image.Image:
@@ -31,9 +42,8 @@ def _fetch_image(url: str) -> Image.Image:
 def _thumbnail_variants(thumbnail_url: str) -> list:
     """
     Return a list of image URLs to try for a given thumbnail URL.
-    For YouTube, we try maxresdefault → hqdefault → original.
-    Higher-res thumbnails often contain actual footage frames rather than
-    designed artwork, which improves CLIP similarity against vault frames.
+    For YouTube, try maxresdefault → hqdefault → mqdefault → original.
+    Higher-res thumbnails contain actual footage frames, improving match accuracy.
     """
     yt_match = re.search(r'/vi/([a-zA-Z0-9_-]+)/', thumbnail_url)
     if yt_match:
@@ -48,21 +58,23 @@ def _thumbnail_variants(thumbnail_url: str) -> list:
 
 
 def _cosine_to_confidence(similarity: float) -> float:
+    """Map cosine similarity to a 0-100 confidence score."""
     return round(max(0.0, min(100.0, similarity * 100)), 2)
 
 
 def _severity_from_confidence(confidence: float) -> str:
-    if confidence >= 85:
+    if confidence >= 88:
         return "CRITICAL"
-    if confidence >= 60:
+    if confidence >= 75:
         return "WARNING"
     return "INFO"
 
 
 def scan_thumbnail(thumbnail_url: str) -> dict:
     """
-    Scan a suspect thumbnail against the FAISS vault using CLIP embeddings.
+    Scan a suspect thumbnail against the FAISS vault using MobileNetV3 embeddings.
     Tries multiple thumbnail resolutions and keeps the best match score.
+    Falls back to pHash cross-check for high-similarity candidates.
     """
     if vector_db.ntotal == 0:
         return {"error": "FAISS vault is empty. Ingest an official video first."}
@@ -70,12 +82,11 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
     urls = _thumbnail_variants(thumbnail_url)
     k    = min(3, vector_db.ntotal)
 
-    best_similarity  = -1.0
-    best_sims        = None
-    best_idxs        = None
-    best_pil         = None
+    best_similarity = -1.0
+    best_sims       = None
+    best_idxs       = None
+    best_pil        = None
 
-    # Try each URL variant — keep the one with the highest vault similarity
     for url in urls:
         try:
             img = _fetch_image(url)
@@ -119,7 +130,6 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
             best_idx     = top_matches[0]["vault_index"]
             vault_meta   = metadata_store.get(str(best_idx), {})
             video_path   = vault_meta.get("video_path", "")
-            # Resolve relative path
             if video_path and not os.path.isabs(video_path):
                 video_path = os.path.join(os.path.dirname(__file__), "..", video_path)
             if video_path and os.path.exists(video_path):
@@ -127,9 +137,9 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
                 ret, frame = cap.read()
                 cap.release()
                 if ret:
-                    vault_pil  = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                    vault_hash = imagehash.phash(vault_pil)
-                    hash_diff  = suspect_hash - vault_hash
+                    vault_pil   = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    vault_hash  = imagehash.phash(vault_pil)
+                    hash_diff   = suspect_hash - vault_hash
                     phash_score = max(0, 100 - (hash_diff * 4))
                     phash_match = hash_diff < 15
         except Exception:
@@ -164,7 +174,7 @@ def tool_scan_thumbnail(thumbnail_url: str) -> str:
             f"Matched vault frame at {top.get('timestamp_sec', '?')}s."
         )
 
-    if result["confidence_score"] >= 60:
+    if result["confidence_score"] >= 75:
         return f"[SUSPECT] Partial match. Confidence: {result['confidence_score']}% — flagged for review."
 
     return f"[CLEAN] No match. Confidence: {result['confidence_score']}%"
