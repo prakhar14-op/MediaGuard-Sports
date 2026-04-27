@@ -5,7 +5,6 @@ import numpy as np
 import json
 import os
 from PIL import Image
-from transformers import CLIPProcessor, CLIPModel
 
 VAULT_DIR = os.path.join(os.path.dirname(__file__), "..", "vault")
 os.makedirs(VAULT_DIR, exist_ok=True)
@@ -13,41 +12,51 @@ os.makedirs(VAULT_DIR, exist_ok=True)
 VAULT_INDEX_PATH = os.path.join(VAULT_DIR, "faiss_vault.index")
 VAULT_META_PATH  = os.path.join(VAULT_DIR, "vault_metadata.json")
 
-# ─── CLIP ViT-B/32 ────────────────────────────────────────────────────────────
-# Render free tier: 512MB RAM total.
-# CLIP ViT-B/32 weights alone = ~350MB.
-# Optimisations applied:
-#   1. half() — float16 weights cut model RAM from ~350MB to ~175MB
-#   2. torch.inference_mode() — no gradient graph, saves ~20% memory vs no_grad
-#   3. Batch processing — multiple frames per CLIP call instead of 1-by-1
-#   4. Frame resize to 224px before PIL conversion — less memory per frame
-#   5. Sample interval 10s instead of 3s — 3x fewer frames, still enough for matching
-print("[Archivist] Loading CLIP ViT-B/32...")
-_MODEL_ID  = "openai/clip-vit-base-patch32"
-_processor = CLIPProcessor.from_pretrained(_MODEL_ID)
-_clip      = CLIPModel.from_pretrained(_MODEL_ID)
-_clip.eval()
+# ─── CLIP — lazy loaded ───────────────────────────────────────────────────────
+# DO NOT load CLIP at import time — Render free tier has 512MB RAM and CLIP
+# weights alone are ~350MB.  Loading at startup causes OOM before the server
+# even starts.  Instead we load once on first use and cache the references.
+_MODEL_ID     = "openai/clip-vit-base-patch32"
+_processor    = None
+_clip         = None
+_USE_HALF     = False
+EMBEDDING_DIM = 512
 
-# float16 halves model RAM: ~350MB → ~175MB — safe on CPU, no accuracy loss for similarity
-try:
-    _clip = _clip.half()
-    _USE_HALF = True
-    print("[Archivist] CLIP running in float16 (half precision) — RAM optimised")
-except Exception:
-    _USE_HALF = False
-    print("[Archivist] float16 not available — running float32")
+BATCH_SIZE          = 4   # conservative for 512MB — increase to 8 on paid tier
+SAMPLE_EVERY_N_SECS = 10  # 1 frame per 10s — 90min video = ~540 frames
 
-EMBEDDING_DIM = 512   # CLIP ViT-B/32 image embedding dimension
-BATCH_SIZE    = 8     # frames per CLIP forward pass — tune down to 4 if OOM
-SAMPLE_EVERY_N_SECS = 10  # 1 frame per 10s — 90min video = ~540 frames (was 1800 at 3s)
 
-print(f"[Archivist] CLIP ready — dim={EMBEDDING_DIM}, batch={BATCH_SIZE}, sample={SAMPLE_EVERY_N_SECS}s")
+def _load_clip():
+    """Load CLIP into memory on first call. Subsequent calls are no-ops."""
+    global _processor, _clip, _USE_HALF
+    if _clip is not None:
+        return  # already loaded
 
-# Use IndexFlatIP (inner product) — after L2 normalisation this equals cosine similarity
+    from transformers import CLIPProcessor, CLIPModel
+    print("[Archivist] Loading CLIP ViT-B/32 (lazy)...")
+
+    _processor = CLIPProcessor.from_pretrained(_MODEL_ID)
+
+    # Load directly to float16 to avoid the double-RAM spike that happens when
+    # transformers loads float32 then converts — saves ~175MB peak RAM.
+    try:
+        _clip = CLIPModel.from_pretrained(_MODEL_ID, torch_dtype=torch.float16)
+        _USE_HALF = True
+        print("[Archivist] CLIP loaded in float16 — ~175MB RAM")
+    except Exception:
+        _clip = CLIPModel.from_pretrained(_MODEL_ID)
+        _USE_HALF = False
+        print("[Archivist] CLIP loaded in float32 — ~350MB RAM")
+
+    _clip.eval()
+    print(f"[Archivist] CLIP ready — dim={EMBEDDING_DIM}, batch={BATCH_SIZE}, sample={SAMPLE_EVERY_N_SECS}s")
+
+
+# ─── FAISS vault ─────────────────────────────────────────────────────────────
+# IndexFlatIP: inner product after L2 normalisation = cosine similarity
 vector_db      = faiss.IndexFlatIP(EMBEDDING_DIM)
 metadata_store = {}
 
-# Load existing vault — only if dimension matches
 if os.path.exists(VAULT_INDEX_PATH):
     try:
         loaded = faiss.read_index(VAULT_INDEX_PATH)
@@ -71,24 +80,25 @@ def _embed_batch(pil_images: list) -> np.ndarray:
     """
     Embed a batch of PIL images via CLIP.
     Returns float32 array of shape (N, 512), L2-normalised.
-    Batching is ~4-8x faster than calling CLIP one image at a time.
+    CLIP is loaded on first call (lazy).
     """
+    _load_clip()
+
     inputs = _processor(
-        text=["dummy"] * len(pil_images),   # CLIP needs text — dummy is fine for image-only
+        text=["dummy"] * len(pil_images),
         images=pil_images,
         return_tensors="pt",
         padding=True,
     )
 
-    # Cast inputs to float16 if model is half precision
     if _USE_HALF:
         inputs["pixel_values"] = inputs["pixel_values"].half()
 
-    with torch.inference_mode():   # lighter than no_grad — no grad graph at all
+    with torch.inference_mode():
         outputs = _clip(**inputs)
 
     embeddings = outputs.image_embeds.detach().cpu().float().numpy().astype("float32")
-    faiss.normalize_L2(embeddings)   # normalise so IP = cosine similarity
+    faiss.normalize_L2(embeddings)
     return embeddings
 
 
@@ -99,14 +109,8 @@ def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
 
 def tool_ingest_video(video_path: str) -> str:
     """
-    Extracts 1 frame every SAMPLE_EVERY_N_SECS seconds, embeds in batches via
-    CLIP ViT-B/32 (float16), stores in FAISS vault.
-
-    Render free tier optimisations:
-    - 10s sample interval  → ~3x fewer frames than 3s
-    - Batch size 8         → ~8x faster embedding than 1-by-1
-    - float16 model        → ~175MB instead of ~350MB
-    - Resize to 224px      → smaller tensors, less RAM per frame
+    Extracts 1 frame every SAMPLE_EVERY_N_SECS seconds, embeds in batches
+    via CLIP ViT-B/32 (float16, lazy-loaded), stores in FAISS vault.
     """
     global vector_db, metadata_store
 
@@ -126,13 +130,12 @@ def tool_ingest_video(video_path: str) -> str:
     fps             = cap.get(cv2.CAP_PROP_FPS) or 25.0
     sample_interval = max(1, int(fps * SAMPLE_EVERY_N_SECS))
 
-    frame_id        = 0
-    extracted_count = 0
-    batch_images    = []   # PIL images waiting to be embedded
-    batch_timestamps= []   # corresponding timestamps in seconds
+    frame_id         = 0
+    extracted_count  = 0
+    batch_images     = []
+    batch_timestamps = []
 
     def _flush_batch():
-        """Embed and store the current batch."""
         nonlocal extracted_count
         if not batch_images:
             return
@@ -154,8 +157,7 @@ def tool_ingest_video(video_path: str) -> str:
             break
 
         if frame_id % sample_interval == 0:
-            # Resize to 224px (CLIP's native input size) before converting to PIL
-            # — reduces memory per frame significantly for HD/4K videos
+            # Resize to 224px — CLIP's native input size, reduces RAM per frame
             h, w = frame.shape[:2]
             if max(h, w) > 224:
                 scale = 224 / max(h, w)
@@ -172,12 +174,11 @@ def tool_ingest_video(video_path: str) -> str:
         frame_id += 1
 
     cap.release()
-    _flush_batch()   # embed any remaining frames
+    _flush_batch()
 
     if extracted_count == 0:
         return f"[ERROR] No frames extracted from video — file may be corrupted or have no readable frames: {video_path}"
 
-    # Atomic write: write to temp files first, then rename
     tmp_index = VAULT_INDEX_PATH + ".tmp"
     tmp_meta  = VAULT_META_PATH  + ".tmp"
     try:

@@ -18,12 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Pre-download CLIP ViT-B/32 weights (~350MB) so cold starts are fast
-RUN python -c "\
-from transformers import CLIPProcessor, CLIPModel; \
-CLIPModel.from_pretrained('openai/clip-vit-base-patch32'); \
-CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32'); \
-print('CLIP ViT-B/32 cached')"
+# NOTE: CLIP weights are downloaded on first use (lazy loading) to avoid
+# OOM during Docker build on memory-constrained environments.
+# Set HF_TOKEN env var on Render to avoid HuggingFace rate limits.
 
 EXPOSE 8001
 CMD ["python", "main.py"]
