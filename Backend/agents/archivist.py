@@ -33,8 +33,9 @@ VAULT_META_PATH  = os.path.join(VAULT_DIR, "vault_metadata.json")
 _model        = None
 EMBEDDING_DIM = 960   # MobileNetV3-Large avgpool output — no projection needed
 
-BATCH_SIZE          = 16
-SAMPLE_EVERY_N_SECS = 10   # 1 frame per 10s — 90min video ≈ 540 frames
+BATCH_SIZE          = 32   # larger batch = fewer model calls = faster
+SAMPLE_EVERY_N_SECS = 30   # 1 frame per 30s — 90min video ≈ 180 frames
+                           # still enough for piracy detection (same video = high similarity)
 
 _TRANSFORM = transforms.Compose([
     transforms.Resize(256),
@@ -146,9 +147,10 @@ def tool_ingest_video(video_path: str) -> str:
     extracted_count  = 0
     batch_images     = []
     batch_timestamps = []
+    last_log_count   = 0   # for progress logging
 
     def _flush_batch():
-        nonlocal extracted_count
+        nonlocal extracted_count, last_log_count
         if not batch_images:
             return
         embeddings = _embed_batch(batch_images)
@@ -160,6 +162,10 @@ def tool_ingest_video(video_path: str) -> str:
                 "timestamp_sec": ts,
             }
             extracted_count += 1
+        # Log every 50 frames so we can see progress in Render logs
+        if extracted_count - last_log_count >= 50:
+            print(f"[Archivist] Embedded {extracted_count} frames so far…")
+            last_log_count = extracted_count
         batch_images.clear()
         batch_timestamps.clear()
 
