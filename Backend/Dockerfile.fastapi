@@ -10,8 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY requirements.txt .
 
-# CPU-only torch — much smaller than default CUDA build (~800MB vs ~2.5GB)
-RUN pip install --no-cache-dir torch \
+# CPU-only torch + torchvision — MobileNetV3 needs torchvision
+# Much smaller than CLIP (transformers not needed)
+RUN pip install --no-cache-dir torch torchvision \
     --index-url https://download.pytorch.org/whl/cpu
 
 RUN pip install --no-cache-dir -r requirements.txt

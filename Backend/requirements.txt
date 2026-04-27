@@ -7,7 +7,7 @@ google-generativeai
 yt-dlp
 opencv-python-headless
 torch
-transformers
+torchvision
 faiss-cpu
 Pillow
 numpy
