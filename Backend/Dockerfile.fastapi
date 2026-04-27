@@ -19,9 +19,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# NOTE: CLIP weights are downloaded on first use (lazy loading) to avoid
-# OOM during Docker build on memory-constrained environments.
-# Set HF_TOKEN env var on Render to avoid HuggingFace rate limits.
+# Pre-download MobileNetV3-Large weights (~22MB) at build time so the
+# first ingest doesn't trigger a network download during request handling.
+# This also validates that torchvision + torch are correctly installed.
+RUN python -c "\
+from torchvision import models; \
+m = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V2); \
+print('MobileNetV3-Large weights cached')"
 
 EXPOSE 8001
 CMD ["python", "main.py"]
