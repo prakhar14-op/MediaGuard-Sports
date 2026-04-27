@@ -14,7 +14,7 @@ const fastapiClient = axios.create({
 });
 
 export const ingestAsset = async (req, res) => {
-  const { official_video_url } = req.body;
+  const { official_video_url, video_title = "" } = req.body;
   const jobId = uuidv4();
   const io = getIO();
 
@@ -25,11 +25,10 @@ export const ingestAsset = async (req, res) => {
 
   try {
     io.emit("ingest:progress", {
-      jobId, assetId: asset._id, stage: "downloading", message: "Downloading official video via yt-dlp...",
+      jobId, assetId: asset._id, stage: "downloading", message: "Downloading official video...",
     });
 
     // Kick off async ingest on FastAPI — returns immediately
-    const { official_video_url, video_title = "" } = req.body;
     await fastapiClient.post("/ingest", { official_video_url, job_id: jobId, video_title });
 
     // Poll FastAPI for status every 10s (max 35 min)
