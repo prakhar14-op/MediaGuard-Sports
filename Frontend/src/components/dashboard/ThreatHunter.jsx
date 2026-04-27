@@ -173,11 +173,12 @@ const LogEntry = ({ event }) => {
 const ThreatHunter = () => {
   const {
     activeJobId, setActiveJobId, swarmPhase, swarmRunning,
-    swarmComplete, setSwarmComplete, addNotification, joinRoom, incidents,
+    swarmComplete, setSwarmComplete, addNotification, joinRoom, incidents, assets,
   } = useDashboard();
   const { eventLog } = useSocket();
 
   const [url,       setUrl]       = useState('');
+  const [title,     setTitle]     = useState('');
   const [launching, setLaunching] = useState(false);
   const [error,     setError]     = useState('');
   const logRef = useRef(null);
@@ -200,6 +201,15 @@ const ThreatHunter = () => {
     ? eventLog.filter(e => e.payload?.jobId === activeJobId || !e.payload?.jobId)
     : eventLog.slice(0, 40);
 
+  // Auto-fill title from ingested assets when URL matches
+  useEffect(() => {
+    if (!url.trim() || !assets?.length) return;
+    const match = assets.find(a =>
+      a.official_video_url === url.trim() && a.status === 'complete' && a.title
+    );
+    if (match) setTitle(match.title);
+  }, [url, assets]);
+
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = 0;
   }, [jobLog.length]);
@@ -213,11 +223,12 @@ const ThreatHunter = () => {
     setLaunching(true);
     setSwarmComplete(null);
     try {
-      const res = await swarmService.run(url.trim());
+      const res = await swarmService.run(url.trim(), title.trim());
       const { jobId } = res.data;
       setActiveJobId(jobId);
       joinRoom(jobId);
       setUrl('');
+      setTitle('');
       addNotification({ type: 'agent', title: 'Swarm Deployed', message: `Job ${jobId.slice(0, 8)}… — monitoring all 5 phases.` });
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to launch swarm. Is the backend running?');
@@ -267,38 +278,56 @@ const ThreatHunter = () => {
           )}
         </div>
 
-        <form onSubmit={handleLaunch} style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
-            <input
-              type="url" value={url} onChange={e => setUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              disabled={swarmRunning}
+        <form onSubmit={handleLaunch} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
+              <input
+                type="url" value={url} onChange={e => setUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                disabled={swarmRunning}
+                style={{
+                  width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
+                  borderRadius: 12, border: `1px solid ${G.border}`, background: '#f8fafc',
+                  fontSize: 13, color: G.text, outline: 'none', boxSizing: 'border-box',
+                }}
+                onFocus={e => e.target.style.borderColor = G.tealBdr}
+                onBlur={e => e.target.style.borderColor = G.border}
+              />
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              type="submit"
+              disabled={swarmRunning || launching || !url.trim()}
               style={{
-                width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
-                borderRadius: 12, border: `1px solid ${G.border}`, background: '#f8fafc',
-                fontSize: 13, color: G.text, outline: 'none', boxSizing: 'border-box',
+                display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
+                borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                background: swarmRunning || launching ? G.border : `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
+                color: swarmRunning || launching ? G.muted : '#fff',
+                boxShadow: swarmRunning ? 'none' : `0 0 20px ${G.teal}30`,
+                opacity: (!url.trim() && !swarmRunning) ? 0.5 : 1,
               }}
-              onFocus={e => e.target.style.borderColor = G.tealBdr}
-              onBlur={e => e.target.style.borderColor = G.border}
-            />
+            >
+              {launching || swarmRunning ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={14} />}
+              {swarmRunning ? 'Running…' : 'Launch'}
+            </motion.button>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            type="submit"
-            disabled={swarmRunning || launching || !url.trim()}
+          {/* Title field — bypasses YouTube bot detection on cloud IPs.
+              Auto-filled when URL matches an already-ingested asset. */}
+          <input
+            type="text" value={title} onChange={e => setTitle(e.target.value)}
+            placeholder="Video title (optional — auto-filled if already ingested, helps Spider search)"
+            disabled={swarmRunning}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
-              borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13,
-              background: swarmRunning || launching ? G.border : `linear-gradient(135deg, ${G.teal}, #2dd4bf)`,
-              color: swarmRunning || launching ? G.muted : '#fff',
-              boxShadow: swarmRunning ? 'none' : `0 0 20px ${G.teal}30`,
-              opacity: (!url.trim() && !swarmRunning) ? 0.5 : 1,
+              width: '100%', padding: '9px 14px',
+              borderRadius: 12, border: `1px solid ${title ? G.tealBdr : G.border}`,
+              background: title ? '#f0fdf9' : '#f8fafc',
+              fontSize: 12, color: G.text, outline: 'none', boxSizing: 'border-box',
+              transition: 'all 0.2s',
             }}
-          >
-            {launching || swarmRunning ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={14} />}
-            {swarmRunning ? 'Running…' : 'Launch'}
-          </motion.button>
+            onFocus={e => e.target.style.borderColor = G.tealBdr}
+            onBlur={e => { e.target.style.borderColor = title ? G.tealBdr : G.border; }}
+          />
         </form>
 
         {error && (

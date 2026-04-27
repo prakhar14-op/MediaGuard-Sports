@@ -51,6 +51,12 @@ COUNTRY_CENTROIDS = {
 # yt-dlp options reused for both metadata extraction and search
 _YDL_OPTS = {"quiet": True, "noplaylist": True, "extract_flat": False}
 
+# Optional: Add proxy if PROXY_URL env var is set (helps bypass YouTube bot detection on cloud IPs)
+_PROXY_URL = os.getenv("PROXY_URL", "").strip()
+if _PROXY_URL:
+    _YDL_OPTS["proxy"] = _PROXY_URL
+    print(f"[Spider] Using proxy: {_PROXY_URL}")
+
 
 def _fallback_queries(title: str) -> list[str]:
     """Rule-based query generation — used when LLM is unavailable."""
@@ -119,17 +125,31 @@ def crawl(official_video_url: str, official_country: str = "US", official_title:
         official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
     else:
         # Extract title from the URL via yt-dlp
+        # On cloud IPs (Render, Railway, etc.) YouTube often blocks yt-dlp with bot detection.
+        # We try with cookies first, then fall back to URL-derived title so the swarm
+        # can still run search queries rather than failing completely.
+        ydl_meta_opts = dict(_YDL_OPTS)
+        cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
+        if os.path.exists(cookies_path):
+            ydl_meta_opts["cookiefile"] = cookies_path
+
         try:
-            with yt_dlp.YoutubeDL(_YDL_OPTS) as ydl:
+            with yt_dlp.YoutubeDL(ydl_meta_opts) as ydl:
                 info             = ydl.extract_info(official_video_url, download=False)
                 title            = info.get("title", "Unknown Video")
                 official_country = info.get("channel_country") or official_country
         except Exception as e:
-            # Non-YouTube URL or yt-dlp failed — use URL filename as fallback
+            # Non-YouTube URL or yt-dlp failed (bot detection on cloud IPs) —
+            # derive a best-effort title from the URL so search queries still run.
             print(f"[Spider] yt-dlp metadata extraction failed: {e}")
             fallback = official_video_url.split("/")[-1].split("?")[0].rsplit(".", 1)[0]
-            title = fallback if fallback and len(fallback) > 3 else None
-            if not title:
+            # For YouTube watch URLs, try to use the video ID as a last resort label
+            yt_id_match = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", official_video_url)
+            if fallback and len(fallback) > 3 and not fallback.startswith("watch"):
+                title = fallback
+            elif yt_id_match:
+                title = f"video {yt_id_match.group(1)}"
+            else:
                 return {"error": "Could not extract video metadata. For non-YouTube URLs, provide official_title."}
         official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
 
@@ -153,10 +173,15 @@ def crawl(official_video_url: str, official_country: str = "US", official_title:
     seen_urls = set()
 
     # ── Step 3: Search YouTube for suspects ───────────────────────────────────
+    ydl_search_opts = dict(_YDL_OPTS)
+    cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
+    if os.path.exists(cookies_path):
+        ydl_search_opts["cookiefile"] = cookies_path
+
     for query in search_queries:
         search_string = f"ytsearch5:{query}"
         try:
-            with yt_dlp.YoutubeDL(_YDL_OPTS) as ydl:
+            with yt_dlp.YoutubeDL(ydl_search_opts) as ydl:
                 results = ydl.extract_info(search_string, download=False)
                 entries = results.get("entries", []) if results else []
 

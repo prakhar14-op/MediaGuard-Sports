@@ -1,15 +1,17 @@
 FROM python:3.11-slim
 
-# System deps for OpenCV headless + FAISS
+# System deps for OpenCV headless + FAISS + Node.js (required by yt-dlp for YouTube extraction)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 libglib2.0-0 ffmpeg \
+    libgl1 libglib2.0-0 ffmpeg curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt .
 
 # CPU-only torch — much smaller than default CUDA build (~800MB vs ~2.5GB)
-RUN pip install --no-cache-dir torch torchvision \
+RUN pip install --no-cache-dir torch \
     --index-url https://download.pytorch.org/whl/cpu
 
 RUN pip install --no-cache-dir -r requirements.txt

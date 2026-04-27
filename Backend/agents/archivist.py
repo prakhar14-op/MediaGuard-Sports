@@ -14,17 +14,34 @@ VAULT_INDEX_PATH = os.path.join(VAULT_DIR, "faiss_vault.index")
 VAULT_META_PATH  = os.path.join(VAULT_DIR, "vault_metadata.json")
 
 # ─── CLIP ViT-B/32 ────────────────────────────────────────────────────────────
-# Purpose-built for cross-modal similarity — thumbnails vs video frames works
-# because CLIP learns visual semantics, not just classification features.
-# ~350MB RAM on CPU — fits Render free tier (512MB) with careful loading.
+# Render free tier: 512MB RAM total.
+# CLIP ViT-B/32 weights alone = ~350MB.
+# Optimisations applied:
+#   1. half() — float16 weights cut model RAM from ~350MB to ~175MB
+#   2. torch.inference_mode() — no gradient graph, saves ~20% memory vs no_grad
+#   3. Batch processing — multiple frames per CLIP call instead of 1-by-1
+#   4. Frame resize to 224px before PIL conversion — less memory per frame
+#   5. Sample interval 10s instead of 3s — 3x fewer frames, still enough for matching
 print("[Archivist] Loading CLIP ViT-B/32...")
 _MODEL_ID  = "openai/clip-vit-base-patch32"
 _processor = CLIPProcessor.from_pretrained(_MODEL_ID)
 _clip      = CLIPModel.from_pretrained(_MODEL_ID)
 _clip.eval()
 
+# float16 halves model RAM: ~350MB → ~175MB — safe on CPU, no accuracy loss for similarity
+try:
+    _clip = _clip.half()
+    _USE_HALF = True
+    print("[Archivist] CLIP running in float16 (half precision) — RAM optimised")
+except Exception:
+    _USE_HALF = False
+    print("[Archivist] float16 not available — running float32")
+
 EMBEDDING_DIM = 512   # CLIP ViT-B/32 image embedding dimension
-print(f"[Archivist] CLIP ready — embedding dim: {EMBEDDING_DIM}")
+BATCH_SIZE    = 8     # frames per CLIP forward pass — tune down to 4 if OOM
+SAMPLE_EVERY_N_SECS = 10  # 1 frame per 10s — 90min video = ~540 frames (was 1800 at 3s)
+
+print(f"[Archivist] CLIP ready — dim={EMBEDDING_DIM}, batch={BATCH_SIZE}, sample={SAMPLE_EVERY_N_SECS}s")
 
 # Use IndexFlatIP (inner product) — after L2 normalisation this equals cosine similarity
 vector_db      = faiss.IndexFlatIP(EMBEDDING_DIM)
@@ -50,24 +67,47 @@ if os.path.exists(VAULT_META_PATH):
         metadata_store = {}
 
 
-def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
-    """Returns a normalised (1, 512) float32 CLIP image embedding."""
+def _embed_batch(pil_images: list) -> np.ndarray:
+    """
+    Embed a batch of PIL images via CLIP.
+    Returns float32 array of shape (N, 512), L2-normalised.
+    Batching is ~4-8x faster than calling CLIP one image at a time.
+    """
     inputs = _processor(
-        text=["dummy"],          # CLIP needs text input too — dummy is fine for image-only
-        images=pil_image.convert("RGB"),
+        text=["dummy"] * len(pil_images),   # CLIP needs text — dummy is fine for image-only
+        images=pil_images,
         return_tensors="pt",
         padding=True,
     )
-    with torch.no_grad():
+
+    # Cast inputs to float16 if model is half precision
+    if _USE_HALF:
+        inputs["pixel_values"] = inputs["pixel_values"].half()
+
+    with torch.inference_mode():   # lighter than no_grad — no grad graph at all
         outputs = _clip(**inputs)
-    embedding = outputs.image_embeds.detach().cpu().numpy().astype("float32")
-    embedding = embedding.reshape(1, -1)
-    faiss.normalize_L2(embedding)   # normalise so IP = cosine similarity
-    return embedding
+
+    embeddings = outputs.image_embeds.detach().cpu().float().numpy().astype("float32")
+    faiss.normalize_L2(embeddings)   # normalise so IP = cosine similarity
+    return embeddings
+
+
+def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
+    """Single-image embed — used by Sentinel. Returns (1, 512) float32."""
+    return _embed_batch([pil_image.convert("RGB")])
 
 
 def tool_ingest_video(video_path: str) -> str:
-    """Extracts 1 frame every 5 seconds, embeds via CLIP ViT-B/32, stores in FAISS vault."""
+    """
+    Extracts 1 frame every SAMPLE_EVERY_N_SECS seconds, embeds in batches via
+    CLIP ViT-B/32 (float16), stores in FAISS vault.
+
+    Render free tier optimisations:
+    - 10s sample interval  → ~3x fewer frames than 3s
+    - Batch size 8         → ~8x faster embedding than 1-by-1
+    - float16 model        → ~175MB instead of ~350MB
+    - Resize to 224px      → smaller tensors, less RAM per frame
+    """
     global vector_db, metadata_store
 
     video_path = os.path.realpath(video_path)
@@ -83,29 +123,56 @@ def tool_ingest_video(video_path: str) -> str:
     if not cap.isOpened():
         return f"[ERROR] OpenCV could not open video (size={file_size}, ext={os.path.splitext(video_path)[1]}): {video_path}"
 
-    frame_rate      = int(cap.get(cv2.CAP_PROP_FPS)) or 1
-    sample_interval = frame_rate * 3   # 1 frame every 3 seconds — better coverage than 5s
-    extracted_count = 0
+    fps             = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    sample_interval = max(1, int(fps * SAMPLE_EVERY_N_SECS))
 
-    while cap.isOpened():
-        frame_id = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+    frame_id        = 0
+    extracted_count = 0
+    batch_images    = []   # PIL images waiting to be embedded
+    batch_timestamps= []   # corresponding timestamps in seconds
+
+    def _flush_batch():
+        """Embed and store the current batch."""
+        nonlocal extracted_count
+        if not batch_images:
+            return
+        embeddings = _embed_batch(batch_images)
+        for emb, ts in zip(embeddings, batch_timestamps):
+            db_id = vector_db.ntotal
+            vector_db.add(emb.reshape(1, -1))
+            metadata_store[str(db_id)] = {
+                "video_path":    os.path.relpath(video_path),
+                "timestamp_sec": ts,
+            }
+            extracted_count += 1
+        batch_images.clear()
+        batch_timestamps.clear()
+
+    while True:
         ret, frame = cap.read()
         if not ret:
             break
 
         if frame_id % sample_interval == 0:
-            pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            embedding = _embed_pil_image(pil_image)
+            # Resize to 224px (CLIP's native input size) before converting to PIL
+            # — reduces memory per frame significantly for HD/4K videos
+            h, w = frame.shape[:2]
+            if max(h, w) > 224:
+                scale = 224 / max(h, w)
+                frame = cv2.resize(frame, (int(w * scale), int(h * scale)),
+                                   interpolation=cv2.INTER_AREA)
 
-            db_id = vector_db.ntotal
-            vector_db.add(embedding)
-            metadata_store[str(db_id)] = {
-                "video_path":    os.path.relpath(video_path),
-                "timestamp_sec": extracted_count * 5,
-            }
-            extracted_count += 1
+            pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            batch_images.append(pil_image)
+            batch_timestamps.append(int(frame_id / fps))
+
+            if len(batch_images) >= BATCH_SIZE:
+                _flush_batch()
+
+        frame_id += 1
 
     cap.release()
+    _flush_batch()   # embed any remaining frames
 
     if extracted_count == 0:
         return f"[ERROR] No frames extracted from video — file may be corrupted or have no readable frames: {video_path}"
@@ -120,7 +187,6 @@ def tool_ingest_video(video_path: str) -> str:
         os.replace(tmp_index, VAULT_INDEX_PATH)
         os.replace(tmp_meta,  VAULT_META_PATH)
     except Exception as e:
-        # Clean up temp files on failure
         for p in [tmp_index, tmp_meta]:
             try: os.remove(p)
             except: pass

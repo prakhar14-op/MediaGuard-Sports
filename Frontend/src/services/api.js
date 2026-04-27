@@ -11,7 +11,7 @@ const api = axios.create({
 
 // ─── Swarm orchestrator ───────────────────────────────────────────────────────
 export const swarmService = {
-  run: (url) => api.post('/swarm/run', { official_video_url: url }),
+  run: (url, title = '') => api.post('/swarm/run', { official_video_url: url, official_title: title }),
 };
 
 // ─── Archivist ────────────────────────────────────────────────────────────────

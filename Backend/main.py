@@ -5,6 +5,7 @@ import uvicorn
 import os
 import glob
 import sys
+import json
 import numpy as np
 import threading
 import re
@@ -50,8 +51,38 @@ def _setup_cookies():
 
 _setup_cookies()
 
-# In-memory job store for async ingest tracking
-_ingest_jobs: dict = {}
+# ── Persistent job store ──────────────────────────────────────────────────────
+# File-backed so jobs survive Render restarts / process crashes.
+# On Render free tier the in-memory dict is wiped on every cold start, causing
+# the Node poller to receive 404s forever.  Writing to /tmp is ephemeral but
+# survives within the same deployment lifecycle (minutes–hours), which is long
+# enough for any ingest job to complete.
+
+_JOBS_DIR = os.path.join("/tmp", "mediaguard_jobs")
+os.makedirs(_JOBS_DIR, exist_ok=True)
+
+def _job_path(job_id: str) -> str:
+    return os.path.join(_JOBS_DIR, f"{job_id}.json")
+
+def _read_job(job_id: str) -> dict | None:
+    p = _job_path(job_id)
+    if not os.path.exists(p):
+        return None
+    try:
+        with open(p, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+def _write_job(job_id: str, data: dict):
+    p = _job_path(job_id)
+    tmp = p + ".tmp"
+    try:
+        with open(tmp, "w") as f:
+            json.dump(data, f)
+        os.replace(tmp, p)
+    except Exception as e:
+        print(f"[Jobs] Failed to write job {job_id}: {e}")
 
 
 # ─── Request models ───────────────────────────────────────────────────────────
@@ -242,7 +273,7 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
     url            = payload.official_video_url
     provided_title = payload.video_title.strip()
 
-    _ingest_jobs[job_id] = {"status": "downloading", "message": "Starting download…"}
+    _write_job(job_id, {"status": "downloading", "message": "Starting download…"})
 
     def _run():
         import yt_dlp
@@ -259,7 +290,7 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
             if is_direct:
                 # ── Direct download (Google Drive, CDN, etc.) ─────────────────
                 local_path = os.path.join(OFFICIAL_DIR, f"{job_id}.mp4")
-                _ingest_jobs[job_id]["message"] = "Downloading video file directly…"
+                _write_job(job_id, {**(_read_job(job_id) or {}), "message": "Downloading video file directly…"})
 
                 # Convert Google Drive share URL to direct download URL
                 gdrive_match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
@@ -319,7 +350,7 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
                 matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
                 if not matches:
-                    _ingest_jobs[job_id] = {"status": "failed", "message": "Downloaded file not found on disk"}
+                    _write_job(job_id, {"status": "failed", "message": "Downloaded file not found on disk"})
                     return
 
                 local_path = matches[0]
@@ -330,11 +361,11 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                     local_path = new_path
 
             # ── Embed frames ──────────────────────────────────────────────────
-            _ingest_jobs[job_id] = {"status": "processing", "message": "Extracting and embedding frames…"}
+            _write_job(job_id, {"status": "processing", "message": "Extracting and embedding frames…"})
 
             result = tool_ingest_video(local_path)
             if "[ERROR]" in result:
-                _ingest_jobs[job_id] = {"status": "failed", "message": result}
+                _write_job(job_id, {"status": "failed", "message": result})
                 return
 
             frame_count = 0
@@ -344,13 +375,13 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                 pass
 
             if frame_count == 0:
-                _ingest_jobs[job_id] = {
+                _write_job(job_id, {
                     "status":  "failed",
                     "message": "No frames extracted — video may be corrupted or too short",
-                }
+                })
                 return
 
-            _ingest_jobs[job_id] = {
+            _write_job(job_id, {
                 "status":      "complete",
                 "title":       title,
                 "local_path":  local_path,
@@ -358,11 +389,11 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                 "vault_size":  vector_db.ntotal,
                 "tx_hash":     "0x" + np.random.bytes(32).hex(),
                 "message":     result,
-            }
+            })
 
         except Exception as e:
             print(f"[Ingest] Error: {e}")
-            _ingest_jobs[job_id] = {"status": "failed", "message": str(e)}
+            _write_job(job_id, {"status": "failed", "message": str(e)})
 
     threading.Thread(target=_run, daemon=True).start()
 
@@ -372,7 +403,7 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
 @app.get("/ingest/status/{job_id}")
 def ingest_status(job_id: str):
-    job = _ingest_jobs.get(job_id)
+    job = _read_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
     return {"success": True, "job_id": job_id, **job}
