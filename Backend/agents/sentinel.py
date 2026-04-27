@@ -11,11 +11,15 @@ from io import BytesIO
 
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
-# ─── CLIP cosine similarity thresholds ───────────────────────────────────────
-# CLIP ViT-B/32 is trained for semantic similarity.
-# After L2 normalisation, inner product = cosine similarity (range 0–1).
-MATCH_THRESHOLD   = 0.82   # confirmed piracy
-SUSPECT_THRESHOLD = 0.65   # flagged for adjudication
+# ─── Similarity thresholds (MobileNetV3 + fixed orthogonal projection) ────────
+# MobileNetV3 cosine similarity distribution is different from CLIP.
+# After L2 normalisation, inner product = cosine similarity (range -1 to 1).
+# Empirically for visual duplicates/near-duplicates:
+#   > 0.90 = very high visual overlap → confirmed match
+#   > 0.75 = significant visual similarity → suspect, flag for review
+# These are conservative — better to flag more and let Adjudicator filter.
+MATCH_THRESHOLD   = 0.90   # confirmed piracy (high visual overlap)
+SUSPECT_THRESHOLD = 0.75   # flagged for adjudication
 
 
 def _fetch_image(url: str) -> Image.Image:
@@ -144,7 +148,7 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
 
 
 def tool_scan_thumbnail(thumbnail_url: str) -> str:
-    """Fetches a suspect thumbnail, runs CLIP + pHash dual detection against the FAISS vault."""
+    """Fetches a suspect thumbnail, runs MobileNetV3 + pHash dual detection against the FAISS vault."""
     result = scan_thumbnail(thumbnail_url)
 
     if "error" in result:
