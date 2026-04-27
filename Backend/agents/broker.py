@@ -13,14 +13,18 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# Licensing revenue rates (USD per 1000 views) — these are the IP holder's
+# share from a licensing deal, NOT the full ad CPM.
+# Real-world content licensing for fan/UGC content pays 10-20% of ad revenue.
+# YouTube ad CPM ~$4.50 → IP holder licensing rate ~$0.50-0.80/1000 views
 PLATFORM_CPM = {
-    "YouTube":   4.50,
-    "TikTok":    0.02,
-    "Twitter":   0.50,
-    "Instagram": 1.20,
-    "Telegram":  0.10,
-    "Reddit":    0.30,
-    "Other":     0.50,
+    "YouTube":   0.60,   # ~13% of YouTube's $4.50 CPM
+    "TikTok":    0.004,  # TikTok pays very little; licensing even less
+    "Twitter":   0.08,
+    "Instagram": 0.20,
+    "Telegram":  0.02,
+    "Reddit":    0.05,
+    "Other":     0.08,
 }
 
 _CONTRACT_PROMPT = """You are a Web3 revenue broker and IP licensing specialist.
@@ -118,8 +122,10 @@ def _recommend_split(tier: str, risk_score: int) -> tuple[int, int]:
 
 
 def _estimate_monthly_revenue(view_count: int, platform: str) -> float:
-    cpm = PLATFORM_CPM.get(platform, 0.50)
-    return round((view_count / 1000) * cpm, 2)
+    cpm = PLATFORM_CPM.get(platform, 0.08)
+    raw = (view_count / 1000) * cpm
+    # Cap at $500/mo — realistic ceiling for a single fan content licensing deal
+    return round(min(raw, 500.0), 2)
 
 
 def deploy_contract(
