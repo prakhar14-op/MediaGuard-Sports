@@ -88,4 +88,35 @@ httpServer.listen(PORT, () => {
   console.log(`🛡️  MediaGuard running on http://localhost:${PORT}`);
 });
 
+// ── Render free tier keepalive ────────────────────────────────────────────────
+// Render spins down free services after 15 min of inactivity.
+// We ping both services every 14 min to keep them awake.
+// Only runs in production (not locally).
+if (process.env.NODE_ENV !== "development") {
+  const SELF_URL    = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  const FASTAPI_URL = process.env.FASTAPI_URL || "http://127.0.0.1:8001";
+  const PING_MS     = 14 * 60 * 1000; // 14 minutes
+
+  const ping = async (url, name) => {
+    try {
+      await axios.get(url, { timeout: 10000 });
+      console.log(`[Keepalive] ${name} ✓`);
+    } catch {
+      console.log(`[Keepalive] ${name} — no response (may be cold starting)`);
+    }
+  };
+
+  // Wait 2 min after startup before first ping
+  setTimeout(() => {
+    ping(SELF_URL, "Node");
+    ping(FASTAPI_URL, "FastAPI");
+    setInterval(() => {
+      ping(SELF_URL, "Node");
+      ping(FASTAPI_URL, "FastAPI");
+    }, PING_MS);
+  }, 2 * 60 * 1000);
+
+  console.log("[Keepalive] Self-ping enabled — pinging every 14 min");
+}
+
 export default app;
