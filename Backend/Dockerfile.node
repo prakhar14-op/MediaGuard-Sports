@@ -4,4 +4,4 @@ COPY server/package*.json ./
 RUN npm ci --omit=dev
 COPY server/ .
 EXPOSE 8000
-CMD ["node", "--env-file=../.env", "app.js"]
+CMD ["node", "app.js"]
