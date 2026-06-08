@@ -18,6 +18,9 @@ from agents.sentinel import scan_thumbnail, MATCH_THRESHOLD, SUSPECT_THRESHOLD
 from agents.adjudicator import adjudicate, batch_adjudicate
 from agents.enforcer import issue_dmca
 from agents.broker import deploy_contract
+from evidence_vault import create_evidence
+import tempfile
+import pathlib
 
 app = FastAPI(title="MediaGuard ML API")
 
@@ -230,9 +233,28 @@ def enforce_incident(payload: EnforceRequest):
             integrity_hash   = payload.integrity_hash,
             offence_number   = payload.offence_number,
         )
+        # Record enforcement draft as evidence
+        try:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", dir=OFFICIAL_DIR)
+            meta = {"payload": payload.dict(), "result": result}
+            tmp.write(json.dumps(meta, ensure_ascii=False).encode("utf-8"))
+            tmp.close()
+            _record_evidence_async({"metadata": tmp.name}, metadata=meta)
+        except Exception as ee:
+            print(f"[Evidence] enforce record failed: {ee}")
         return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Enforcer failed: {e}")
+
+
+def _record_evidence_async(artifacts: dict, metadata: dict, reviewer: str = "automated_agent"):
+    def _job():
+        try:
+            create_evidence(artifacts=artifacts, metadata=metadata, reviewer=reviewer)
+        except Exception as e:
+            print(f"[Evidence] failed to record: {e}")
+    t = threading.Thread(target=_job, daemon=True)
+    t.start()
 
 @app.post("/broker")
 def broker_incident(payload: BrokerRequest):
@@ -246,6 +268,15 @@ def broker_incident(payload: BrokerRequest):
             view_count     = payload.view_count,
             risk_score     = payload.risk_score,
         )
+        # Record evidence (metadata only) asynchronously
+        try:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", dir=OFFICIAL_DIR)
+            meta = {"payload": payload.dict(), "result": result}
+            tmp.write(json.dumps(meta, ensure_ascii=False).encode("utf-8"))
+            tmp.close()
+            _record_evidence_async({"metadata": tmp.name}, metadata=meta)
+        except Exception as ee:
+            print(f"[Evidence] broker record failed: {ee}")
         return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Broker failed: {e}")
@@ -262,9 +293,21 @@ def adjudicate_incident(payload: AdjudicateRequest):
             country          = payload.country,
             confidence_score = payload.confidence_score,
         )
+        # Record adjudicator decision
+        try:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", dir=OFFICIAL_DIR)
+            meta = {"payload": payload.dict(), "verdict": verdict}
+            tmp.write(json.dumps(meta, ensure_ascii=False).encode("utf-8"))
+            tmp.close()
+            _record_evidence_async({"metadata": tmp.name}, metadata=meta)
+        except Exception as ee:
+            print(f"[Evidence] adjudicate record failed: {ee}")
         return {"success": True, "verdict": verdict}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Adjudicator failed: {e}")
+
+
+    # Note: recording of adjudications can be done by callers; keep lightweight here.
 
 @app.post("/adjudicate/batch")
 def adjudicate_batch(payload: BatchAdjudicateRequest):
@@ -276,6 +319,15 @@ def scan_suspect(payload: ScanRequest):
     result = scan_thumbnail(payload.thumbnail_url, suspect_video_url=payload.url)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+    # Record the scan result as evidence (metadata + thumbnail URL)
+    try:
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", dir=OFFICIAL_DIR)
+        meta = {"payload": payload.dict(), "result": result}
+        tmp.write(json.dumps(meta, ensure_ascii=False).encode("utf-8"))
+        tmp.close()
+        _record_evidence_async({"metadata": tmp.name}, metadata=meta)
+    except Exception as ee:
+        print(f"[Evidence] scan record failed: {ee}")
     return {"success": True, **result}
 
 @app.post("/scan/batch")
