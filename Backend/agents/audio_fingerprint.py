@@ -151,8 +151,13 @@ def _read_wav_pcm(wav_path: str) -> tuple[np.ndarray, int]:
 
         sample_rate = 16000
         while True:
-            chunk_id   = f.read(4)
-            chunk_size = struct.unpack("<I", f.read(4))[0]
+            chunk_id_raw = f.read(4)
+            chunk_size_raw = f.read(4)
+            # Guard against unexpected EOF
+            if len(chunk_id_raw) < 4 or len(chunk_size_raw) < 4:
+                raise ValueError("WAV file truncated — no data chunk found")
+            chunk_id   = chunk_id_raw
+            chunk_size = struct.unpack("<I", chunk_size_raw)[0]
             if chunk_id == b"fmt ":
                 fmt_data    = f.read(chunk_size)
                 sample_rate = struct.unpack("<I", fmt_data[4:8])[0]

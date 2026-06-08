@@ -186,6 +186,34 @@ def debug_sentinel(thumbnail_url: str):
     }
 
 
+@app.get("/forensics/status")
+def forensics_status():
+    """Check forensics agent status — model loaded, heuristic or neural mode."""
+    try:
+        from agents.forensics import get_forensics_status
+        return get_forensics_status()
+    except Exception as e:
+        return {"error": str(e), "model_ready": False}
+
+
+class ForensicsRequest(BaseModel):
+    thumbnail_url: str
+
+
+@app.post("/forensics/analyze")
+def forensics_analyze(payload: ForensicsRequest):
+    """
+    Analyze a thumbnail for platform sharing chain.
+    Returns: detected chain, first leak platform, leak risk, JPEG quality.
+    """
+    try:
+        from agents.forensics import analyze_thumbnail_url
+        result = analyze_thumbnail_url(payload.thumbnail_url)
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Forensics failed: {e}")
+
+
 # ─── Agent endpoints ──────────────────────────────────────────────────────────
 
 @app.post("/enforce")
@@ -261,6 +289,7 @@ def batch_scan(payload: BatchScanRequest):
         result = scan_thumbnail(
             node["thumbnail_url"],
             suspect_video_url=node.get("url", ""),
+            batch_mode=True,   # skip audio download in batch — prevents OOM
         )
         return {"node": node, "scan": result}
 

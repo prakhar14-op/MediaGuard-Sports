@@ -143,11 +143,15 @@ def _fuse_confidence(
     return round(max(0.0, min(100.0, fused * 100)), 2)
 
 
-def _run_audio_layer(suspect_url: str) -> dict:
+def _run_audio_layer(suspect_url: str, batch_mode: bool = False) -> dict:
     """
     Run audio fingerprinting on a suspect URL.
     Downloads the audio, runs two-layer check against vault.
     Non-blocking — returns empty result on any failure.
+
+    batch_mode: if True, skip audio layer entirely. Downloading audio for
+    20+ suspects in parallel would exhaust memory on Render 512MB and hit
+    YouTube rate limits. Audio is checked only for single-scan mode.
     """
     empty = {
         "audio_match":        False,
@@ -160,7 +164,7 @@ def _run_audio_layer(suspect_url: str) -> dict:
         "skipped":            True,
     }
 
-    if not suspect_url:
+    if not suspect_url or batch_mode:
         return empty
 
     try:
@@ -178,7 +182,7 @@ def _run_audio_layer(suspect_url: str) -> dict:
         return empty
 
 
-def scan_thumbnail(thumbnail_url: str, suspect_video_url: str = "") -> dict:
+def scan_thumbnail(thumbnail_url: str, suspect_video_url: str = "", batch_mode: bool = False) -> dict:
     """
     Full four-layer scan of a suspect.
 
@@ -186,8 +190,7 @@ def scan_thumbnail(thumbnail_url: str, suspect_video_url: str = "") -> dict:
         thumbnail_url:     URL of the suspect's thumbnail image
         suspect_video_url: URL of the suspect's video (for audio layer)
                            If empty, audio layer is skipped.
-
-    Returns comprehensive result with per-layer scores and fused confidence.
+        batch_mode:        If True, skip audio layer (too slow for parallel batch scanning)
     """
     if vector_db.ntotal == 0:
         return {"error": "FAISS vault is empty. Ingest an official video first."}
@@ -289,8 +292,22 @@ def scan_thumbnail(thumbnail_url: str, suspect_video_url: str = "") -> dict:
 
     # ── Layer 4: Audio fingerprint + Mel embedding ────────────────────────────
     # THE KILLER LAYER — catches pirates who crop/blur video but keep audio
-    audio_result = _run_audio_layer(suspect_video_url)
+    # Skipped in batch_mode to avoid OOM from parallel downloads
+    audio_result = _run_audio_layer(suspect_video_url, batch_mode=batch_mode)
     audio_score  = (audio_result.get("audio_confidence", 0.0) or 0.0) / 100.0
+
+    # ── Layer 5: Forensic chain analysis ─────────────────────────────────────
+    # Platform sharing chain reconstruction (Su et al. 2025)
+    # Tells us HOW the content was distributed, not just that it was
+    forensics_result = {"chain": [], "chain_length": 0, "confidence": 0.0,
+                        "first_platform": None, "leak_risk": "low",
+                        "method": "skipped", "error": None}
+    if best_pil is not None:
+        try:
+            from agents.forensics import analyze_image_chain
+            forensics_result = analyze_image_chain(best_pil)
+        except Exception as e:
+            forensics_result["error"] = str(e)
 
     # ── Confidence fusion ─────────────────────────────────────────────────────
     fused_confidence = _fuse_confidence(
@@ -336,6 +353,15 @@ def scan_thumbnail(thumbnail_url: str, suspect_video_url: str = "") -> dict:
         "audio_best_video":   audio_result.get("best_video_id"),
         "audio_best_ts":      audio_result.get("best_timestamp_sec"),
         "audio_skipped":      bool(audio_result.get("skipped", True)),
+
+        # ── Layer 5: Forensic chain ───────────────────────────────────────────
+        "forensics_chain":        forensics_result.get("chain", []),
+        "forensics_chain_length": int(forensics_result.get("chain_length", 0)),
+        "forensics_confidence":   float(forensics_result.get("confidence", 0.0)),
+        "forensics_first_platform": forensics_result.get("first_platform"),
+        "forensics_leak_risk":    forensics_result.get("leak_risk", "low"),
+        "forensics_method":       forensics_result.get("method", "skipped"),
+        "forensics_jpeg_quality": float(forensics_result.get("jpeg_quality", 0.0)),
 
         # ── Meta ──────────────────────────────────────────────────────────────
         "thumbnail_url":      thumbnail_url,

@@ -54,7 +54,7 @@ import faiss
 import numpy as np
 import json
 import os
-from PIL import Image, ImageFilter
+from PIL import Image
 
 VAULT_DIR = os.path.join(os.path.dirname(__file__), "..", "vault")
 os.makedirs(VAULT_DIR, exist_ok=True)
