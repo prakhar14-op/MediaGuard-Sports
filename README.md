@@ -40,13 +40,17 @@ Data stores and state:
 
 ## Capabilities & Features
 
-- Automated OSINT crawling (yt-dlp) to discover suspect streams and thumbnails.
+- Cross-platform leak detection across YouTube, TikTok, Telegram, Instagram, and direct CDN sources.
+- Automated OSINT crawling (yt-dlp) to discover suspect streams, re-streams, and video thumbnails.
+- Selective frame comparison using sampled keyframes, temporal frame overlap, and per-frame similarity scoring.
 - Dual-layer visual detection: CLIP embeddings (FAISS) + pHash cross-check for robust matches.
-- Audio fingerprinting support for stronger evidence pairing.
+- Audio fingerprint crawling and correlation to match suspect streams against official broadcast audio.
+- Embedding sync across ingest and scan agents to ensure consistent similarity scoring and reduce false positives.
+- Live stream optimization using thumbnail resolution fallback, adaptive thresholds, and real-time scoring.
 - LLM-powered adjudication with structured JSON output and a provider fallback chain (Groq → Gemini).
 - Automated DMCA drafting and tiered escalation (human approval required to send).
 - Broker flow to propose revenue-sharing contracts for fair-use/fan content.
-- Real-time dashboard with Socket.IO for live monitoring and manual overrides.
+- Real-time dashboard with Socket.IO for live monitoring, manual overrides, and live incident maps.
 - Evidence Vault with Chain-of-Custody (SHA-256, timestamps, reviewer, entry hash) — records artifacts immutably.
 - Simple sync client to push evidence to an investigator workstation or mounted archive.
 
@@ -148,76 +152,6 @@ Notes: The ML engine requires significant CPU and RAM for `torch` and FAISS; for
 - Consider legal review before enabling any automated takedown dispatch — keep the human-in-the-loop approval enforced for production.
 
 ---
-
-If you'd like, I can (A) scrub the git history to remove `Backend/.env`, (B) add an acceptance test that runs a mock swarm, or (C) wire the sync client to S3. Which should I do next?## Table of Contents
-
-1. [Problem Statement](#problem-statement)
-2. [Architecture Overview](#architecture-overview)
-3. [The Five-Agent Pipeline](#the-five-agent-pipeline)
-4. [Backend — FastAPI (ML Engine)](#backend--fastapi-ml-engine)
-5. [Backend — Node.js (Orchestration API)](#backend--nodejs-orchestration-api)
-6. [Database Models](#database-models)
-7. [Frontend — React Dashboard](#frontend--react-dashboard)
-8. [Real-Time Layer — Socket.IO](#real-time-layer--socketio)
-9. [Tech Stack](#tech-stack)
-10. [Environment Variables](#environment-variables)
-11. [Local Development](#local-development)
-12. [Deployment](#deployment)
-13. [API Reference](#api-reference)
-
----
-
-## Problem Statement
-
-Live sports broadcasts are routinely pirated across YouTube, TikTok, Telegram, and other platforms in real time. Rights holders face two problems:
-
-1. **Speed** — Manual DMCA processes take days. A 90-minute match is over before a notice is processed.
-2. **Scale** — A single event may have hundreds of simultaneous unauthorized streams across dozens of accounts.
-
-MediaGuard Sports solves both by automating the entire detection-to-enforcement pipeline with sub-minute latency, operating autonomously 24/7.
-
----
-
-## Architecture Overview
-
-The system has three independently deployed services that communicate over HTTP and WebSockets:
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        React Frontend (Firebase)                        │
-│  Dashboard │ Asset Vault │ Threat Hunter │ Incident Table │ Broker Panel │
-└───────────────────────────┬─────────────────────────────────────────────┘
-                            │  REST + Socket.IO
-                            ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     Node.js Orchestration API (Render)                  │
-│  Express + Socket.IO │ MongoDB │ Redis │ Swarm Orchestrator             │
-└───────────────────────────┬─────────────────────────────────────────────┘
-                            │  Internal HTTP (axios)
-                            ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      FastAPI ML Engine (Render)                         │
-│  CLIP ViT-B/32 │ FAISS │ yt-dlp │ LLM Agents (Groq / Gemini)            │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-**Data stores:**
-- **MongoDB Atlas** — persistent storage for all incidents, DMCA records, contracts, hunt jobs, ingested assets
-- **Redis** — adjudicator verdict cache (24h TTL), repeat offence counters (90-day TTL), threat velocity tracking (7-day TTL)
-- **FAISS** — in-process vector database for video frame embeddings (512-dim CLIP ViT-B/32 features)
-- **File system** (`/tmp`) — persistent job state for ingest jobs across server restarts
-
----
-
-## The Five-Agent Pipeline
-
-The core of MediaGuard is an autonomous five-phase swarm that runs sequentially. Each phase emits real-time Socket.IO events to the frontend dashboard.
-
-### Phase 1 — Spider 🕷️
-
-**File:** `Backend/agents/spider.py`
-
-The Spider is an OSINT agent that finds pirated copies of an official video across the web.
 
 **How it works:**
 1. Accepts an official video URL and optional title
