@@ -1,14 +1,155 @@
-# MediaGuard Sports 🛡️
+# MediaGuard Sports — Autonomous Media Rights Enforcement
 
-**Autonomous AI-powered sports media rights enforcement platform.**
+MediaGuard Sports is a production-ready prototype that automates detection, classification, and response for suspected copyright infringement of live sports broadcasts. It combines a FastAPI machine-learning engine, a Node.js orchestrator, and a React dashboard to provide an end-to-end swarm pipeline: ingest → crawl → detect → adjudicate → remediate.
 
-MediaGuard Sports is a full-stack, production-deployed system that detects, classifies, and autonomously enforces intellectual property violations against live sports broadcasts in real time. It runs a five-agent AI pipeline — from crawling the web for pirated content to drafting legally compliant DMCA notices and minting revenue-sharing smart contracts — entirely without human intervention, then surfaces everything through a real-time dashboard for human review and approval.
-
-**Live Demo:** https://mediaguard-sports-bc615.web.app
+This README documents architecture, capabilities, deployment notes, and the Evidence Vault & Chain-of-Custody feature.
 
 ---
 
-## Table of Contents
+**Table of Contents**
+
+- [Architecture](#architecture)
+- [Capabilities & Features](#capabilities--features)
+- [Core Components](#core-components)
+- [Evidence Vault & Chain-of-Custody](#evidence-vault--chain-of-custody)
+- [Security & Secrets](#security--secrets)
+- [Local Development & Quickstart](#local-development--quickstart)
+- [Testing & Smoke Checks](#testing--smoke-checks)
+- [Next Steps & Suggestions](#next-steps--suggestions)
+
+---
+
+## Architecture
+
+High level:
+
+React Frontend (Vite)  ←→  Node.js Orchestrator (Express + Socket.IO)  ←→  FastAPI ML Engine
+
+- Frontend: interactive dashboard, human-in-the-loop approvals, real-time Socket.IO updates.
+- Node Orchestrator: API gateway, MongoDB persistence, Redis caching, swarm coordination.
+- FastAPI ML Engine: ingestion, CLIP/FAISS visual search, perceptual hashing (pHash), audio fingerprints, LLM-based adjudication and drafting.
+
+Data stores and state:
+
+- MongoDB: persistent models (HuntJob, Incident, DMCARecord, ContractRecord, IngestedAsset).
+- Redis (Upstash): caching (verdicts), velocity/repeat-offence counters.
+- FAISS: in-process vector index for image embeddings.
+- Filesystem `/tmp` and `vault/`: job persistence and Evidence Vault storage.
+
+---
+
+## Capabilities & Features
+
+- Automated OSINT crawling (yt-dlp) to discover suspect streams and thumbnails.
+- Dual-layer visual detection: CLIP embeddings (FAISS) + pHash cross-check for robust matches.
+- Audio fingerprinting support for stronger evidence pairing.
+- LLM-powered adjudication with structured JSON output and a provider fallback chain (Groq → Gemini).
+- Automated DMCA drafting and tiered escalation (human approval required to send).
+- Broker flow to propose revenue-sharing contracts for fair-use/fan content.
+- Real-time dashboard with Socket.IO for live monitoring and manual overrides.
+- Evidence Vault with Chain-of-Custody (SHA-256, timestamps, reviewer, entry hash) — records artifacts immutably.
+- Simple sync client to push evidence to an investigator workstation or mounted archive.
+
+---
+
+## Core Components (where to look)
+
+- FastAPI ML Engine: `Backend/main.py`, `Backend/agents/*` (archivist.py, spider.py, sentinel.py, adjudicator.py, enforcer.py, broker.py)
+- Node Orchestrator: `Backend/server/app.js`, `Backend/server/controllers/*`, `Backend/server/routes/*`
+- Frontend: `Frontend/src/*` (React + Vite)
+- Evidence Vault: `Backend/evidence_vault/vault.py` and helper `evidence_sync_client.py`
+
+---
+
+## Evidence Vault & Chain-of-Custody
+
+New feature: every detection, adjudication, enforcement draft, and broker proposal can be recorded in the Evidence Vault. Key behaviors:
+
+- Artifacts stored per-evidence under `Backend/vault/evidence/<evidence_id>/` (raw files, frames, embeddings, metadata).
+- Chain-of-custody appended to `Backend/vault/evidence_chain.jsonl` as newline-delimited JSON entries.
+- Each chain entry contains: `evidence_id`, `timestamp`, `reviewer`, `metadata`, `artifacts`, `prev_hash`, `entry_hash` (SHA-256 over canonical JSON).
+- Helper API: import `create_evidence` from `evidence_vault` and call with `artifacts` + `metadata`. A lightweight async worker is wired into FastAPI endpoints for `scan`, `adjudicate`, `enforce`, and `broker` to automatically record metadata.
+- Small sync client: `Backend/evidence_sync_client.py` watches the vault and copies evidence to a mounted investigator path. Replace with S3/Dropbox/SFTP uploader for production.
+
+Quick example (from Python):
+
+```py
+from evidence_vault import create_evidence
+
+eid, entry = create_evidence(
+    artifacts={"raw_video": "/tmp/video.mp4", "metadata": "/tmp/meta.json"},
+    metadata={"official_title": "Match X"},
+    reviewer="automated_agent",
+)
+```
+
+---
+
+## Security & Secrets (Important)
+
+Priority: remove any committed credentials immediately.
+
+- This repository contained `Backend/.env` with live API keys and a Redis URL. Revoke and rotate those keys now and remove the file from the git history if necessary.
+- Move secrets to a managed secret store (Render secrets, GitHub Actions secrets, AWS Secrets Manager, etc.) and use environment variables at runtime.
+- Add secret scanning to CI (git-secrets, truffleHog, etc.) and add `.env` to `.gitignore`.
+
+---
+
+## Local Development & Quickstart
+
+Prereqs: Python 3.11+, Node 18+, npm, optionally Docker for reproducible environments.
+
+1. Backend (FastAPI ML Engine)
+
+```bash
+cd Backend
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS / Linux:
+# source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+2. Node Orchestrator
+
+```bash
+cd Backend/server
+npm install
+node app.js   # or `npm run dev` for watch mode
+```
+
+3. Frontend (dev)
+
+```bash
+cd Frontend
+npm install
+npm run dev
+```
+
+Notes: The ML engine requires significant CPU and RAM for `torch` and FAISS; for production use GPU-backed instances or a scaled inference service.
+
+---
+
+## Testing & Smoke Checks
+
+- There is a Node `test.js` for orchestrator sanity checks: `cd Backend/server && npm run test`.
+- A quick Python smoke snippet is included in the Evidence Vault tests; run a small script to exercise `create_evidence`, `list_evidence`, and `verify_chain` (see `Backend/EVIDENCE_README.md`).
+
+---
+
+## Next Steps & Suggestions
+
+- Immediately: rotate exposed API keys and remove `Backend/.env` from the repo.
+- Add: CI secret scanning and pre-commit hooks to prevent future leaks.
+- Improve: evidence sync to use an authenticated object store (S3/Backblaze) with signed URLs and server-side encryption.
+- Add: unit and integration tests for agent flows, and a lightweight acceptance test that runs the full swarm in a sandbox.
+- Consider legal review before enabling any automated takedown dispatch — keep the human-in-the-loop approval enforced for production.
+
+---
+
+If you'd like, I can (A) scrub the git history to remove `Backend/.env`, (B) add an acceptance test that runs a mock swarm, or (C) wire the sync client to S3. Which should I do next?## Table of Contents
 
 1. [Problem Statement](#problem-statement)
 2. [Architecture Overview](#architecture-overview)
