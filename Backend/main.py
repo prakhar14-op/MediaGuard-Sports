@@ -101,7 +101,7 @@ class ScanRequest(BaseModel):
     account_handle: str = ""
     platform:       str = "Unknown"
     title:          str = ""
-    url:            str = ""
+    url:            str = ""   # suspect video URL — used by audio layer
     country:        str = ""
 
 class BatchScanRequest(BaseModel):
@@ -150,11 +150,18 @@ def health():
 def vault_status():
     from agents.archivist import temporal_store
     total_sigs = sum(len(v) for v in temporal_store.values())
+    try:
+        from agents.audio_fingerprint import get_audio_vault_status
+        audio_status = get_audio_vault_status()
+    except Exception:
+        audio_status = {"fingerprints_stored": 0, "audio_vectors": 0}
     return {
-        "vault_size":         vector_db.ntotal,
-        "status":             "ready" if vector_db.ntotal > 0 else "empty",
-        "temporal_signatures": total_sigs,
-        "videos_ingested":    len(temporal_store),
+        "vault_size":              vector_db.ntotal,
+        "status":                  "ready" if vector_db.ntotal > 0 else "empty",
+        "temporal_signatures":     total_sigs,
+        "videos_ingested":         len(temporal_store),
+        "audio_fingerprints":      audio_status["fingerprints_stored"],
+        "audio_mel_vectors":       audio_status["audio_vectors"],
     }
 
 @app.get("/debug/cookies")
@@ -238,7 +245,7 @@ def adjudicate_batch(payload: BatchAdjudicateRequest):
 
 @app.post("/scan")
 def scan_suspect(payload: ScanRequest):
-    result = scan_thumbnail(payload.thumbnail_url)
+    result = scan_thumbnail(payload.thumbnail_url, suspect_video_url=payload.url)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return {"success": True, **result}
@@ -251,7 +258,10 @@ def batch_scan(payload: BatchScanRequest):
     nodes = [n for n in payload.threat_nodes if n.get("thumbnail_url")]
 
     def _scan_one(node):
-        result = scan_thumbnail(node["thumbnail_url"])
+        result = scan_thumbnail(
+            node["thumbnail_url"],
+            suspect_video_url=node.get("url", ""),
+        )
         return {"node": node, "scan": result}
 
     results = []

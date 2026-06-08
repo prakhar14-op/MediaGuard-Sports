@@ -614,11 +614,27 @@ def tool_ingest_video(video_path: str) -> str:
             except: pass
         return f"[ERROR] Failed to save vault: {e}"
 
+    # ── Stage 8: Audio Fingerprinting ─────────────────────────────────────────
+    # Run after visual pipeline — independent, non-blocking on failure
+    audio_result = {"success": False, "fingerprint_length": 0, "embeddings_stored": 0}
+    try:
+        from agents.audio_fingerprint import ingest_audio
+        audio_result = ingest_audio(video_path, video_id)
+        if audio_result["success"]:
+            print(f"[Archivist] Audio: {audio_result['fingerprint_length']} fingerprint segments, "
+                  f"{audio_result['embeddings_stored']} Mel embeddings, "
+                  f"{audio_result['duration_sec']:.1f}s")
+        else:
+            print(f"[Archivist] Audio fingerprinting skipped: {audio_result.get('error', 'unknown')}")
+    except Exception as e:
+        print(f"[Archivist] Audio fingerprinting error (non-fatal): {e}")
+
     return (
         f"[SUCCESS] Scene-aware ingest complete. "
         f"Scenes={extracted_count}, Skipped={skipped_similar}, "
         f"ScreenFixes={screen_detections}, "
         f"TemporalSigs={len(signatures)}, "
+        f"AudioFP={audio_result.get('fingerprint_length', 0)}, "
         f"VaultSize={vector_db.ntotal}."
     )
 
