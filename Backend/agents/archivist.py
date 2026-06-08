@@ -629,6 +629,64 @@ def tool_ingest_video(video_path: str) -> str:
     except Exception as e:
         print(f"[Archivist] Audio fingerprinting error (non-fatal): {e}")
 
+    # ── Stage 9: Video Forensic Signature ─────────────────────────────────────
+    # Run DCT/SRM forensics on a sample of scene-representative frames.
+    # Strategy: take every N-th scene frame (not all) to build a platform
+    # trace signature for the whole video. This is the correct application of
+    # the paper's forensics — aggregated over frames, NOT per-thumbnail.
+    #
+    # We sample at most 10 representative frames to keep this fast.
+    # Forensic signatures change slowly across a video (platform compression
+    # is applied uniformly), so 5-10 frames is statistically sufficient.
+    forensic_sig = {}
+    try:
+        from agents.forensics import analyze_image_chain
+        sample_step  = max(1, len(scene_embeddings_with_ts) // 10)
+        sample_frames_ts = [
+            scene_embeddings_with_ts[i][1]
+            for i in range(0, len(scene_embeddings_with_ts), sample_step)
+        ][:10]
+
+        # Re-open video to extract the sampled frames for forensic analysis
+        cap2 = cv2.VideoCapture(video_path)
+        if cap2.isOpened():
+            platform_votes: dict = {}   # platform → [score, ...]
+            for ts in sample_frames_ts:
+                cap2.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
+                ret2, frame2 = cap2.read()
+                if not ret2:
+                    continue
+                pil2 = Image.fromarray(cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB))
+                f_result = analyze_image_chain(pil2)
+                for plat, score in f_result.get("platform_scores", {}).items():
+                    platform_votes.setdefault(plat, []).append(score)
+            cap2.release()
+
+            # Aggregate: mean score per platform
+            forensic_sig = {
+                plat: float(round(float(np.mean(scores)), 3))
+                for plat, scores in platform_votes.items()
+                if scores
+            }
+            # Store alongside temporal signatures
+            temporal_store[f"{video_id}__forensics"] = {
+                "video_id":          video_id,
+                "platform_signature": forensic_sig,
+                "frames_analyzed":   len(sample_frames_ts),
+            }
+            # Re-save temporal store with forensics appended
+            tmp_t = VAULT_TEMPORAL_PATH + ".tmp"
+            with open(tmp_t, "w") as _f:
+                json.dump(temporal_store, _f)
+            os.replace(tmp_t, VAULT_TEMPORAL_PATH)
+
+            top_platform = max(forensic_sig, key=forensic_sig.get) if forensic_sig else None
+            print(f"[Archivist] Forensic signature: {forensic_sig} "
+                  f"(likely platform: {top_platform})")
+
+    except Exception as e:
+        print(f"[Archivist] Forensic signature (non-fatal): {e}")
+
     return (
         f"[SUCCESS] Scene-aware ingest complete. "
         f"Scenes={extracted_count}, Skipped={skipped_similar}, "

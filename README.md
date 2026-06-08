@@ -56,14 +56,14 @@ The system has three independently deployed services that communicate over HTTP 
                             ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                      FastAPI ML Engine (Render)                         │
-│  MobileNetV3 │ FAISS │ yt-dlp │ LLM Agents (Groq / Gemini)             │
+│  CLIP ViT-B/32 │ FAISS │ yt-dlp │ LLM Agents (Groq / Gemini)            │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Data stores:**
 - **MongoDB Atlas** — persistent storage for all incidents, DMCA records, contracts, hunt jobs, ingested assets
 - **Redis** — adjudicator verdict cache (24h TTL), repeat offence counters (90-day TTL), threat velocity tracking (7-day TTL)
-- **FAISS** — in-process vector database for video frame embeddings (960-dim MobileNetV3 features)
+- **FAISS** — in-process vector database for video frame embeddings (512-dim CLIP ViT-B/32 features)
 - **File system** (`/tmp`) — persistent job state for ingest jobs across server restarts
 
 ---
@@ -102,14 +102,14 @@ The Sentinel is the visual fingerprinting agent that determines whether a suspec
 **How it works:**
 1. Receives all suspect nodes from Spider
 2. For each YouTube thumbnail URL, tries 4 resolution variants: `maxresdefault` → `hqdefault` → `mqdefault` → original. Higher-res thumbnails contain actual footage frames rather than designed artwork, improving match accuracy
-3. Embeds each thumbnail via MobileNetV3-Large (960-dim, L2-normalised) — the same model used during ingest
+3. Embeds each thumbnail via CLIP ViT-B/32 (512-dim, L2-normalised) — the same model used during ingest
 4. Searches the FAISS vault using inner product (= cosine similarity after L2 normalisation)
 5. Keeps the best similarity score across all resolution variants
 
 **Two-layer detection:**
 
-**Layer 1 — MobileNetV3 cosine similarity:**
-- `≥ 0.88` → `CRITICAL` — confirmed match, high visual overlap
+**Layer 1 — CLIP cosine similarity:**
+- `≥ 0.90` → `CRITICAL` — confirmed match, high visual overlap
 - `≥ 0.75` → `WARNING` — suspect, flagged for adjudication
 - `< 0.75` → `INFO` — no significant match
 
@@ -274,7 +274,7 @@ The ingest endpoint is fully asynchronous. It:
 **Frame embedding:**
 - Extracts 1 frame every 30 seconds (configurable via `SAMPLE_EVERY_N_SECS`)
 - Resizes to 224px before embedding (reduces memory per frame)
-- Batches 32 frames per MobileNetV3 inference call (configurable via `BATCH_SIZE`)
+- Batches 32 frames per CLIP ViT-B/32 inference call (configurable via `BATCH_SIZE`)
 - Logs progress every 50 frames
 
 **Job persistence:**
@@ -285,21 +285,20 @@ The ingest endpoint is fully asynchronous. It:
 
 ### FAISS Vault
 
-- `IndexFlatIP(960)` — inner product index, 960 dimensions (MobileNetV3-Large avgpool output)
+- `IndexFlatIP(512)` — inner product index, 512 dimensions (CLIP ViT-B/32 output)
 - After L2 normalisation, inner product equals cosine similarity
 - Vault is persisted to `vault/faiss_vault.index` using atomic writes
 - Metadata (video path, timestamp) stored in `vault/vault_metadata.json`
-- On startup, loads existing vault if dimension matches (960), otherwise starts fresh
+- On startup, loads existing vault if dimension matches (512), otherwise starts fresh
 
 ### Archivist — `Backend/agents/archivist.py`
 
-The Archivist manages the FAISS vault and all embedding operations.
+The Archivist manages the FAISS vault and all embedding operations using CLIP ViT-B/32.
 
-**MobileNetV3-Large choice:**
-- CLIP ViT-B/32 (350MB HuggingFace download) caused OOM on Render's 512MB free tier
-- MobileNetV3-Large is 22MB, bundled in torchvision, loads in < 1 second
-- Raw 960-dim avgpool features (no projection) — random projections reduce accuracy
-- Pre-downloaded at Docker build time to avoid runtime network calls
+**CLIP ViT-B/32 choice:**
+- CLIP ViT-B/32 produces superior semantic visual embeddings for piracy detection.
+- Raw 512-dim features (no projection) are L2-normalised and stored in FAISS.
+- Pre-downloaded at Docker build time to avoid runtime network calls.
 
 **Lazy loading:** The model loads on first ingest or scan call, not at import time. This prevents OOM during server startup health checks.
 
@@ -548,8 +547,8 @@ The Node.js server uses Socket.IO with named rooms for event isolation. Each swa
 | Web framework | FastAPI + Uvicorn |
 | Video download | yt-dlp (with Node.js 20 for YouTube JS extraction) |
 | Frame extraction | OpenCV (opencv-python-headless) |
-| Image embedding | MobileNetV3-Large (torchvision, PyTorch CPU) |
-| Vector search | FAISS (faiss-cpu, IndexFlatIP 960-dim) |
+| Image embedding | CLIP ViT-B/32 (transformers, PyTorch CPU) |
+| Vector search | FAISS (faiss-cpu, IndexFlatIP 512-dim) |
 | Perceptual hashing | ImageHash (pHash) |
 | LLM — primary | Groq (llama-3.1-8b-instant, llama-3.3-70b-versatile) |
 | LLM — fallback | Google Gemini (gemini-2.0-flash-lite) |
@@ -723,7 +722,7 @@ Push to the `main` branch — Render auto-deploys from the configured Dockerfile
 
 ## Design Decisions & Trade-offs
 
-**MobileNetV3 vs CLIP:** CLIP ViT-B/32 produces better semantic embeddings but requires a 350MB HuggingFace download at runtime, which causes OOM on Render's 512MB free tier. MobileNetV3-Large (22MB, bundled in torchvision) with raw 960-dim avgpool features achieves ~90-95% of CLIP's accuracy for frame-level visual similarity tasks. For exact/near-exact video copies (the primary piracy use case), the difference is negligible.
+**CLIP ViT-B/32 Alignment:** CLIP ViT-B/32 produces superior semantic embeddings for piracy detection and has been adopted as the standard embedding model across the ingestion and scanning pipelines. To prevent OOM errors or startup timeouts on constrained cloud platforms like Render's free tier, the model weights are pre-cached during the Docker build stage and lazy-loaded on the first API request.
 
 **File-backed job store vs in-memory:** The original in-memory `_ingest_jobs` dict was wiped on every Render restart, causing the Node poller to loop forever on 404s. File persistence in `/tmp` survives within a deployment lifecycle (hours) — long enough for any ingest job to complete.
 

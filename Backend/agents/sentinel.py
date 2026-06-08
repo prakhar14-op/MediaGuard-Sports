@@ -297,12 +297,17 @@ def scan_thumbnail(thumbnail_url: str, suspect_video_url: str = "", batch_mode: 
     audio_score  = (audio_result.get("audio_confidence", 0.0) or 0.0) / 100.0
 
     # ── Layer 5: Forensic chain analysis ─────────────────────────────────────
-    # Platform sharing chain reconstruction (Su et al. 2025)
-    # Tells us HOW the content was distributed, not just that it was
+    # Platform sharing chain reconstruction (Su et al. 2025 inspired)
+    # ONLY runs when CLIP similarity >= SUSPECT_THRESHOLD — expensive compute
+    # is only justified when we already have a visual candidate.
+    # Forensics tells us HOW content was distributed, not just that it was.
+    # This is attribution, not detection.
     forensics_result = {"chain": [], "chain_length": 0, "confidence": 0.0,
                         "first_platform": None, "leak_risk": "low",
                         "method": "skipped", "error": None}
-    if best_pil is not None:
+
+    # Gate: only run forensics if CLIP found something worth investigating
+    if best_pil is not None and best_similarity >= SUSPECT_THRESHOLD:
         try:
             from agents.forensics import analyze_image_chain
             forensics_result = analyze_image_chain(best_pil)
