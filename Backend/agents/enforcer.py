@@ -22,6 +22,8 @@ PLATFORM_LEGAL_CONTACTS = {
 
 _DMCA_PROMPT = """You are a senior IP attorney. Draft a formal DMCA takedown notice using the details below.
 Cite 17 U.S.C. § 512(c) and reference the cryptographic FAISS vector proof.
+The content may be any media type (film, TV, music video, live broadcast, documentary, etc.) —
+apply the appropriate legal framing for the content type.
 Output ONLY the notice text — no preamble, no markdown.
 
 INCIDENT DETAILS:

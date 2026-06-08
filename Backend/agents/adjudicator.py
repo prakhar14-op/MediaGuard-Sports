@@ -85,13 +85,17 @@ INCIDENT CONTEXT:
 - Sentinel Confidence: {confidence_score}%
 - Low Confidence Flag: {low_confidence}
 
+The content may be any media type: movie, TV show, music video, sports broadcast,
+documentary, news segment, podcast, live event, or other video content.
+Apply the appropriate IP framework for the detected media type.
+
 Return exactly this JSON structure:
 {{
   "classification": "SEVERE PIRACY" or "FAIR USE / FAN CONTENT",
   "risk_score": <integer 0-100, where 100 = definite piracy>,
   "justification": "<1-2 sentences>",
   "routing": "Enforcer" or "Broker",
-  "legal_basis": "<brief legal principle>",
+  "legal_basis": "<brief legal principle, e.g. 17 U.S.C. § 106, DMCA § 512>",
   "recommended_action": "<one concrete action>"
 }}"""
 

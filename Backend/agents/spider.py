@@ -59,29 +59,43 @@ if _PROXY_URL:
 
 
 def _fallback_queries(title: str) -> list[str]:
-    """Rule-based query generation — used when LLM is unavailable."""
+    """
+    Rule-based query generation — used when LLM is unavailable.
+    Generic enough to work for any media type.
+    """
     base = title.strip()
     return [
         base,
         f"{base} full video",
-        f"{base} highlights",
-        f"{base} leaked stream",
+        f"{base} free watch",
+        f"{base} full upload",
     ]
 
 
 def _generate_search_queries(title: str, official_country: str) -> list[str]:
-    """Ask the LLM for smart OSINT queries. Falls back to rule-based if LLM fails."""
+    """
+    Ask the LLM for smart OSINT queries to find pirated copies of ANY media type.
+    Works for movies, TV shows, sports broadcasts, music videos, podcasts,
+    documentaries, news segments, live events — any video content.
+    Falls back to rule-based if LLM fails.
+    """
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
     prompt = (
         f'You are an OSINT specialist hunting for pirated copies of a video titled: "{title}"\n'
         f"The original is from country: {official_country}\n\n"
-        f"Generate exactly 4 YouTube search query strings to find pirated/reposted versions.\n"
+        f"Generate exactly 4 YouTube search query strings to find unauthorized re-uploads.\n"
         f"Rules:\n"
         f"- Plain search terms only — NO site: operators, NO quotes around the whole query\n"
-        f"- Think: restream keywords, 'full match', 'full video', 'leaked', language variants\n"
-        f"- Each query should be 3-6 words max\n"
+        f"- Consider the media type: movie → 'full movie', 'free watch'; "
+        f"TV show → 'full episode', 'series'; "
+        f"music video → 'official', 'audio'; "
+        f"live event/sports → 'restream', 'full match', 'leaked'; "
+        f"news/documentary → 'full documentary', 'complete episode'\n"
+        f"- Think about: re-upload keywords, language variants, common piracy search patterns\n"
+        f"- Each query should be 3-7 words max\n"
         f"Return ONLY a JSON array of 4 strings. No explanation.\n"
-        f'Example: ["champions league final full", "ucl final restream 2024", "champions league leaked stream", "final match full hd"]'
+        f'Example for a movie: ["avengers endgame full movie", "avengers endgame free watch 2024", "avengers endgame HD upload", "avengers endgame complete film"]\n'
+        f'Example for live sports: ["champions league final full", "ucl final restream 2024", "champions league leaked stream", "final match full hd"]'
     )
     try:
         if groq_key:

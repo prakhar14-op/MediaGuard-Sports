@@ -148,7 +148,14 @@ def health():
 
 @app.get("/vault/status")
 def vault_status():
-    return {"vault_size": vector_db.ntotal, "status": "ready" if vector_db.ntotal > 0 else "empty"}
+    from agents.archivist import temporal_store
+    total_sigs = sum(len(v) for v in temporal_store.values())
+    return {
+        "vault_size":         vector_db.ntotal,
+        "status":             "ready" if vector_db.ntotal > 0 else "empty",
+        "temporal_signatures": total_sigs,
+        "videos_ingested":    len(temporal_store),
+    }
 
 @app.get("/debug/cookies")
 def debug_cookies():
@@ -370,7 +377,13 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
             frame_count = 0
             try:
-                frame_count = int(result.split("Extracted ")[1].split(" frames")[0])
+                # Parse new scene-aware success message:
+                # "[SUCCESS] Scene-aware ingest complete. Scenes=N, Skipped=M, ScreenFixes=K, TemporalSigs=P, VaultSize=Q."
+                # Also handles legacy: "[SUCCESS] Extracted N frames. Vault size: Q."
+                if "Scenes=" in result:
+                    frame_count = int(result.split("Scenes=")[1].split(",")[0])
+                elif "Extracted " in result:
+                    frame_count = int(result.split("Extracted ")[1].split(" frames")[0])
             except Exception:
                 pass
 
