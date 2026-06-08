@@ -11,26 +11,22 @@ from io import BytesIO
 
 from agents.archivist import vector_db, metadata_store, embed_image_for_sentinel
 
-# ─── Similarity thresholds (MobileNetV3-Large, 960-dim, L2-normalised) ────────
-# After L2 normalisation, FAISS inner product = cosine similarity (range -1 to 1).
+# ─── CLIP ViT-B/32 cosine similarity thresholds ───────────────────────────────
+# After L2 normalisation, FAISS inner product = cosine similarity (range 0–1).
+# CLIP is trained for semantic similarity — these values are well-calibrated
+# for visual piracy detection (same footage, re-encodes, crops, color changes).
 #
-# MobileNetV3 raw feature cosine similarity for visual content:
-#   ~0.95+ = near-identical frames (same video, minor re-encode)
-#   ~0.85-0.95 = very similar (same scene, slight crop/color change)
-#   ~0.75-0.85 = similar content (same sport/event, different angle)
-#   <0.75 = different content
+# Empirical ranges for CLIP ViT-B/32:
+#   > 0.90 = near-identical frames (exact re-upload / minor re-encode)
+#   > 0.82 = very high visual overlap → confirmed piracy
+#   > 0.65 = significant similarity → suspect, flag for adjudication
+#   < 0.65 = different content
 #
-# We use a 2-layer detection:
-#   Layer 1 (MobileNetV3 cosine): fast approximate match
-#   Layer 2 (pHash): pixel-level cross-check for confirmed matches
-#
-# Thresholds are intentionally conservative (flag more, let Adjudicator filter):
-MATCH_THRESHOLD   = 0.88   # high confidence visual match → confirmed piracy
-SUSPECT_THRESHOLD = 0.75   # moderate similarity → flag for adjudication
-
-# Confidence score mapping: cosine similarity → 0-100 scale
-# We remap so that 0.75 = 75% confidence, 0.88 = 88%, etc.
-# This is intuitive and consistent with the Adjudicator's threshold (55%)
+# Two-layer detection:
+#   Layer 1: CLIP cosine similarity (semantic visual match)
+#   Layer 2: pHash cross-check (pixel-level confirmation)
+MATCH_THRESHOLD   = 0.82   # confirmed piracy — CLIP cosine ≥ 0.82
+SUSPECT_THRESHOLD = 0.65   # flagged for Adjudicator — CLIP cosine ≥ 0.65
 
 
 def _fetch_image(url: str) -> Image.Image:
@@ -43,7 +39,8 @@ def _thumbnail_variants(thumbnail_url: str) -> list:
     """
     Return a list of image URLs to try for a given thumbnail URL.
     For YouTube, try maxresdefault → hqdefault → mqdefault → original.
-    Higher-res thumbnails contain actual footage frames, improving match accuracy.
+    Higher-res thumbnails contain actual footage frames rather than
+    designed artwork, which significantly improves CLIP similarity scores.
     """
     yt_match = re.search(r'/vi/([a-zA-Z0-9_-]+)/', thumbnail_url)
     if yt_match:
@@ -58,21 +55,21 @@ def _thumbnail_variants(thumbnail_url: str) -> list:
 
 
 def _cosine_to_confidence(similarity: float) -> float:
-    """Map cosine similarity to a 0-100 confidence score."""
+    """Map CLIP cosine similarity to a 0-100 confidence score."""
     return round(max(0.0, min(100.0, similarity * 100)), 2)
 
 
 def _severity_from_confidence(confidence: float) -> str:
-    if confidence >= 88:
+    if confidence >= 85:
         return "CRITICAL"
-    if confidence >= 75:
+    if confidence >= 60:
         return "WARNING"
     return "INFO"
 
 
 def scan_thumbnail(thumbnail_url: str) -> dict:
     """
-    Scan a suspect thumbnail against the FAISS vault using MobileNetV3 embeddings.
+    Scan a suspect thumbnail against the FAISS vault using CLIP ViT-B/32 embeddings.
     Tries multiple thumbnail resolutions and keeps the best match score.
     Falls back to pHash cross-check for high-similarity candidates.
     """
@@ -158,7 +155,7 @@ def scan_thumbnail(thumbnail_url: str) -> dict:
 
 
 def tool_scan_thumbnail(thumbnail_url: str) -> str:
-    """Fetches a suspect thumbnail, runs MobileNetV3 + pHash dual detection against the FAISS vault."""
+    """Fetches a suspect thumbnail, runs CLIP ViT-B/32 + pHash dual detection against the FAISS vault."""
     result = scan_thumbnail(thumbnail_url)
 
     if "error" in result:
@@ -174,7 +171,7 @@ def tool_scan_thumbnail(thumbnail_url: str) -> str:
             f"Matched vault frame at {top.get('timestamp_sec', '?')}s."
         )
 
-    if result["confidence_score"] >= 75:
+    if result["confidence_score"] >= 60:
         return f"[SUSPECT] Partial match. Confidence: {result['confidence_score']}% — flagged for review."
 
     return f"[CLEAN] No match. Confidence: {result['confidence_score']}%"

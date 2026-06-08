@@ -1,27 +1,29 @@
 """
-Archivist — video fingerprinting via MobileNetV3-Large embeddings.
+Archivist — video fingerprinting via CLIP ViT-B/32 embeddings.
 
-Accuracy vs CLIP:
-- CLIP ViT-B/32 is more semantically aware but requires 350MB download
-  from HuggingFace which causes OOM on Render free tier (512MB RAM)
-- MobileNetV3-Large (22MB, bundled in torchvision) produces strong
-  visual feature embeddings — sufficient for frame-level piracy detection
-  (exact copies, re-encodes, minor crops/color changes)
-- We use the raw 960-dim avgpool features WITHOUT a random projection.
-  Random projections reduce accuracy. 960-dim directly in FAISS is better.
+CLIP ViT-B/32 is used for cross-modal semantic similarity:
+- Trained on 400M image-text pairs — understands visual semantics deeply
+- Produces 512-dim L2-normalised embeddings for cosine similarity
+- Excellent for matching thumbnails against video frames even with
+  crops, color grading changes, or watermarks added by pirates
 
-EMBEDDING_DIM = 960 (MobileNetV3-Large avgpool output, no projection)
+Memory management for Render free tier (512MB RAM):
+- CLIP is lazy-loaded on first ingest/scan call, NOT at import time
+  (import-time loading caused OOM during health check restarts)
+- torch_dtype=float16 loads weights directly in half precision,
+  avoiding the double-RAM spike of float32 load → convert
+  (~350MB float32 → ~175MB float16)
+- transformers cache is pre-populated at Docker build time so there
+  is no HuggingFace download delay at runtime
 """
 
 import cv2
 import torch
-import torch.nn as nn
 import faiss
 import numpy as np
 import json
 import os
 from PIL import Image
-from torchvision import transforms, models
 
 VAULT_DIR = os.path.join(os.path.dirname(__file__), "..", "vault")
 os.makedirs(VAULT_DIR, exist_ok=True)
@@ -30,55 +32,50 @@ VAULT_INDEX_PATH = os.path.join(VAULT_DIR, "faiss_vault.index")
 VAULT_META_PATH  = os.path.join(VAULT_DIR, "vault_metadata.json")
 
 # ─── Model config ─────────────────────────────────────────────────────────────
-_model        = None
-EMBEDDING_DIM = 960   # MobileNetV3-Large avgpool output — no projection needed
+_MODEL_ID     = "openai/clip-vit-base-patch32"
+_processor    = None
+_clip         = None
+_USE_HALF     = False
 
-BATCH_SIZE          = 32   # larger batch = fewer model calls = faster
+EMBEDDING_DIM = 512   # CLIP ViT-B/32 image embedding dimension
+
+BATCH_SIZE          = 8    # conservative for 512MB RAM
 SAMPLE_EVERY_N_SECS = 30   # 1 frame per 30s — 90min video ≈ 180 frames
-                           # still enough for piracy detection (same video = high similarity)
-
-_TRANSFORM = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
-])
 
 
-def _load_model():
-    """Load MobileNetV3-Large on first call. Subsequent calls are no-ops."""
-    global _model
-    if _model is not None:
+def _load_clip():
+    """
+    Load CLIP ViT-B/32 on first call. Subsequent calls are no-ops.
+
+    Uses torch_dtype=float16 to load weights directly in half precision.
+    This avoids the double-RAM spike that occurs when transformers loads
+    float32 weights first and then converts them (~350MB → ~175MB peak RAM).
+    """
+    global _processor, _clip, _USE_HALF
+    if _clip is not None:
         return
 
-    print("[Archivist] Loading MobileNetV3-Large (~22MB)...")
+    from transformers import CLIPProcessor, CLIPModel
+    print("[Archivist] Loading CLIP ViT-B/32 (lazy, float16)...")
 
-    base = models.mobilenet_v3_large(
-        weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V2
-    )
+    _processor = CLIPProcessor.from_pretrained(_MODEL_ID)
 
-    # Use features + avgpool only — discard the classifier head entirely.
-    # This gives us the raw 960-dim visual feature vector.
-    # No random projection — raw features are more meaningful for similarity.
-    class _EmbedNet(nn.Module):
-        def __init__(self, backbone):
-            super().__init__()
-            self.features = backbone.features
-            self.avgpool  = backbone.avgpool
+    try:
+        _clip = CLIPModel.from_pretrained(_MODEL_ID, torch_dtype=torch.float16)
+        _USE_HALF = True
+        print("[Archivist] CLIP loaded in float16 — ~175MB RAM")
+    except Exception:
+        # Fallback to float32 if float16 not supported
+        _clip = CLIPModel.from_pretrained(_MODEL_ID)
+        _USE_HALF = False
+        print("[Archivist] CLIP loaded in float32 — ~350MB RAM")
 
-        def forward(self, x):
-            x = self.features(x)
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)   # (B, 960)
-            return x
-
-    _model = _EmbedNet(base)
-    _model.eval()
-    print(f"[Archivist] MobileNetV3 ready — embedding dim: {EMBEDDING_DIM}")
+    _clip.eval()
+    print(f"[Archivist] CLIP ready — dim={EMBEDDING_DIM}, batch={BATCH_SIZE}, sample={SAMPLE_EVERY_N_SECS}s")
 
 
 # ─── FAISS vault ─────────────────────────────────────────────────────────────
+# IndexFlatIP: inner product after L2 normalisation = cosine similarity
 vector_db      = faiss.IndexFlatIP(EMBEDDING_DIM)
 metadata_store = {}
 
@@ -103,27 +100,45 @@ if os.path.exists(VAULT_META_PATH):
 
 def _embed_batch(pil_images: list) -> np.ndarray:
     """
-    Embed a batch of PIL images via MobileNetV3-Large.
-    Returns float32 array of shape (N, 960), L2-normalised.
+    Embed a batch of PIL images via CLIP ViT-B/32.
+    Returns float32 array of shape (N, 512), L2-normalised.
     After L2 normalisation, FAISS inner product = cosine similarity.
     """
-    _load_model()
-    tensors = torch.stack([_TRANSFORM(img.convert("RGB")) for img in pil_images])
+    _load_clip()
+
+    inputs = _processor(
+        text=["dummy"] * len(pil_images),   # CLIP requires text input — dummy is fine for image-only tasks
+        images=pil_images,
+        return_tensors="pt",
+        padding=True,
+    )
+
+    if _USE_HALF:
+        inputs["pixel_values"] = inputs["pixel_values"].half()
+
     with torch.inference_mode():
-        embeddings = _model(tensors).cpu().numpy().astype("float32")
+        outputs = _clip(**inputs)
+
+    embeddings = outputs.image_embeds.detach().cpu().float().numpy().astype("float32")
     faiss.normalize_L2(embeddings)
     return embeddings
 
 
 def _embed_pil_image(pil_image: Image.Image) -> np.ndarray:
-    """Single-image embed — used by Sentinel. Returns (1, 960) float32."""
+    """Single-image embed — used by Sentinel. Returns (1, 512) float32."""
     return _embed_batch([pil_image.convert("RGB")])
 
 
 def tool_ingest_video(video_path: str) -> str:
     """
     Extracts 1 frame every SAMPLE_EVERY_N_SECS seconds, embeds in batches
-    via MobileNetV3-Large, stores in FAISS vault.
+    via CLIP ViT-B/32 (float16, lazy-loaded), stores in FAISS vault.
+
+    Optimisations for Render free tier:
+    - 30s sample interval → ~180 frames for 90min video
+    - Batch size 8 → fewer model calls, lower peak RAM
+    - float16 model → ~175MB instead of ~350MB
+    - Progress logged every 50 frames
     """
     global vector_db, metadata_store
 
@@ -147,7 +162,7 @@ def tool_ingest_video(video_path: str) -> str:
     extracted_count  = 0
     batch_images     = []
     batch_timestamps = []
-    last_log_count   = 0   # for progress logging
+    last_log_count   = 0
 
     def _flush_batch():
         nonlocal extracted_count, last_log_count
@@ -162,7 +177,6 @@ def tool_ingest_video(video_path: str) -> str:
                 "timestamp_sec": ts,
             }
             extracted_count += 1
-        # Log every 50 frames so we can see progress in Render logs
         if extracted_count - last_log_count >= 50:
             print(f"[Archivist] Embedded {extracted_count} frames so far…")
             last_log_count = extracted_count
@@ -205,5 +219,5 @@ def tool_ingest_video(video_path: str) -> str:
 
 
 def embed_image_for_sentinel(pil_image: Image.Image) -> np.ndarray:
-    """Returns a normalised (1, 960) embedding — used by the Sentinel."""
+    """Returns a normalised (1, 512) CLIP embedding — used by the Sentinel."""
     return _embed_pil_image(pil_image)

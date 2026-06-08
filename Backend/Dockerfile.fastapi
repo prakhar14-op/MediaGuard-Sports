@@ -10,22 +10,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY requirements.txt .
 
-# CPU-only torch + torchvision — MobileNetV3 needs torchvision
-# Much smaller than CLIP (transformers not needed)
-RUN pip install --no-cache-dir torch torchvision \
+# CPU-only torch — no CUDA, much smaller build (~800MB vs ~2.5GB)
+# torchvision not needed — CLIP uses transformers, not torchvision
+RUN pip install --no-cache-dir torch \
     --index-url https://download.pytorch.org/whl/cpu
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Pre-download MobileNetV3-Large weights (~22MB) at build time so the
-# first ingest doesn't trigger a network download during request handling.
-# This also validates that torchvision + torch are correctly installed.
+# Pre-download CLIP ViT-B/32 weights at build time so the first ingest
+# has zero HuggingFace network latency.  The weights (~350MB) are cached
+# in the Docker layer and loaded in float16 at runtime (~175MB RAM).
 RUN python -c "\
-from torchvision import models; \
-m = models.mobilenet_v3_large(weights=models.MobileNet_V3_Large_Weights.IMAGENET1K_V2); \
-print('MobileNetV3-Large weights cached')"
+from transformers import CLIPProcessor, CLIPModel; \
+import torch; \
+CLIPModel.from_pretrained('openai/clip-vit-base-patch32', torch_dtype=torch.float16); \
+CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32'); \
+print('CLIP ViT-B/32 cached in float16')"
 
 EXPOSE 8001
 CMD ["python", "main.py"]
