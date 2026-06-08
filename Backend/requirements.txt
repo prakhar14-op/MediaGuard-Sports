@@ -13,3 +13,5 @@ Pillow
 numpy
 requests
 ImageHash
+scipy
+google-cloud-storage
