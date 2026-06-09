@@ -1,0 +1,29 @@
+{
+  "incident_id": "test_e890e74a",
+  "created_at": "2026-06-09T05:31:53.554203+00:00",
+  "artifacts": {
+    "report.json": {
+      "name": "report.json",
+      "hash": "3784991805a210d61862ca72fab72da053c546e7a43ad53cbf5d84789e6b7c90",
+      "size": 34,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_e890e74a\\report.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:53.556634+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    },
+    "verdict.json": {
+      "name": "verdict.json",
+      "hash": "98c716ff60d1d02621d243ca388d7990f611a4152ac7868cff5100a2788f99f8",
+      "size": 39,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_e890e74a\\verdict.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:53.584073+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    }
+  },
+  "bundle_hash": "c8b6fd961ba1e57dabb96a54518549bbbd9689236a8de44605eca43bcb545466",
+  "version": 2,
+  "updated_at": "2026-06-09T05:31:53.584120+00:00"
+}

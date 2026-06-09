@@ -1,0 +1,8 @@
+{
+  "classification": "SEVERE PIRACY",
+  "risk_score": 88,
+  "justification": "Exact re-upload of broadcast content",
+  "routing": "Enforcer",
+  "legal_basis": "17 U.S.C. \u00a7 106",
+  "recommended_action": "Issue immediate DMCA takedown"
+}

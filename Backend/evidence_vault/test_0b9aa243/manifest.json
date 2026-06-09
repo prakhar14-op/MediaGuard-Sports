@@ -1,0 +1,29 @@
+{
+  "incident_id": "test_0b9aa243",
+  "created_at": "2026-06-09T05:31:51.945834+00:00",
+  "artifacts": {
+    "sentinel_result.json": {
+      "name": "sentinel_result.json",
+      "hash": "348cd3d5857aa7d83dd6b8e3a17dfafd802ac6491b07365bf41738b058320310",
+      "size": 75,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_0b9aa243\\sentinel_result.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.030288+00:00",
+      "deduplicated": true,
+      "content_type": "application/json"
+    },
+    "embeddings.npy": {
+      "name": "embeddings.npy",
+      "hash": "977991df564a0de779f1d8d55de1ba368e5deb7e17ed8a5770de21259063580d",
+      "size": 10368,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_0b9aa243\\embeddings.npy",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.165767+00:00",
+      "deduplicated": false,
+      "content_type": "application/octet-stream"
+    }
+  },
+  "bundle_hash": "8b6c28f07f7cdc83910a82a533d6fc3fdc47aca4e34d51ba176c8f229f28f06a",
+  "version": 3,
+  "updated_at": "2026-06-09T05:31:52.165829+00:00"
+}

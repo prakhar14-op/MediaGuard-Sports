@@ -1,0 +1,17 @@
+{
+  "match_confirmed": true,
+  "confidence_score": 92.4,
+  "clip_similarity": 0.89,
+  "clip_confidence": 89.0,
+  "temporal_score": 0.78,
+  "audio_match": true,
+  "audio_confidence": 85.0,
+  "severity": "CRITICAL",
+  "forensics_chain": [
+    "YouTube",
+    "Telegram"
+  ],
+  "l2_distance": 0.11,
+  "phash_match": true,
+  "phash_score": 92
+}

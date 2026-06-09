@@ -1,0 +1,49 @@
+{
+  "incident_id": "test_efb7c9e9",
+  "created_at": "2026-06-09T05:31:53.026663+00:00",
+  "artifacts": {
+    "adjudication_verdict.json": {
+      "name": "adjudication_verdict.json",
+      "hash": "43413881ef4429b121f886da988641d78e63ba3f9052d37d5cfa51d2ea14bafa",
+      "size": 241,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_efb7c9e9\\adjudication_verdict.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:53.029789+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    },
+    "dmca_notice.json": {
+      "name": "dmca_notice.json",
+      "hash": "9ff99df3784f0ef3ebd6c0a4f37af9596177d30833680c7a8bd2d47af2d26135",
+      "size": 167,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_efb7c9e9\\dmca_notice.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:53.211323+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    },
+    "dmca_notice.txt": {
+      "name": "dmca_notice.txt",
+      "hash": "4f39e75abf8a84dc095f61d101a4a41c96694c6ab82d0a043b7575ee0c4accfe",
+      "size": 30,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_efb7c9e9\\dmca_notice.txt",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:53.260646+00:00",
+      "deduplicated": false,
+      "content_type": "text/plain"
+    },
+    "contract.json": {
+      "name": "contract.json",
+      "hash": "54eb6ae759c317331e11d8e575f6371cf00bcc515e634d5cb24cde2e5d2e8ca2",
+      "size": 197,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_efb7c9e9\\contract.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:53.380948+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    }
+  },
+  "bundle_hash": "a8be39755d9a51d15e7c56fabf0d8c1450147758d0dd0e8fa8a004322869617a",
+  "version": 4,
+  "updated_at": "2026-06-09T05:31:53.380978+00:00"
+}

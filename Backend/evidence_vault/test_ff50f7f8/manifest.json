@@ -1,0 +1,59 @@
+{
+  "incident_id": "test_ff50f7f8",
+  "created_at": "2026-06-09T05:31:52.494474+00:00",
+  "artifacts": {
+    "sentinel_result.json": {
+      "name": "sentinel_result.json",
+      "hash": "50e8afbffe909928f37b5e0a9c2b8d2799d07871d5d714acc1681d6949697942",
+      "size": 339,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_ff50f7f8\\sentinel_result.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.497128+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    },
+    "thumbnail.jpg": {
+      "name": "thumbnail.jpg",
+      "hash": "795bbc64a7dba9affa0cc0b2c38dab2bd9a8fddacb2c05d766f85f9303baef04",
+      "size": 1590,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_ff50f7f8\\thumbnail.jpg",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.747883+00:00",
+      "deduplicated": false,
+      "content_type": "image/jpeg"
+    },
+    "clip_embedding.npy": {
+      "name": "clip_embedding.npy",
+      "hash": "16f8f84062fff83b42ba3dfeaba378d08792525d8818995d6345925aa8441c70",
+      "size": 10368,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_ff50f7f8\\clip_embedding.npy",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.817028+00:00",
+      "deduplicated": false,
+      "content_type": "application/octet-stream"
+    },
+    "audio_fingerprint.json": {
+      "name": "audio_fingerprint.json",
+      "hash": "6c39bba7c604299eb9fc16a78a8fd13b787c5265976ed4eca70c9ae3fc22926a",
+      "size": 73,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_ff50f7f8\\audio_fingerprint.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.856527+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    },
+    "forensics_chain.json": {
+      "name": "forensics_chain.json",
+      "hash": "bdc83bcc2de76407fe35e8f9352d7e54732a253f87394d60713117a76d35ba41",
+      "size": 72,
+      "local_path": "C:\\Users\\Karan Gupta\\Downloads\\MediaGuard\\MediaGuard-Sports\\Backend\\agents\\..\\agents\\..\\agents\\..\\agents\\..\\evidence_vault\\test_ff50f7f8\\forensics_chain.json",
+      "gcs_uri": "",
+      "uploaded_at": "2026-06-09T05:31:52.934817+00:00",
+      "deduplicated": false,
+      "content_type": "application/json"
+    }
+  },
+  "bundle_hash": "66a858383b63555825cbb6bd964b2dc783f55b866413818e8ac0e4a9406449a3",
+  "version": 5,
+  "updated_at": "2026-06-09T05:31:52.934863+00:00"
+}
