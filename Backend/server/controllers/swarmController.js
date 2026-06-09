@@ -141,6 +141,34 @@ export const runSwarm = async (req, res) => {
         }).catch(() => {});   // silent — vault failure never blocks detection
       } catch { /* non-blocking */ }
 
+      // ── Leak source analysis — fire-and-forget ───────────────────────────
+      // Run forensics leak chain on every confirmed/suspect match that has a thumbnail.
+      // Results are attached to evidence vault and emitted to frontend.
+      if (node.thumbnail_url && scan.confidence_score >= 50) {
+        axios.post(`${FASTAPI}/leak/analyze`, {
+          thumbnail_url:  node.thumbnail_url,
+          video_url:      node.url || "",
+          incident_id:    String(incident._id),
+          account_handle: node.account_handle || "",
+          platform:       node.platform || "",
+        }).then(res => {
+          if (res.data?.success) {
+            const leak = res.data;
+            // Emit leak chain to frontend for this incident
+            io.to(`hunt:${jobId}`).emit("leak:chain_detected", {
+              incident_id:         String(incident._id),
+              jobId,
+              first_leak_platform: leak.first_leak_platform,
+              leak_chain:          leak.leak_chain,
+              leak_risk:           leak.leak_risk,
+              confidence:          leak.confidence,
+              leak_summary:        leak.leak_summary,
+              first_platform_guidance: leak.first_platform_guidance,
+            });
+          }
+        }).catch(() => {});  // non-blocking — leak analysis never fails the swarm
+      }
+
       io.to(`hunt:${jobId}`).emit("sentinel:threat_found", {
         incidentId:       incident._id,
         jobId,

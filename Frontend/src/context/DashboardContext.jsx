@@ -299,6 +299,32 @@ export const DashboardProvider = ({ children }) => {
         break;
       }
 
+      // ── Leak Source Detection ─────────────────────────────────────────────
+      case 'leak:chain_detected': {
+        // Enrich the incident with leak chain data
+        setIncidents(prev => prev.map(inc =>
+          inc._id === payload.incident_id
+            ? {
+                ...inc,
+                leak_chain:          payload.leak_chain,
+                first_leak_platform: payload.first_leak_platform,
+                leak_risk:           payload.leak_risk,
+                leak_confidence:     payload.confidence,
+                leak_summary:        payload.leak_summary,
+              }
+            : inc
+        ));
+        // Toast for high-risk leaks
+        if (payload.leak_risk === 'critical' || payload.leak_risk === 'high') {
+          addNotification({
+            type:    'threat',
+            title:   `🔗 Leak Chain: ${payload.first_leak_platform}`,
+            message: payload.leak_summary || `Content leaked via ${payload.first_leak_platform}`,
+          });
+        }
+        break;
+      }
+
       default:
         break;
     }

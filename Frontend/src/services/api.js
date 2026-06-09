@@ -68,6 +68,16 @@ export const evidenceService = {
   syncToGCS:     (id)     => api.post(`/evidence/${id}/sync`),
 };
 
+// ─── Leak Source Detection ────────────────────────────────────────────────────
+export const leakService = {
+  // Analyze a single suspect's thumbnail for leak chain reconstruction
+  analyze: (payload) => api.post('/leak/analyze', payload),
+  // payload: { thumbnail_url, video_url?, incident_id?, account_handle?, platform? }
+
+  // Batch leak analysis — enriches all suspects with leak chain data
+  batch: (threat_nodes) => api.post('/leak/batch', { threat_nodes }),
+};
+
 // ─── Live Stream ──────────────────────────────────────────────────────────────
 export const streamService = {
   start:      (stream_url, stream_id = '') => api.post('/stream/start', { stream_url, stream_id }),

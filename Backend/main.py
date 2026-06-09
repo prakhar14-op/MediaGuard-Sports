@@ -218,6 +218,167 @@ def forensics_analyze(payload: ForensicsRequest):
         raise HTTPException(status_code=500, detail=f"Forensics failed: {e}")
 
 
+# ─── Leak Source Detection ────────────────────────────────────────────────────
+
+class LeakAnalysisRequest(BaseModel):
+    thumbnail_url:   str  = ""
+    video_url:       str  = ""        # suspect video URL — used to fetch thumbnail if not provided
+    incident_id:     str  = ""        # optional — to attach result to evidence vault
+    account_handle:  str  = ""
+    platform:        str  = ""
+
+@app.post("/leak/analyze")
+def leak_analyze(payload: LeakAnalysisRequest):
+    """
+    Full leak source analysis for a suspect video.
+
+    Reconstructs the platform sharing chain:
+      Original Source → Platform A (first leak) → Platform B → ... → Current Upload
+
+    Returns:
+    - leak_chain: ordered list of platforms content passed through
+    - first_leak_platform: where the content FIRST appeared after the official source
+    - leak_risk: "critical" / "high" / "medium" / "low"
+    - confidence: 0-1 confidence in the chain reconstruction
+    - jpeg_quality: JPEG compression quality (platform fingerprint)
+    - platform_scores: per-platform likelihood scores
+    - leak_summary: human-readable summary for the dashboard
+
+    This answers the key question: "How did this pirated content get distributed?"
+    """
+    try:
+        from agents.forensics import analyze_thumbnail_url, analyze_image_chain
+        from PIL import Image
+        import io
+        import requests as _req
+
+        thumbnail_url = payload.thumbnail_url
+
+        # If no thumbnail provided, try to extract from video URL via yt-dlp
+        if not thumbnail_url and payload.video_url:
+            try:
+                import yt_dlp
+                with yt_dlp.YoutubeDL({"quiet": True, "noplaylist": True}) as ydl:
+                    info = ydl.extract_info(payload.video_url, download=False)
+                    thumbnail_url = info.get("thumbnail", "")
+            except Exception as e:
+                print(f"[LeakAnalyze] Could not extract thumbnail from video URL: {e}")
+
+        if not thumbnail_url:
+            raise HTTPException(status_code=400, detail="No thumbnail_url or video_url provided")
+
+        # Run forensics analysis
+        result = analyze_thumbnail_url(thumbnail_url)
+
+        # Build human-readable leak summary
+        chain     = result.get("chain", [])
+        first_plat = result.get("first_platform") or (chain[0] if chain else "Unknown")
+        leak_risk  = result.get("leak_risk", "low")
+        confidence = result.get("confidence", 0.0)
+
+        if chain and len(chain) >= 2:
+            chain_str = " → ".join(chain)
+            leak_summary = (
+                f"Content traced through {len(chain)}-platform chain: {chain_str}. "
+                f"First leak detected on {first_plat}. "
+                f"Leak risk: {leak_risk.upper()}."
+            )
+        elif chain and len(chain) == 1:
+            leak_summary = (
+                f"Content appears to have leaked directly via {first_plat}. "
+                f"Single-platform distribution detected. Leak risk: {leak_risk.upper()}."
+            )
+        else:
+            leak_summary = (
+                "Could not reconstruct a clear leak chain from this content. "
+                "Platform fingerprint is ambiguous or content is original."
+            )
+
+        # Platform-specific leak guidance
+        leak_guidance = {
+            "Telegram": "Telegram channels are a primary piracy distribution hub. Content is often screenshotted or re-encoded from here.",
+            "WhatsApp": "WhatsApp group leaks indicate insider/subscriber distribution. Often the primary leak vector for live events.",
+            "Twitter":  "Twitter/X re-posts spread content rapidly. Often secondary redistribution after initial Telegram/WhatsApp leak.",
+            "Facebook": "Facebook groups/pages often host re-encoded content. Lower quality but high reach.",
+            "Instagram": "Instagram Reels/Stories are often secondary uploads after TikTok or YouTube.",
+            "YouTube":  "YouTube re-uploads are typically the final distribution platform after multi-chain sharing.",
+        }
+
+        first_guidance = leak_guidance.get(first_plat, f"{first_plat} is a known content redistribution platform.")
+
+        # Attach to evidence vault if incident_id provided
+        if payload.incident_id:
+            try:
+                from agents.evidence_vault import store_json_artifact, record_custody_event
+                store_json_artifact(
+                    payload.incident_id,
+                    "leak_analysis.json",
+                    {"result": result, "summary": leak_summary, "guidance": first_guidance},
+                )
+                record_custody_event(
+                    payload.incident_id, "CLASSIFIED", "leak_analyzer",
+                    metadata={
+                        "first_leak_platform": first_plat,
+                        "chain":               chain,
+                        "leak_risk":           leak_risk,
+                        "confidence":          confidence,
+                    }
+                )
+            except Exception as e:
+                print(f"[LeakAnalyze] Evidence vault attachment failed (non-fatal): {e}")
+
+        return {
+            "success":             True,
+            "thumbnail_url":       thumbnail_url,
+            "leak_chain":          chain,
+            "first_leak_platform": first_plat,
+            "leak_risk":           leak_risk,
+            "confidence":          confidence,
+            "jpeg_quality":        result.get("jpeg_quality", 0),
+            "platform_scores":     result.get("platform_scores", {}),
+            "method":              result.get("method", "heuristic"),
+            "leak_summary":        leak_summary,
+            "first_platform_guidance": first_guidance,
+            "chain_length":        len(chain),
+            "account_handle":      payload.account_handle,
+            "platform":            payload.platform,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Leak analysis failed: {e}")
+
+
+@app.post("/leak/batch")
+def leak_batch(payload: BatchScanRequest):
+    """
+    Run leak analysis on multiple suspect nodes in parallel.
+    Used by swarm to enrich all detected incidents with leak chain data.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _analyze_one(node):
+        try:
+            from agents.forensics import analyze_thumbnail_url
+            thumb = node.get("thumbnail_url", "")
+            if not thumb:
+                return {"node": node, "leak": None}
+            result = analyze_thumbnail_url(thumb)
+            return {"node": node, "leak": result}
+        except Exception as e:
+            return {"node": node, "leak": None, "error": str(e)}
+
+    nodes   = payload.threat_nodes
+    results = []
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {pool.submit(_analyze_one, n): n for n in nodes}
+        for future in as_completed(futures):
+            results.append(future.result())
+
+    return {"success": True, "results": results, "total": len(results)}
+
+
 # ─── Agent endpoints ──────────────────────────────────────────────────────────
 
 @app.post("/enforce")
@@ -384,14 +545,20 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
             is_direct = is_direct or any(host in url for host in [
                 'drive.google.com/uc', 'dl.dropboxusercontent.com',
                 'storage.googleapis.com', 'amazonaws.com', 'cloudfront.net',
+                'dropbox.com',                  # Dropbox share links
+                'onedrive.live.com',            # OneDrive
+                '1drv.ms',                      # OneDrive short links
+                'sharepoint.com',               # SharePoint
+                'box.com',                      # Box.com
             ])
 
             if is_direct:
-                # ── Direct download (Google Drive, CDN, etc.) ─────────────────
+                # ── Direct download (Google Drive, Dropbox, OneDrive, CDN) ─────
                 local_path = os.path.join(OFFICIAL_DIR, f"{job_id}.mp4")
                 _write_job(job_id, {**(_read_job(job_id) or {}), "message": "Downloading video file directly…"})
 
-                # Convert Google Drive share URL to direct download URL
+                # ── URL normalization per cloud provider ──────────────────────
+                # Google Drive: /file/d/{id} or ?id={id} → direct download URL
                 gdrive_match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
                 if gdrive_match:
                     file_id    = gdrive_match.group(1)
@@ -402,6 +569,43 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
                         raise ValueError("Could not extract Google Drive file ID from URL")
                     file_id    = id_match.group(1)
                     direct_url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+
+                # Dropbox: ?dl=0 → ?dl=1 (force download), www.dropbox.com → dl.dropboxusercontent.com
+                elif 'dropbox.com' in url:
+                    # Remove dl=0, add dl=1
+                    direct_url = re.sub(r'[?&]dl=\d', '', url)
+                    sep = '&' if '?' in direct_url else '?'
+                    direct_url = direct_url + sep + 'dl=1'
+                    # Swap to direct download domain
+                    direct_url = direct_url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+                    print(f"[Ingest] Dropbox URL normalized: {direct_url}")
+
+                # OneDrive short link (1drv.ms) → follow redirect to get direct link
+                elif '1drv.ms' in url or 'onedrive.live.com' in url:
+                    # OneDrive needs special handling — embed/download param
+                    import urllib.parse
+                    if '1drv.ms' in url:
+                        # Follow redirect to get the full OneDrive URL first
+                        import requests as req_lib_tmp
+                        redir = req_lib_tmp.get(url, allow_redirects=True, timeout=15)
+                        direct_url = redir.url
+                    else:
+                        direct_url = url
+                    # Replace /embed? with /download?
+                    direct_url = direct_url.replace('/embed?', '/download?')
+                    if '?' not in direct_url:
+                        direct_url += '?download=1'
+                    print(f"[Ingest] OneDrive URL normalized: {direct_url}")
+
+                # Box.com: /s/{id} → /shared/static/{id}
+                elif 'box.com' in url:
+                    direct_url = url
+                    if '/s/' in url:
+                        # Box shared links need the download API
+                        box_id = url.rstrip('/').split('/')[-1]
+                        direct_url = f"https://app.box.com/index.php?rm=box_download_shared_file&shared_name={box_id}&file_id={box_id}"
+                    print(f"[Ingest] Box URL normalized: {direct_url}")
+
                 else:
                     direct_url = url
 

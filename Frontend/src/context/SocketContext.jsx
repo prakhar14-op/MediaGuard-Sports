@@ -12,7 +12,8 @@ const SWARM_EVENTS = [
   'broker:minting', 'broker:contract_ready', 'broker:contract_activated', 'broker:batch_complete',
   'ingest:progress', 'ingest:complete', 'ingest:error',
   'hunt:started', 'hunt:complete', 'hunt:error',
-  'stream:detection',   // live stream piracy detection
+  'stream:detection',     // live stream piracy detection
+  'leak:chain_detected',  // leak source / platform chain analysis result
 ];
 
 export const SocketProvider = ({ children }) => {
