@@ -130,6 +130,17 @@ export const runSwarm = async (req, res) => {
       });
       incidents.push({ incident, node, scan });
 
+      // ── Evidence vault: package detection artifacts ──────────────────────
+      // Fire-and-forget — don't block swarm progress on vault writes
+      try {
+        await axios.post(`${FASTAPI}/evidence/${incident._id}/package_detection`, {
+          scan_result:   scan,
+          thumbnail_url: node.thumbnail_url || "",
+          audio_result:  scan.audio_match ? { audio_confidence: scan.audio_confidence } : null,
+          forensics:     scan.forensics_chain ? { chain: scan.forensics_chain } : null,
+        }).catch(() => {});   // silent — vault failure never blocks detection
+      } catch { /* non-blocking */ }
+
       io.to(`hunt:${jobId}`).emit("sentinel:threat_found", {
         incidentId:       incident._id,
         jobId,

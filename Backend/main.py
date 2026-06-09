@@ -523,6 +523,143 @@ def trigger_hunt(payload: HuntRequest):
     return {"success": True, "data": result}
 
 
+# ─── Evidence Vault ───────────────────────────────────────────────────────────
+
+class EvidenceAccessRequest(BaseModel):
+    incident_id: str
+    actor: str = "investigator"
+    purpose: str = "investigation"
+
+@app.get("/evidence/{incident_id}")
+def get_evidence(incident_id: str, actor: str = "api"):
+    """Get evidence summary and record access in chain-of-custody."""
+    try:
+        from agents.evidence_vault import get_evidence_summary, record_access
+        record_access(incident_id, actor)
+        return {"success": True, **get_evidence_summary(incident_id)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/evidence/{incident_id}/custody")
+def get_custody_chain(incident_id: str):
+    """Get full chain-of-custody for an incident."""
+    try:
+        from agents.evidence_vault import get_custody_chain, verify_custody_chain
+        chain  = get_custody_chain(incident_id)
+        verify = verify_custody_chain(incident_id)
+        return {"success": True, "chain": chain, "integrity": verify}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/evidence/{incident_id}/package_detection")
+def package_detection(incident_id: str, payload: dict):
+    """
+    Package detection artifacts into evidence vault.
+    Called by swarmController.js after each sentinel scan.
+    Fire-and-forget — never blocks detection pipeline.
+    """
+    try:
+        from agents.evidence_vault import package_detection_evidence
+        package_detection_evidence(
+            incident_id     = incident_id,
+            sentinel_result = payload.get("scan_result", {}),
+            audio_result    = payload.get("audio_result"),
+            forensics_result = payload.get("forensics"),
+        )
+        return {"success": True}
+    except Exception as e:
+        # Never raise — vault failure must not block swarm
+        print(f"[EvidenceVault] package_detection failed for {incident_id}: {e}")
+        return {"success": False, "error": str(e)}
+    """Export a complete evidence bundle as ZIP."""
+    try:
+        from agents.evidence_vault import export_evidence_bundle
+        zip_path = export_evidence_bundle(incident_id)
+        return {"success": True, "path": zip_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/evidence/{incident_id}/sync")
+def sync_evidence(incident_id: str):
+    """Sync evidence artifacts to GCS."""
+    try:
+        from agents.evidence_vault import sync_to_gcs
+        result = sync_to_gcs(incident_id)
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Live Stream Monitoring ───────────────────────────────────────────────────
+
+class StreamStartRequest(BaseModel):
+    stream_url:  str
+    stream_id:   str = ""
+
+@app.post("/stream/start")
+def start_stream(payload: StreamStartRequest):
+    """
+    Start monitoring a live stream for piracy.
+    Returns immediately — monitoring runs in background threads.
+    Detection events are emitted via Socket.IO to the frontend.
+    """
+    try:
+        from agents.live_stream import start_stream_monitor
+
+        def on_detection(segment):
+            """Called when piracy is detected in a segment."""
+            # This runs in a background thread — we can't use FastAPI's request context
+            # Just log it; the Socket.IO server is in Node.js and gets events via the
+            # evidence vault. For direct emit, poll /stream/{stream_id}/results.
+            print(f"[LiveStream] DETECTION: stream={segment.stream_id} "
+                  f"segment={segment.segment_index} "
+                  f"confidence={segment.scan_result.get('confidence_score', 0):.1f}%")
+
+        sid = start_stream_monitor(
+            stream_url = payload.stream_url,
+            stream_id  = payload.stream_id or None,
+            on_detection = on_detection,
+        )
+        return {"success": True, "stream_id": sid, "message": "Stream monitoring started"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/stream/{stream_id}")
+def stop_stream(stream_id: str):
+    """Stop monitoring a live stream."""
+    try:
+        from agents.live_stream import stop_stream_monitor
+        stop_stream_monitor(stream_id)
+        return {"success": True, "message": f"Stream {stream_id} monitoring stopped"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stream/{stream_id}/results")
+def get_stream_results(stream_id: str):
+    """Get detection results for a live stream."""
+    try:
+        from agents.live_stream import get_stream_results
+        results = get_stream_results(stream_id)
+        return {
+            "success":   True,
+            "stream_id": stream_id,
+            "results":   results,
+            "total":     len(results),
+            "detections": sum(1 for r in results if r.get("match_confirmed")),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stream/active")
+def list_active_streams():
+    """List all currently monitored streams."""
+    try:
+        from agents.live_stream import list_active_streams
+        return {"success": True, "streams": list_active_streams()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8001))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

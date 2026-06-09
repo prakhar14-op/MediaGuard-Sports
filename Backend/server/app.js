@@ -21,6 +21,8 @@ import adjudicateRouter from "./routes/adjudicate.js";
 import enforceRouter from "./routes/enforce.js";
 import brokerRouter from "./routes/broker.js";
 import swarmRouter from "./routes/swarm.js";
+import streamRouter from "./routes/stream.js";
+import evidenceRouter from "./routes/evidence.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ExpressError from "./utils/ExpressError.js";
 
@@ -77,6 +79,8 @@ app.use("/api", adjudicateRouter);
 app.use("/api", enforceRouter);
 app.use("/api", brokerRouter);
 app.use("/api", swarmRouter);
+app.use("/api", streamRouter);
+app.use("/api", evidenceRouter);
 
 app.all("*", (_req, _res, next) => {
   next(new ExpressError(404, "Route not found"));
