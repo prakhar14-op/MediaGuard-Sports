@@ -60,6 +60,22 @@ export const brokerService = {
   getById:  (id)      => api.get(`/broker/${id}`),
 };
 
+// ─── Evidence Vault ───────────────────────────────────────────────────────────
+export const evidenceService = {
+  getSummary:    (id, actor = 'investigator') => api.get(`/evidence/${id}`, { params: { actor } }),
+  getCustody:    (id)     => api.get(`/evidence/${id}/custody`),
+  exportBundle:  (id)     => api.post(`/evidence/${id}/export`),
+  syncToGCS:     (id)     => api.post(`/evidence/${id}/sync`),
+};
+
+// ─── Live Stream ──────────────────────────────────────────────────────────────
+export const streamService = {
+  start:      (stream_url, stream_id = '') => api.post('/stream/start', { stream_url, stream_id }),
+  stop:       (stream_id)                  => api.delete(`/stream/${stream_id}`),
+  getResults: (stream_id)                  => api.get(`/stream/${stream_id}/results`),
+  getActive:  ()                           => api.get('/stream/active'),
+};
+
 // ─── System ───────────────────────────────────────────────────────────────────
 export const systemService = {
   getHealth: () => api.get('/health'),

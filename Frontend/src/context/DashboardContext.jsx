@@ -30,6 +30,9 @@ export const DashboardProvider = ({ children }) => {
   const [swarmRunning,   setSwarmRunning]   = useState(false);
   const [swarmComplete,  setSwarmComplete]  = useState(null);   // final summary
 
+  // Live stream monitoring
+  const [liveStreams,     setLiveStreams]    = useState([]);   // active stream detections
+
   const [stats, setStats] = useState({
     totalDetections:  MOCK_INCIDENTS.length,
     criticalThreats:  MOCK_INCIDENTS.filter(i => i.severity === 'CRITICAL').length,
@@ -147,6 +150,12 @@ export const DashboardProvider = ({ children }) => {
           status:           'detected',
           coordinates:      payload.coordinates,
           match_confirmed:  payload.match_confirmed,
+          // New fields from enhanced sentinel
+          audio_match:           payload.audio_match,
+          audio_confidence:      payload.audio_confidence,
+          forensics_chain:       payload.forensics_chain,
+          forensics_first_platform: payload.forensics_first_platform,
+          forensics_leak_risk:   payload.forensics_leak_risk,
         };
         setIncidents(prev => {
           if (prev.find(i => i._id === newInc._id)) return prev;
@@ -271,6 +280,25 @@ export const DashboardProvider = ({ children }) => {
         addNotification({ type: 'threat', title: 'Ingest Failed', message: payload.message });
         break;
 
+      // ── Live Stream ───────────────────────────────────────────────────────
+      case 'stream:detection': {
+        const detections = payload.detections || [];
+        detections.forEach(d => {
+          if (d.match_confirmed) {
+            addNotification({
+              type:    'threat',
+              title:   '🔴 Live Stream Piracy Detected',
+              message: `Stream ${payload.stream_id?.slice(0, 8)} — segment ${d.segment_index} — ${d.confidence_score?.toFixed(1)}% confidence`,
+            });
+          }
+        });
+        setLiveStreams(prev => {
+          const updated = prev.filter(s => s.stream_id !== payload.stream_id);
+          return [{ ...payload, ts: Date.now() }, ...updated].slice(0, 10);
+        });
+        break;
+      }
+
       default:
         break;
     }
@@ -282,6 +310,8 @@ export const DashboardProvider = ({ children }) => {
       incidents, assets, dmcas, contracts, notifications, stats, loading, backendOnline,
       // swarm state
       activeJobId, setActiveJobId, swarmPhase, swarmRunning, swarmComplete, setSwarmComplete,
+      // live stream state
+      liveStreams,
       // actions
       refresh: fetchData, addNotification, notify: addNotification,
       // socket helpers

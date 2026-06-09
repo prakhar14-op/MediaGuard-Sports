@@ -245,6 +245,42 @@ const IncidentCard = ({ incident, onDone, isSelected, onSelect }) => {
           )}
         </div>
 
+        {/* Forensics + Audio signals */}
+        {(incident.forensics_chain?.length > 0 || incident.audio_match || incident.audio_confidence > 0) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+            {/* Forensics sharing chain */}
+            {incident.forensics_chain?.length > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px',
+                borderRadius: 999, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                fontSize: 9, fontWeight: 700, color: '#6366f1',
+              }}>
+                🔗 {incident.forensics_chain.join(' → ')}
+              </div>
+            )}
+            {/* First platform (leak source) */}
+            {incident.forensics_first_platform && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px',
+                borderRadius: 999, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+                fontSize: 9, fontWeight: 700, color: '#f59e0b',
+              }}>
+                📍 Leaked via {incident.forensics_first_platform}
+              </div>
+            )}
+            {/* Audio match */}
+            {incident.audio_match && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px',
+                borderRadius: 999, background: 'rgba(13,148,136,0.08)', border: '1px solid rgba(13,148,136,0.2)',
+                fontSize: 9, fontWeight: 700, color: G.teal,
+              }}>
+                🎵 Audio {incident.audio_confidence?.toFixed(0)}%
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Actions row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${G.border}`, paddingTop: 10 }}>
           <div style={{ display: 'flex', gap: 6 }}>

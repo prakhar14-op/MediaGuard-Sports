@@ -56,6 +56,7 @@ const LOG_CFG = {
   'swarm:error':              { icon: '❌', color: '#ef4444' },
   'ingest:progress':          { icon: '📥', color: '#6366f1' },
   'ingest:complete':          { icon: '✅', color: G.teal    },
+  'stream:detection':         { icon: '📡', color: '#ef4444' },
 };
 
 const logText = (type, payload) => ({
@@ -77,6 +78,7 @@ const logText = (type, payload) => ({
   'swarm:error':              `Error: ${payload?.message}`,
   'ingest:progress':          payload?.message,
   'ingest:complete':          `Vaulted: "${payload?.title}" — ${payload?.frame_count} frames`,
+  'stream:detection':         `🔴 Live stream ${payload?.stream_id?.slice(0,8)} — ${payload?.total_detections || 0} detections`,
 }[type] || type);
 
 // ─── Custom tooltip for chart ─────────────────────────────────────────────────

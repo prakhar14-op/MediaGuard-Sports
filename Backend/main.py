@@ -551,8 +551,19 @@ def get_custody_chain(incident_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class PackageDetectionRequest(BaseModel):
+    scan_result:     dict = {}
+    thumbnail_url:   str  = ""
+    audio_result:    Optional[dict] = None
+    forensics:       Optional[dict] = None
+
+    class Config:
+        # Allow extra fields from swarmController
+        extra = "allow"
+
+
 @app.post("/evidence/{incident_id}/package_detection")
-def package_detection(incident_id: str, payload: dict):
+def package_detection(incident_id: str, payload: PackageDetectionRequest):
     """
     Package detection artifacts into evidence vault.
     Called by swarmController.js after each sentinel scan.
