@@ -573,16 +573,19 @@ def package_detection(incident_id: str, payload: PackageDetectionRequest):
     try:
         from agents.evidence_vault import package_detection_evidence
         package_detection_evidence(
-            incident_id     = incident_id,
-            sentinel_result = payload.get("scan_result", {}),
-            audio_result    = payload.get("audio_result"),
-            forensics_result = payload.get("forensics"),
+            incident_id      = incident_id,
+            sentinel_result  = payload.scan_result or {},
+            audio_result     = payload.audio_result,
+            forensics_result = payload.forensics,
         )
         return {"success": True}
     except Exception as e:
         # Never raise — vault failure must not block swarm
         print(f"[EvidenceVault] package_detection failed for {incident_id}: {e}")
         return {"success": False, "error": str(e)}
+
+@app.post("/evidence/{incident_id}/export")
+def export_evidence(incident_id: str):
     """Export a complete evidence bundle as ZIP."""
     try:
         from agents.evidence_vault import export_evidence_bundle

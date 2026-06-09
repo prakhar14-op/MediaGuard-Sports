@@ -115,9 +115,17 @@ def _extract_segment(stream_url: str, segment_index: int, output_dir: str, cooki
 
     # Try direct ffmpeg for HLS/RTMP
     if any(x in stream_url for x in [".m3u8", "rtmp://", "rtsp://"]):
+        import shutil
+        ffmpeg_exe = shutil.which("ffmpeg")
+        if not ffmpeg_exe:
+            try:
+                import imageio_ffmpeg
+                ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+            except Exception:
+                ffmpeg_exe = "ffmpeg"
         start_sec = segment_index * SEGMENT_DURATION
         cmd = [
-            "ffmpeg", "-y",
+            ffmpeg_exe, "-y",
             "-ss", str(start_sec),
             "-i", stream_url,
             "-t", str(SEGMENT_DURATION),

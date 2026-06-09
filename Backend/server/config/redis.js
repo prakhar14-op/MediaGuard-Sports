@@ -1,4 +1,12 @@
 import Redis from "ioredis";
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
+
+// ESM imports are hoisted — dotenv must be loaded here too,
+// before process.env.REDIS_URL is read below.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+config({ path: path.join(__dirname, "../../.env") });
 
 let hasLoggedError = false;
 

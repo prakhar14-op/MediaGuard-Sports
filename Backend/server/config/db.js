@@ -1,4 +1,11 @@
 import mongoose from "mongoose";
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
+
+// ESM imports are hoisted — load .env before process.env.MONGO_URI is read.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+config({ path: path.join(__dirname, "../../.env") });
 
 const connectDB = async () => {
   try {

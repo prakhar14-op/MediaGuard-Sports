@@ -98,10 +98,31 @@ if os.path.exists(AUDIO_META_PATH):
 # UTILITIES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _ffmpeg_available() -> bool:
-    """Check if ffmpeg is on PATH."""
+def _get_ffmpeg_exe() -> str:
+    """
+    Return the path to the ffmpeg executable.
+    Priority:
+      1. System PATH (ffmpeg command available globally)
+      2. imageio-ffmpeg bundled binary (installed via pip)
+    """
+    # Check system PATH first
+    import shutil
+    sys_ffmpeg = shutil.which("ffmpeg")
+    if sys_ffmpeg:
+        return sys_ffmpeg
+    # Fall back to imageio-ffmpeg bundled binary
     try:
-        subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return "ffmpeg"  # last resort — will fail with a clear error
+
+
+def _ffmpeg_available() -> bool:
+    """Check if ffmpeg is available (system PATH or imageio-ffmpeg)."""
+    try:
+        exe = _get_ffmpeg_exe()
+        subprocess.run([exe, "-version"], capture_output=True, timeout=5)
         return True
     except Exception:
         return False
@@ -111,10 +132,10 @@ def _extract_audio_pcm(video_path: str, out_wav: str, sample_rate: int = 16000) 
     """
     Extract audio from video file to a 16kHz mono WAV using ffmpeg.
     Returns True on success.
-    ffmpeg is already installed in the Docker image for yt-dlp.
+    Uses imageio-ffmpeg bundled binary if ffmpeg is not on system PATH.
     """
     cmd = [
-        "ffmpeg", "-y",
+        _get_ffmpeg_exe(), "-y",
         "-i", video_path,
         "-vn",                    # no video
         "-acodec", "pcm_s16le",   # 16-bit PCM

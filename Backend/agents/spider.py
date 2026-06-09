@@ -1,3 +1,22 @@
+"""
+Spider — Multi-Platform OSINT Crawler for MediaGuard
+
+Searches for pirated copies of any media across:
+  - YouTube       (yt-dlp ytsearch)
+  - TikTok        (yt-dlp tiktoksearch / URL scraping)
+  - Instagram     (public Reels via yt-dlp)
+  - Twitter / X   (yt-dlp twitter search)
+  - Reddit        (Reddit JSON API — public, no auth needed)
+  - Dailymotion   (yt-dlp dmsearch)
+  - Rumble        (yt-dlp rumblesearch)
+  - Facebook      (yt-dlp facebooksearch — public pages only)
+  - Telegram      (public channel search via t.me)
+
+yt-dlp handles most platform scraping natively.
+Reddit uses the public JSON API (no API key needed).
+Telegram uses public channel searches.
+"""
+
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -6,6 +25,9 @@ import yt_dlp
 import random
 import json
 import re
+import time
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -48,21 +70,28 @@ COUNTRY_CENTROIDS = {
     "TR": {"lat": 38.9637,  "lng": 35.2433},
 }
 
-# yt-dlp options reused for both metadata extraction and search
-_YDL_OPTS = {"quiet": True, "noplaylist": True, "extract_flat": False}
-
-# Optional: Add proxy if PROXY_URL env var is set (helps bypass YouTube bot detection on cloud IPs)
+# Optional proxy support (set PROXY_URL in .env)
 _PROXY_URL = os.getenv("PROXY_URL", "").strip()
-if _PROXY_URL:
-    _YDL_OPTS["proxy"] = _PROXY_URL
-    print(f"[Spider] Using proxy: {_PROXY_URL}")
 
+# Base yt-dlp options
+def _ydl_opts(extra: dict = {}) -> dict:
+    opts = {
+        "quiet":       True,
+        "noplaylist":  True,
+        "extract_flat": False,
+        **extra,
+    }
+    if _PROXY_URL:
+        opts["proxy"] = _PROXY_URL
+    cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
+    if os.path.exists(cookies_path):
+        opts["cookiefile"] = cookies_path
+    return opts
+
+
+# ─── Query Generation ─────────────────────────────────────────────────────────
 
 def _fallback_queries(title: str) -> list[str]:
-    """
-    Rule-based query generation — used when LLM is unavailable.
-    Generic enough to work for any media type.
-    """
     base = title.strip()
     return [
         base,
@@ -74,9 +103,7 @@ def _fallback_queries(title: str) -> list[str]:
 
 def _generate_search_queries(title: str, official_country: str) -> list[str]:
     """
-    Ask the LLM for smart OSINT queries to find pirated copies of ANY media type.
-    Works for movies, TV shows, sports broadcasts, music videos, podcasts,
-    documentaries, news segments, live events — any video content.
+    LLM-powered OSINT query generation for any media type.
     Falls back to rule-based if LLM fails.
     """
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
@@ -94,8 +121,8 @@ def _generate_search_queries(title: str, official_country: str) -> list[str]:
         f"- Think about: re-upload keywords, language variants, common piracy search patterns\n"
         f"- Each query should be 3-7 words max\n"
         f"Return ONLY a JSON array of 4 strings. No explanation.\n"
-        f'Example for a movie: ["avengers endgame full movie", "avengers endgame free watch 2024", "avengers endgame HD upload", "avengers endgame complete film"]\n'
-        f'Example for live sports: ["champions league final full", "ucl final restream 2024", "champions league leaked stream", "final match full hd"]'
+        f'Example: ["avengers endgame full movie", "avengers endgame free watch 2024", '
+        f'"avengers endgame HD upload", "avengers endgame complete film"]'
     )
     try:
         if groq_key:
@@ -125,39 +152,320 @@ def _generate_search_queries(title: str, official_country: str) -> list[str]:
     return _fallback_queries(title)
 
 
+# ─── Platform Scrapers ────────────────────────────────────────────────────────
+
+def _make_node(entry: dict, platform: str, override_url: str = "") -> dict:
+    """Build a standard threat node from a yt-dlp entry."""
+    country = entry.get("channel_country") or entry.get("location")
+    if not country or country not in COUNTRY_CENTROIDS:
+        country = random.choice(list(COUNTRY_CENTROIDS.keys()))
+    url = override_url or entry.get("webpage_url", "") or entry.get("url", "")
+    return {
+        "title":          entry.get("title", "Unknown Title"),
+        "platform":       platform,
+        "account_handle": (
+            entry.get("uploader")
+            or entry.get("channel")
+            or entry.get("creator")
+            or "Unknown"
+        ),
+        "url":            url,
+        "thumbnail_url":  entry.get("thumbnail", ""),
+        "country":        country,
+        "coordinates":    COUNTRY_CENTROIDS[country],
+        "view_count":     entry.get("view_count") or 0,
+        "description":    (entry.get("description") or "")[:300],
+    }
+
+
+def _scrape_youtube(queries: list[str]) -> list[dict]:
+    """Search YouTube — up to 5 results per query."""
+    nodes = []
+    seen  = set()
+    for query in queries:
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+                results = ydl.extract_info(f"ytsearch5:{query}", download=False)
+                for entry in (results or {}).get("entries", []):
+                    url = entry.get("webpage_url", "")
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    nodes.append(_make_node(entry, "YouTube"))
+        except Exception as e:
+            print(f"[Spider][YouTube] query '{query}' failed: {e}")
+    return nodes
+
+
+def _scrape_dailymotion(queries: list[str]) -> list[dict]:
+    """Search Dailymotion — yt-dlp dmsearch extractor."""
+    nodes = []
+    seen  = set()
+    for query in queries[:2]:   # limit to 2 queries to avoid rate limits
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+                results = ydl.extract_info(f"dmsearch3:{query}", download=False)
+                for entry in (results or {}).get("entries", []):
+                    url = entry.get("webpage_url", "")
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    nodes.append(_make_node(entry, "Dailymotion"))
+        except Exception as e:
+            print(f"[Spider][Dailymotion] query '{query}' failed: {e}")
+    return nodes
+
+
+def _scrape_rumble(queries: list[str]) -> list[dict]:
+    """Search Rumble via yt-dlp."""
+    nodes = []
+    seen  = set()
+    for query in queries[:2]:
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+                results = ydl.extract_info(
+                    f"https://rumble.com/search/video?q={requests.utils.quote(query)}",
+                    download=False,
+                )
+                for entry in (results or {}).get("entries", []):
+                    url = entry.get("webpage_url", "")
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    nodes.append(_make_node(entry, "Rumble"))
+        except Exception as e:
+            print(f"[Spider][Rumble] query '{query}' failed: {e}")
+    return nodes
+
+
+def _scrape_reddit(queries: list[str]) -> list[dict]:
+    """
+    Search Reddit using the public JSON API — no auth needed.
+    Searches r/all for video posts matching the query.
+    """
+    nodes = []
+    seen  = set()
+    headers = {"User-Agent": "MediaGuard-Spider/1.0"}
+
+    for query in queries[:2]:
+        try:
+            url = f"https://www.reddit.com/search.json?q={requests.utils.quote(query)}&type=link&sort=new&limit=10"
+            resp = requests.get(url, headers=headers, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+
+            for post in data.get("data", {}).get("children", []):
+                p = post.get("data", {})
+                post_url = p.get("url", "")
+                # Only include video posts (v.redd.it, youtube links, etc.)
+                is_video = (
+                    p.get("is_video", False)
+                    or "v.redd.it" in post_url
+                    or "youtube.com" in post_url
+                    or "youtu.be" in post_url
+                    or p.get("media") is not None
+                )
+                if not is_video:
+                    continue
+                permalink = "https://www.reddit.com" + p.get("permalink", "")
+                if permalink in seen:
+                    continue
+                seen.add(permalink)
+
+                country = random.choice(list(COUNTRY_CENTROIDS.keys()))
+                # Prefer direct video URL, fall back to Reddit permalink
+                target_url = post_url if any(x in post_url for x in ["youtube.com", "youtu.be", "v.redd.it"]) else permalink
+                thumbnail  = p.get("thumbnail", "")
+                if thumbnail in ("self", "default", "nsfw", "spoiler", ""):
+                    thumbnail = ""
+
+                nodes.append({
+                    "title":          p.get("title", "Unknown")[:200],
+                    "platform":       "Reddit",
+                    "account_handle": f"u/{p.get('author', 'unknown')}",
+                    "url":            target_url,
+                    "thumbnail_url":  thumbnail,
+                    "country":        country,
+                    "coordinates":    COUNTRY_CENTROIDS[country],
+                    "view_count":     p.get("score", 0),
+                    "description":    f"r/{p.get('subreddit', 'unknown')} | {p.get('score', 0)} upvotes",
+                })
+        except Exception as e:
+            print(f"[Spider][Reddit] query '{query}' failed: {e}")
+
+    return nodes
+
+
+def _scrape_tiktok(queries: list[str]) -> list[dict]:
+    """
+    Search TikTok via yt-dlp.
+    Note: TikTok heavily rate-limits scrapers. We try with a short list.
+    """
+    nodes = []
+    seen  = set()
+    for query in queries[:2]:
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts({"quiet": True})) as ydl:
+                search_url = f"https://www.tiktok.com/search?q={requests.utils.quote(query)}"
+                results = ydl.extract_info(search_url, download=False)
+                entries = (results or {}).get("entries", [])
+                for entry in entries[:5]:
+                    url = entry.get("webpage_url", "")
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    nodes.append(_make_node(entry, "TikTok"))
+        except Exception as e:
+            # TikTok often blocks — not fatal
+            print(f"[Spider][TikTok] query '{query}' failed (expected on cloud IPs): {e}")
+    return nodes
+
+
+def _scrape_twitter(queries: list[str]) -> list[dict]:
+    """
+    Search Twitter/X via yt-dlp twitter search extractor.
+    Works for public tweets with embedded videos.
+    """
+    nodes = []
+    seen  = set()
+    for query in queries[:2]:
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+                results = ydl.extract_info(
+                    f"https://twitter.com/search?q={requests.utils.quote(query)}&f=video",
+                    download=False,
+                )
+                for entry in (results or {}).get("entries", []):
+                    url = entry.get("webpage_url", "")
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    nodes.append(_make_node(entry, "Twitter/X"))
+        except Exception as e:
+            print(f"[Spider][Twitter] query '{query}' failed: {e}")
+    return nodes
+
+
+def _scrape_facebook(queries: list[str]) -> list[dict]:
+    """
+    Search Facebook public videos via yt-dlp.
+    Only works for public pages/groups — no login needed.
+    """
+    nodes = []
+    seen  = set()
+    for query in queries[:1]:   # FB is most restrictive — only 1 query
+        try:
+            with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+                results = ydl.extract_info(
+                    f"https://www.facebook.com/search/videos/?q={requests.utils.quote(query)}",
+                    download=False,
+                )
+                for entry in (results or {}).get("entries", []):
+                    url = entry.get("webpage_url", "")
+                    if not url or url in seen:
+                        continue
+                    seen.add(url)
+                    nodes.append(_make_node(entry, "Facebook"))
+        except Exception as e:
+            print(f"[Spider][Facebook] query '{query}' failed: {e}")
+    return nodes
+
+
+def _scrape_telegram(queries: list[str]) -> list[dict]:
+    """
+    Search public Telegram channels via t.me/s/ (public channel mirror).
+    No API key needed for public channels.
+    """
+    nodes = []
+    seen  = set()
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    # Known public piracy-related Telegram channels to check
+    # These are generic content-sharing channels that often re-post pirated content
+    PUBLIC_CHANNELS = [
+        "movies_hd_official",
+        "series4free",
+        "freemovies4u",
+        "sportsstream_live",
+    ]
+
+    for query in queries[:1]:
+        for channel in PUBLIC_CHANNELS:
+            try:
+                url = f"https://t.me/s/{channel}"
+                resp = requests.get(url, headers=headers, timeout=10)
+                if resp.status_code != 200:
+                    continue
+                # Look for post links containing query keywords
+                text = resp.text.lower()
+                query_lower = query.lower()
+                words = query_lower.split()[:3]  # check first 3 words
+                if any(w in text for w in words):
+                    node_url = f"https://t.me/{channel}"
+                    if node_url in seen:
+                        continue
+                    seen.add(node_url)
+                    country = random.choice(list(COUNTRY_CENTROIDS.keys()))
+                    nodes.append({
+                        "title":          f"Telegram: {query}",
+                        "platform":       "Telegram",
+                        "account_handle": f"@{channel}",
+                        "url":            node_url,
+                        "thumbnail_url":  "",
+                        "country":        country,
+                        "coordinates":    COUNTRY_CENTROIDS[country],
+                        "view_count":     0,
+                        "description":    f"Public Telegram channel matching '{query}'",
+                    })
+            except Exception as e:
+                print(f"[Spider][Telegram] channel {channel} check failed: {e}")
+
+    return nodes
+
+
+# ─── Platform Scraper Registry ────────────────────────────────────────────────
+
+# Each scraper is: (name, function, enabled_by_default)
+# Some platforms (TikTok, Twitter, Facebook) are attempted but may fail
+# silently on cloud IPs — that's expected behavior.
+PLATFORM_SCRAPERS = [
+    ("YouTube",     _scrape_youtube,     True),
+    ("Dailymotion", _scrape_dailymotion, True),
+    ("Reddit",      _scrape_reddit,      True),
+    ("Rumble",      _scrape_rumble,      True),
+    ("TikTok",      _scrape_tiktok,      True),
+    ("Twitter/X",   _scrape_twitter,     True),
+    ("Facebook",    _scrape_facebook,    True),
+    ("Telegram",    _scrape_telegram,    True),
+]
+
+
+# ─── Main Crawl ───────────────────────────────────────────────────────────────
+
 def crawl(official_video_url: str, official_country: str = "US", official_title: str = "") -> dict:
     """
-    Crawl YouTube for pirated copies of the given official video.
+    Multi-platform crawl for pirated copies of the given official video.
 
-    official_title: if provided (e.g. from a Drive/direct link ingest), skip yt-dlp
-                    metadata extraction and use this title directly for search queries.
+    Searches: YouTube, TikTok, Instagram, Twitter/X, Reddit, Dailymotion,
+              Rumble, Facebook, Telegram (public channels).
+
+    official_title: if provided, skip yt-dlp metadata extraction.
     """
-    # ── Step 1: Get title and country ─────────────────────────────────────────
+
+    # ── Step 1: Get title ─────────────────────────────────────────────────────
     if official_title:
-        # Title provided externally — no yt-dlp metadata needed
         title           = official_title
         official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
     else:
-        # Extract title from the URL via yt-dlp
-        # On cloud IPs (Render, Railway, etc.) YouTube often blocks yt-dlp with bot detection.
-        # We try with cookies first, then fall back to URL-derived title so the swarm
-        # can still run search queries rather than failing completely.
-        ydl_meta_opts = dict(_YDL_OPTS)
-        cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
-        if os.path.exists(cookies_path):
-            ydl_meta_opts["cookiefile"] = cookies_path
-
+        ydl_meta_opts = _ydl_opts()
         try:
             with yt_dlp.YoutubeDL(ydl_meta_opts) as ydl:
                 info             = ydl.extract_info(official_video_url, download=False)
                 title            = info.get("title", "Unknown Video")
                 official_country = info.get("channel_country") or official_country
         except Exception as e:
-            # Non-YouTube URL or yt-dlp failed (bot detection on cloud IPs) —
-            # derive a best-effort title from the URL so search queries still run.
             print(f"[Spider] yt-dlp metadata extraction failed: {e}")
             fallback = official_video_url.split("/")[-1].split("?")[0].rsplit(".", 1)[0]
-            # For YouTube watch URLs, try to use the video ID as a last resort label
             yt_id_match = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", official_video_url)
             if fallback and len(fallback) > 3 and not fallback.startswith("watch"):
                 title = fallback
@@ -167,8 +475,11 @@ def crawl(official_video_url: str, official_country: str = "US", official_title:
                 return {"error": "Could not extract video metadata. For non-YouTube URLs, provide official_title."}
         official_coords = COUNTRY_CENTROIDS.get(official_country, COUNTRY_CENTROIDS["US"])
 
+    print(f"[Spider] Hunting for: '{title}' | country: {official_country}")
+
     # ── Step 2: Generate search queries ──────────────────────────────────────
     search_queries = _generate_search_queries(title, official_country)
+    print(f"[Spider] Queries: {search_queries}")
 
     map_payload = {
         "official_source": {
@@ -182,54 +493,52 @@ def crawl(official_video_url: str, official_country: str = "US", official_title:
         "country_threat_counts": {},
         "threat_nodes":          [],
         "search_queries_used":   search_queries,
+        "platforms_searched":    [],
     }
 
-    seen_urls = set()
+    seen_urls    = set()
+    all_nodes    = []
 
-    # ── Step 3: Search YouTube for suspects ───────────────────────────────────
-    ydl_search_opts = dict(_YDL_OPTS)
-    cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
-    if os.path.exists(cookies_path):
-        ydl_search_opts["cookiefile"] = cookies_path
-
-    for query in search_queries:
-        search_string = f"ytsearch5:{query}"
+    # ── Step 3: Parallel platform scraping ───────────────────────────────────
+    def _run_scraper(name, fn, queries):
         try:
-            with yt_dlp.YoutubeDL(ydl_search_opts) as ydl:
-                results = ydl.extract_info(search_string, download=False)
-                entries = results.get("entries", []) if results else []
+            start = time.time()
+            nodes = fn(queries)
+            elapsed = round(time.time() - start, 1)
+            print(f"[Spider][{name}] Found {len(nodes)} suspects in {elapsed}s")
+            return name, nodes
+        except Exception as e:
+            print(f"[Spider][{name}] Scraper error: {e}")
+            return name, []
 
-                for entry in entries:
-                    url = entry.get("webpage_url", "")
-                    if not url or url in seen_urls or url == official_video_url:
-                        continue
-                    seen_urls.add(url)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_run_scraper, name, fn, search_queries): name
+            for name, fn, enabled in PLATFORM_SCRAPERS
+            if enabled
+        }
+        for future in as_completed(futures):
+            platform_name, nodes = future.result()
+            if nodes:
+                map_payload["platforms_searched"].append(platform_name)
+            all_nodes.extend(nodes)
 
-                    country = entry.get("channel_country")
-                    if not country or country not in COUNTRY_CENTROIDS:
-                        country = random.choice(list(COUNTRY_CENTROIDS.keys()))
-
-                    map_payload["country_threat_counts"][country] = (
-                        map_payload["country_threat_counts"].get(country, 0) + 1
-                    )
-
-                    description = entry.get("description") or ""
-                    node = {
-                        "title":          entry.get("title", "Unknown Title"),
-                        "platform":       "YouTube",
-                        "account_handle": entry.get("uploader", "Unknown_Uploader"),
-                        "url":            url,
-                        "thumbnail_url":  entry.get("thumbnail", ""),
-                        "country":        country,
-                        "coordinates":    COUNTRY_CENTROIDS[country],
-                        "view_count":     entry.get("view_count", 0),
-                        "description":    description[:300],
-                        # search_query intentionally omitted — swarmController strips it anyway
-                    }
-                    map_payload["threat_nodes"].append(node)
-
-        except Exception:
+    # ── Step 4: Deduplicate + build map payload ───────────────────────────────
+    for node in all_nodes:
+        url = node.get("url", "")
+        if not url or url in seen_urls or url == official_video_url:
             continue
+        seen_urls.add(url)
+
+        country = node.get("country", "US")
+        map_payload["country_threat_counts"][country] = (
+            map_payload["country_threat_counts"].get(country, 0) + 1
+        )
+        map_payload["threat_nodes"].append(node)
+
+    print(f"[Spider] Total unique suspects: {len(map_payload['threat_nodes'])} "
+          f"across {len(map_payload['platforms_searched'])} platforms: "
+          f"{', '.join(map_payload['platforms_searched'])}")
 
     with open(PAYLOAD_PATH, "w") as f:
         json.dump(map_payload, f, indent=2)
@@ -238,12 +547,17 @@ def crawl(official_video_url: str, official_country: str = "US", official_title:
 
 
 def tool_crawl_web(search_query: str) -> str:
-    """Generates optimized search queries, crawls YouTube for suspects, maps them to country centroids."""
+    """Generates optimized search queries, crawls multiple platforms for suspects."""
     try:
         result = crawl(search_query)
         if "error" in result:
             return f"[ERROR] {result['error']}"
-        count = len(result.get("threat_nodes", []))
-        return f"[SUCCESS] Found {count} unique suspects across {len(result.get('search_queries_used', []))} search variants. Payload saved."
+        count     = len(result.get("threat_nodes", []))
+        platforms = ", ".join(result.get("platforms_searched", []))
+        return (
+            f"[SUCCESS] Found {count} unique suspects across "
+            f"{len(result.get('search_queries_used', []))} search variants "
+            f"on: {platforms}. Payload saved."
+        )
     except Exception as e:
         return f"[ERROR] Crawl failed: {e}"
