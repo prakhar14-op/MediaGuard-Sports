@@ -1,0 +1,31 @@
+{
+  "evidence_id": "5e5a8d94a2b34d96bbc325de7cb0f5ae",
+  "timestamp": 1780992575,
+  "metadata": {
+    "payload": {
+      "sentinel_report": "[CRITICAL] Confidence: 61.99% | CLIP: 65.89%",
+      "platform": "YouTube",
+      "account_handle": "@test_pirate_account",
+      "video_title": "Test Video afiNbSxg7aw",
+      "description": "Unauthorized re-upload of official video",
+      "country": "US",
+      "confidence_score": 61.99
+    },
+    "verdict": {
+      "classification": "SEVERE PIRACY",
+      "risk_score": 95,
+      "justification": "Unauthorized re-upload of official video on YouTube, indicating copyright infringement. The low confidence flag does not significantly impact the classification due to the high confidence score and critical sentinel report.",
+      "routing": "Broker",
+      "legal_basis": "17 U.S.C. § 106, DMCA § 512",
+      "recommended_action": "Flag for human review before issuing DMCA (low Sentinel confidence)"
+    }
+  },
+  "reviewer": "automated_agent",
+  "artifacts": [
+    {
+      "kind": "metadata",
+      "path": "metadata_tmp2xwjl1u_.json",
+      "sha256": "71b69f09d03f8551533873def48ea49c3d1505cae86e4bb3fec52863082ada07"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ import brokerRouter from "./routes/broker.js";
 import swarmRouter from "./routes/swarm.js";
 import streamRouter from "./routes/stream.js";
 import evidenceRouter from "./routes/evidence.js";
+import leakRouter from "./routes/leak.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ExpressError from "./utils/ExpressError.js";
 
@@ -81,6 +82,7 @@ app.use("/api", brokerRouter);
 app.use("/api", swarmRouter);
 app.use("/api", streamRouter);
 app.use("/api", evidenceRouter);
+app.use("/api", leakRouter);
 
 app.all("*", (_req, _res, next) => {
   next(new ExpressError(404, "Route not found"));

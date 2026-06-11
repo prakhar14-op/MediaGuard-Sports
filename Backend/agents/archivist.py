@@ -723,8 +723,13 @@ def get_temporal_signatures_for_scan() -> list:
     """
     Return all temporal signatures from the vault for Sentinel to use
     in sequence-level matching.
+
+    Note: temporal_store may contain non-list entries (e.g. forensics dicts
+    stored under '{video_id}__forensics' keys).  We skip any value that is
+    not a list so that Sentinel's list.extend() call never raises a TypeError.
     """
     all_sigs = []
     for sigs in temporal_store.values():
-        all_sigs.extend(sigs)
+        if isinstance(sigs, list):
+            all_sigs.extend(sigs)
     return all_sigs

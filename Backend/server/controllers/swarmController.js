@@ -184,7 +184,9 @@ export const runSwarm = async (req, res) => {
     }
 
     io.to(`hunt:${jobId}`).emit("sentinel:batch_complete", {
-      jobId, total: incidents.length, piracy_count: 0, fair_use_count: 0,
+      jobId, total: incidents.length,
+      piracy_count:   incidents.filter(({ scan }) => (scan.confidence_score || 0) >= ADJ_CONFIDENCE_THRESHOLD).length,
+      fair_use_count: incidents.filter(({ scan }) => (scan.confidence_score || 0) < ADJ_CONFIDENCE_THRESHOLD).length,
     });
 
     // ── PHASE 3: ADJUDICATOR ─────────────────────────────────────────────────

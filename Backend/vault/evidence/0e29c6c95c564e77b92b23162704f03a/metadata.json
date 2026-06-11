@@ -1,0 +1,82 @@
+{
+  "evidence_id": "0e29c6c95c564e77b92b23162704f03a",
+  "timestamp": 1780992526,
+  "metadata": {
+    "payload": {
+      "thumbnail_url": "https://i.ytimg.com/vi/afiNbSxg7aw/maxresdefault.jpg",
+      "account_handle": "@test_account",
+      "platform": "YouTube",
+      "title": "Test Video",
+      "url": "https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu",
+      "country": "US"
+    },
+    "result": {
+      "match_confirmed": true,
+      "confidence_score": 61.99,
+      "severity": "WARNING",
+      "clip_similarity": 0.6589,
+      "clip_confidence": 65.89,
+      "l2_distance": 0.3411,
+      "top_matches": [
+        {
+          "vault_index": 65,
+          "similarity": 0.6589,
+          "l2_distance": 0.3411,
+          "confidence": 65.89,
+          "source_video": "assets\\official\\test_5e6cbfe2.mp4",
+          "timestamp_sec": 178,
+          "scene_idx": 50,
+          "screen_capture": false
+        },
+        {
+          "vault_index": 44,
+          "similarity": 0.6493,
+          "l2_distance": 0.3507,
+          "confidence": 64.93,
+          "source_video": "assets\\official\\test_5e6cbfe2.mp4",
+          "timestamp_sec": 80,
+          "scene_idx": 29,
+          "screen_capture": false
+        },
+        {
+          "vault_index": 64,
+          "similarity": 0.6398,
+          "l2_distance": 0.3602,
+          "confidence": 63.98,
+          "source_video": "assets\\official\\test_5e6cbfe2.mp4",
+          "timestamp_sec": 177,
+          "scene_idx": 49,
+          "screen_capture": false
+        }
+      ],
+      "phash_match": false,
+      "phash_score": 0,
+      "temporal_score": 0.0,
+      "temporal_match": null,
+      "audio_match": true,
+      "audio_confidence": 85.82,
+      "audio_fp_score": 0.7818,
+      "audio_mel_score": 1.0,
+      "audio_best_video": "test_5e6cbfe2",
+      "audio_best_ts": 0.0,
+      "audio_skipped": false,
+      "forensics_chain": [],
+      "forensics_chain_length": 0,
+      "forensics_confidence": 0.3009999990463257,
+      "forensics_first_platform": null,
+      "forensics_leak_risk": "low",
+      "forensics_method": "heuristic",
+      "forensics_jpeg_quality": 50.0,
+      "thumbnail_url": "https://i.ytimg.com/vi/afiNbSxg7aw/maxresdefault.jpg",
+      "suspect_video_url": "https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu"
+    }
+  },
+  "reviewer": "automated_agent",
+  "artifacts": [
+    {
+      "kind": "metadata",
+      "path": "metadata_tmp3d37ofnn.json",
+      "sha256": "29925165db8e75d46fa5b690f57d90210ab74a39c5108752dbe9766f3971f94f"
+    }
+  ]
+}

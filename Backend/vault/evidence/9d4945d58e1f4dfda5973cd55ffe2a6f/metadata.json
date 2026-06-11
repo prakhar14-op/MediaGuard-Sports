@@ -1,0 +1,33 @@
+{
+  "evidence_id": "9d4945d58e1f4dfda5973cd55ffe2a6f",
+  "timestamp": 1780992577,
+  "metadata": {
+    "payload": {
+      "target_account": "@test_pirate_account",
+      "platform": "YouTube",
+      "video_title": "Test Video afiNbSxg7aw",
+      "video_url": "https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu",
+      "confidence_score": 61.99,
+      "classification": "SEVERE PIRACY",
+      "justification": "Unauthorized re-upload of official video on YouTube, indicating copyright infringement. The low confidence flag does not significantly impact the classification due to the high confidence score and critical sentinel report.",
+      "integrity_hash": "0xdeadbeef12345678",
+      "offence_number": 1
+    },
+    "result": {
+      "notice_text": "To: copyright@youtube.com\nFrom: [Your Name], Senior IP Attorney\nDate: [Current Date]\nRe: DMCA Takedown Notice for Copyright Infringement on YouTube\n\nI am writing to assert my authority as a senior IP attorney, acting on behalf of the copyright owner, to submit this formal DMCA takedown notice pursuant to 17 U.S.C. § 512(c). The infringing content in question is a video titled \"Test Video afiNbSxg7aw\" located at https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu, uploaded by the account @test_pirate_account.\n\nThe evidence of infringement includes the unauthorized re-upload of the official video on YouTube, which constitutes copyright infringement. The sentinel report indicates a confidence score of 61.99%, classified as SEVERE PIRACY, providing sufficient justification for this takedown notice. The low confidence flag does not significantly impact the classification due to the high confidence score and critical sentinel report.\n\nThe cryptographic FAISS vector proof, with an Integrity Hash of 0xdeadbeef12345678, serves as further evidence of the infringement. This proof demonstrates the unauthorized use of the copyrighted material, supporting our claim of copyright infringement.\n\nWe request that YouTube immediately removes the infringing video from the platform and applies a strike to the @test_pirate_account. As this is the first offence (Offence Number: 1), we emphasize the importance of prompt action to prevent further infringement.\n\nSincerely,\n[Your Name]\nSenior IP Attorney\n[Your Contact Information]",
+      "legal_contact": "copyright@youtube.com",
+      "platform": "YouTube",
+      "target_account": "@test_pirate_account",
+      "tier": "standard",
+      "offence_number": 1
+    }
+  },
+  "reviewer": "automated_agent",
+  "artifacts": [
+    {
+      "kind": "metadata",
+      "path": "metadata_tmpmy12ta5n.json",
+      "sha256": "c462ed728ba8729af455891d52cd5935589c03c71d0380bb246d7db3cbdd457d"
+    }
+  ]
+}
