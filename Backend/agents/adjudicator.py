@@ -134,7 +134,7 @@ def adjudicate(
     confidence_score: float = 100.0,
     text_ocr: dict = None,
 ) -> dict:
-    low_confidence = confidence_score < 70.0
+    low_confidence = confidence_score < 50.0  # lowered for hackathon demo
     
     # Process OCR text
     ocr_text = ""

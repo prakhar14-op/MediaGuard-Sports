@@ -1,8 +1,8 @@
 {
   "official_source": {
     "node_id": "official_01",
-    "title": "The Information You Need to Understand The Tokyo Ghoul: Re Anime",
-    "url": "https://youtu.be/yvaifHmU0Pc?si=jxktIO7Hs4ssECCC",
+    "title": "When You Realize The VILLAIN Has A Point",
+    "url": "https://youtu.be/VfZh_sXb0Jc?si=gMuWry9f6oY_GXj8",
     "country": "US",
     "coordinates": {
       "lat": 37.0902,
@@ -11,280 +11,238 @@
     "status": "System Online: Global Node Monitoring Active"
   },
   "country_threat_counts": {
-    "FR": 1,
-    "IT": 1,
-    "MX": 1,
-    "ZA": 2,
-    "ES": 1,
-    "AE": 1,
-    "US": 2,
-    "VN": 1,
+    "SG": 1,
+    "CO": 1,
+    "FR": 2,
+    "TR": 1,
+    "EG": 1,
     "IN": 1,
-    "BR": 1,
+    "AE": 1,
     "GB": 1,
-    "AU": 2,
-    "KR": 2,
-    "JP": 1
+    "KR": 1,
+    "VN": 1,
+    "TH": 1,
+    "JP": 1,
+    "US": 1,
+    "MX": 1
   },
   "threat_nodes": [
     {
-      "title": "The ENTIRE Story Of Tokyo Ghoul In 109 Minutes",
+      "title": "When You Realize The VILLAIN Has A Point",
       "platform": "YouTube",
-      "account_handle": "JarAnime",
-      "url": "https://www.youtube.com/watch?v=EuTohhhZysQ",
-      "thumbnail_url": "https://i.ytimg.com/vi/EuTohhhZysQ/hqdefault.jpg",
+      "account_handle": "Pavelover",
+      "url": "https://www.youtube.com/watch?v=VfZh_sXb0Jc",
+      "thumbnail_url": "https://i.ytimg.com/vi/VfZh_sXb0Jc/hqdefault.jpg",
+      "country": "SG",
+      "coordinates": {
+        "lat": 1.3521,
+        "lng": 103.8198
+      },
+      "view_count": 680184,
+      "description": "Anime and manga is full of inspiring heroes. Those are the good guys... or are they? What happens when the bad guys make\u00a0..."
+    },
+    {
+      "title": "Everytime You Felt Bad For The Villain",
+      "platform": "YouTube",
+      "account_handle": "Glass",
+      "url": "https://www.youtube.com/watch?v=8G18TF5e8Y8",
+      "thumbnail_url": "https://i.ytimg.com/vi/8G18TF5e8Y8/hqdefault.jpg",
+      "country": "CO",
+      "coordinates": {
+        "lat": 4.5709,
+        "lng": -74.2973
+      },
+      "view_count": 1835967,
+      "description": "Every Time You Felt Bad For The Villain Subscribe :)"
+    },
+    {
+      "title": "QUOTES FROM VILLAINS WHO WERE COMPLETELY RIGHT | Part 1 to 5",
+      "platform": "YouTube",
+      "account_handle": "QuotesNow",
+      "url": "https://www.youtube.com/watch?v=GP7sz0ELwLQ",
+      "thumbnail_url": "https://i.ytimg.com/vi/GP7sz0ELwLQ/hqdefault.jpg",
       "country": "FR",
       "coordinates": {
         "lat": 46.2276,
         "lng": 2.2137
       },
-      "view_count": 876862,
-      "description": "Experience the full story of Tokyo Ghoul in one epic 109-minute recap \u2014 from Kaneki's fateful encounter with Rize, to the brutal\u00a0..."
+      "view_count": 8085855,
+      "description": "Villains almost always leave us deep quotes in movies and many times we don't realize that they also have their reason. This is\u00a0..."
     },
     {
-      "title": "Tokyo Ghoul  Haise meets Touka",
+      "title": "When Villains were right",
       "platform": "YouTube",
-      "account_handle": "Thril gamming yt",
-      "url": "https://www.youtube.com/watch?v=JYffc83Pi0Q",
-      "thumbnail_url": "https://i.ytimg.com/vi/JYffc83Pi0Q/hqdefault.jpg",
-      "country": "IT",
+      "account_handle": "Hustlerscorner",
+      "url": "https://www.youtube.com/watch?v=mWPgVXXGVyU",
+      "thumbnail_url": "https://i.ytimg.com/vi/mWPgVXXGVyU/hqdefault.jpg",
+      "country": "TR",
       "coordinates": {
-        "lat": 41.8719,
-        "lng": 12.5674
+        "lat": 38.9637,
+        "lng": 35.2433
       },
-      "view_count": 43566,
-      "description": "Tokyo Ghoul Season 3."
+      "view_count": 704069,
+      "description": "Heroes are supposed to be right\u2026 right? But what happens when villains surpass the heroes? What happens when the societies\u00a0..."
     },
     {
-      "title": "Are You Virgin \ud83d\ude02 || Tokyo Ghoul Movement",
+      "title": "What Happens When the VILLAIN is Right?",
       "platform": "YouTube",
-      "account_handle": "AnimeZ Axz",
-      "url": "https://www.youtube.com/watch?v=ol-Q9--Y7Yw",
-      "thumbnail_url": "https://i.ytimg.com/vi/ol-Q9--Y7Yw/hqdefault.jpg",
-      "country": "MX",
+      "account_handle": "scrawls",
+      "url": "https://www.youtube.com/watch?v=JMtomav6tjo",
+      "thumbnail_url": "https://i.ytimg.com/vi/JMtomav6tjo/hqdefault.jpg",
+      "country": "EG",
       "coordinates": {
-        "lat": 23.6345,
-        "lng": -102.5528
+        "lat": 26.8206,
+        "lng": 30.8025
       },
-      "view_count": 54840,
-      "description": "Tokyo Ghoul Movement Funny anime movement #tokyoghoul #toukakirishima #kenkaneki."
+      "view_count": 6803250,
+      "description": "Heroes are supposed to be right\u2026 right? But what happens when villains surpass the heroes? What happens when the societies\u00a0..."
     },
     {
-      "title": "All Kakuja Forms in Tokyo Ghoul",
+      "title": "Villains That Were Lowkey Onto Something",
       "platform": "YouTube",
-      "account_handle": "Eva Luciel",
-      "url": "https://www.youtube.com/watch?v=iBQnDwSGNdI",
-      "thumbnail_url": "https://i.ytimg.com/vi/iBQnDwSGNdI/hqdefault.jpg",
-      "country": "ZA",
-      "coordinates": {
-        "lat": -30.5595,
-        "lng": 22.9375
-      },
-      "view_count": 222962,
-      "description": "Content Information. In this video I will show you the most powerful and strongest ghouls with kakuja mode from Tokyo Ghoul."
-    },
-    {
-      "title": "Tokyo ghoul season 2 ep1",
-      "platform": "YouTube",
-      "account_handle": "ADEBOLA ABDULRASHEED",
-      "url": "https://www.youtube.com/watch?v=g-Tn8x34yLo",
-      "thumbnail_url": "https://i.ytimg.com/vi/g-Tn8x34yLo/hqdefault.jpg",
-      "country": "ES",
-      "coordinates": {
-        "lat": 40.4637,
-        "lng": -3.7492
-      },
-      "view_count": 56836,
-      "description": "SIR. RASHY."
-    },
-    {
-      "title": "Tokyo Ghoul Season 2 Hindi Dub Release Date On Anime Times \ud83e\udd2f| Tokyo Ghoul In Hindi | Crunchyroll",
-      "platform": "YouTube",
-      "account_handle": "Ryuzi Senpai",
-      "url": "https://www.youtube.com/watch?v=fXEUa805mgs",
-      "thumbnail_url": "https://i.ytimg.com/vi/fXEUa805mgs/hqdefault.jpg",
-      "country": "AE",
-      "coordinates": {
-        "lat": 23.4241,
-        "lng": 53.8478
-      },
-      "view_count": 8150,
-      "description": "Tokyo Ghoul Season 2 Hindi Dub Release Date On Anime Times | Tokyo Ghoul In Hindi | Crunchyroll \u26d4INSTAGRAM\u00a0..."
-    },
-    {
-      "title": "Tokyo Ghoul IN 5 MINUTES",
-      "platform": "YouTube",
-      "account_handle": "Gigguk",
-      "url": "https://www.youtube.com/watch?v=Ur-8ibFvAY4",
-      "thumbnail_url": "https://i.ytimg.com/vi/Ur-8ibFvAY4/hqdefault.jpg",
-      "country": "US",
-      "coordinates": {
-        "lat": 37.0902,
-        "lng": -95.7129
-      },
-      "view_count": 27342104,
-      "description": "Today it's the next episode of the abridged not abridged thing, Anime in Minutes! Today I condense both seasons of Tokyo Ghoul\u00a0..."
-    },
-    {
-      "title": "Tokyo Ghoul: re - Official Manga Trailer",
-      "platform": "YouTube",
-      "account_handle": "vizmedia",
-      "url": "https://www.youtube.com/watch?v=wiL63YN5aZo",
-      "thumbnail_url": "https://i.ytimg.com/vi/wiL63YN5aZo/hqdefault.jpg",
-      "country": "VN",
-      "coordinates": {
-        "lat": 14.0583,
-        "lng": 108.2772
-      },
-      "view_count": 171165,
-      "description": "Read a free preview of Tokyo Ghoul: re: https://buff.ly/2ohP3fN The only way to fight monsters is to become one\u2026 Haise Sasaki\u00a0..."
-    },
-    {
-      "title": "Tokyo Ghoul - Season 1 - Official Uncut Trailer",
-      "platform": "YouTube",
-      "account_handle": "Crunchyroll Store Australia",
-      "url": "https://www.youtube.com/watch?v=vGuQeQsoRgU",
-      "thumbnail_url": "https://i.ytimg.com/vi/vGuQeQsoRgU/hqdefault.jpg",
-      "country": "US",
-      "coordinates": {
-        "lat": 37.0902,
-        "lng": -95.7129
-      },
-      "view_count": 2566527,
-      "description": "It's eat or be eaten! Tokyo Ghoul (Uncut) Season One available from November 18! Limited Edition available December 2."
-    },
-    {
-      "title": "Tokyo Ghoul:re | Official trailer [English Sub]",
-      "platform": "YouTube",
-      "account_handle": "Wakanim Nordic",
-      "url": "https://www.youtube.com/watch?v=UUeqpuZobBw",
-      "thumbnail_url": "https://i.ytimg.com/vi/UUeqpuZobBw/hqdefault.jpg",
+      "account_handle": "Nasu",
+      "url": "https://www.youtube.com/watch?v=TfI8PAMLyg4",
+      "thumbnail_url": "https://i.ytimg.com/vi/TfI8PAMLyg4/hqdefault.jpg",
       "country": "IN",
       "coordinates": {
         "lat": 20.5937,
         "lng": 78.9629
       },
-      "view_count": 310743,
-      "description": "Tokyo Ghoul:re premieres in simulcast on April 3rd exclusively on Wakanim.tv! Pre-order now:\u00a0..."
+      "view_count": 3064425,
+      "description": "Use code POGNASUNOV70 for 70% off plus free shipping on your first box at https://strms.net/NasuHelloFreshNovember From\u00a0..."
     },
     {
-      "title": "UNLOCKING KAKUJA IN GHOUL RE",
+      "title": "when you start a new game and you meet the character you know is going to betray you",
       "platform": "YouTube",
-      "account_handle": "NanoProdigy",
-      "url": "https://www.youtube.com/watch?v=3imLNzgrnXs",
-      "thumbnail_url": "https://i.ytimg.com/vi/3imLNzgrnXs/hqdefault.jpg",
-      "country": "BR",
+      "account_handle": "ProZD",
+      "url": "https://www.youtube.com/watch?v=DN9DW4rrEjY",
+      "thumbnail_url": "https://i.ytimg.com/vi/DN9DW4rrEjY/hqdefault.jpg",
+      "country": "FR",
       "coordinates": {
-        "lat": -14.235,
-        "lng": -51.9253
+        "lat": 46.2276,
+        "lng": 2.2137
       },
-      "view_count": 176976,
-      "description": "Game link - https://www.roblox.com/games/72368345999613/RELEASE-GHOUL-RE Subscribe to the channel if you're new!"
+      "view_count": 15720867,
+      "description": "My Twitter: https://twitter.com/prozd My Let's Play channel, Press Buttons n Talk:\u00a0..."
     },
     {
-      "title": "This TOKYO GHOUL Game is COMING BACK FROM THE DEAD.. THIS MONTH!",
+      "title": "replaying a game and knowing all the plot twists",
       "platform": "YouTube",
-      "account_handle": "revolver agz",
-      "url": "https://www.youtube.com/watch?v=r7KRi9KbsXE",
-      "thumbnail_url": "https://i.ytimg.com/vi/r7KRi9KbsXE/hqdefault.jpg",
+      "account_handle": "ProZD",
+      "url": "https://www.youtube.com/watch?v=SmQWH7P0gIE",
+      "thumbnail_url": "https://i.ytimg.com/vi/SmQWH7P0gIE/hqdefault.jpg",
+      "country": "AE",
+      "coordinates": {
+        "lat": 23.4241,
+        "lng": 53.8478
+      },
+      "view_count": 9703038,
+      "description": "My Twitter: https://twitter.com/prozdkp My Let's Play channel, Press Buttons n Talk:\u00a0..."
+    },
+    {
+      "title": "He Started With a Slingshot, Then Hunted Boars, Wolves and Bears to Get Rich",
+      "platform": "YouTube",
+      "account_handle": "Your Manhwa Recap",
+      "url": "https://www.youtube.com/watch?v=tKtZFhTcdKw",
+      "thumbnail_url": "https://i.ytimg.com/vi/tKtZFhTcdKw/hqdefault.jpg",
       "country": "GB",
       "coordinates": {
         "lat": 55.3781,
         "lng": -3.436
       },
-      "view_count": 20115,
-      "description": "Join the games Discord Server: https://discord.gg/ghoulre Game Link:\u00a0..."
+      "view_count": 23763,
+      "description": "mangacollection #manhwaedit #manhwareccomendation #anime #animerecap #manhwaedit #manga #animerecommendations\u00a0..."
     },
     {
-      "title": "WATCH THIS VIDEO BEFORE PLAYING ROBLOX GHOUL:RE\u2026",
+      "title": "a villain who unintentionally always does helpful things",
       "platform": "YouTube",
-      "account_handle": "Kinamta",
-      "url": "https://www.youtube.com/watch?v=_kAyr5CP6yw",
-      "thumbnail_url": "https://i.ytimg.com/vi/_kAyr5CP6yw/hqdefault.jpg",
-      "country": "AU",
-      "coordinates": {
-        "lat": -25.2744,
-        "lng": 133.7751
-      },
-      "view_count": 2815,
-      "description": "Like and Subscribe.. Thumbnail background owner: MAGEONIX Ghoul:re discord: https://discord.gg/ghoulre Socials: TikTok:\u00a0..."
-    },
-    {
-      "title": "The Ghoul Re Situation Is Terrifying. ",
-      "platform": "YouTube",
-      "account_handle": "Jayze",
-      "url": "https://www.youtube.com/watch?v=oJff_PKAwm4",
-      "thumbnail_url": "https://i.ytimg.com/vi/oJff_PKAwm4/hqdefault.jpg",
-      "country": "AU",
-      "coordinates": {
-        "lat": -25.2744,
-        "lng": 133.7751
-      },
-      "view_count": 4424,
-      "description": "Just when you think it can't get worse,it does. Join my discord: https://discord.gg/WsxzFVcXN my TikTok:\u00a0..."
-    },
-    {
-      "title": "We (me and you) WILL Be Playing Ghoul://Re & Tokyo:Re ",
-      "platform": "YouTube",
-      "account_handle": "Aku",
-      "url": "https://www.youtube.com/watch?v=9YkRTqQXV2c",
-      "thumbnail_url": "https://i.ytimg.com/vi/9YkRTqQXV2c/hqdefault.jpg",
+      "account_handle": "ProZD",
+      "url": "https://www.youtube.com/watch?v=GPUgjy-Pn-4",
+      "thumbnail_url": "https://i.ytimg.com/vi/GPUgjy-Pn-4/hqdefault.jpg",
       "country": "KR",
       "coordinates": {
         "lat": 35.9078,
         "lng": 127.7669
       },
-      "view_count": 13829,
-      "description": "community : https://discord.gg/H7HtXmZRst Follow my twitch : https://www.twitch.tv/ayoaku ROAD 2 20k if you reading this u\u00a0..."
+      "view_count": 27755491,
+      "description": "My Twitter: https://twitter.com/prozd My Let's Play Channel: https://www.youtube.com/channel/UCYFFiPCwkr6wNlo0_F5BfRw My\u00a0..."
     },
     {
-      "title": "This video will hopefully END Your CONFUSION on Tokyo Ghoul:re Season 3",
+      "title": "\ud83d\udd25Mocked for Only Knowing One Magic, He Became the New World God Lord After Contracting an Angel\uff01",
       "platform": "YouTube",
-      "account_handle": "Anime Balls Deep",
-      "url": "https://www.youtube.com/watch?v=lsP0WKlASm8",
-      "thumbnail_url": "https://i.ytimg.com/vi/lsP0WKlASm8/hqdefault.jpg",
+      "account_handle": "Blue Whale Comics Review",
+      "url": "https://www.youtube.com/watch?v=WTtiRHe3iYs",
+      "thumbnail_url": "https://i.ytimg.com/vi/WTtiRHe3iYs/hqdefault.jpg",
+      "country": "VN",
+      "coordinates": {
+        "lat": 14.0583,
+        "lng": 108.2772
+      },
+      "view_count": 1814,
+      "description": "Hello, I'm the author of Blue Whale Comics Review channel, I'm glad you enjoyed this story! Novel title:Eight times of intimacy a\u00a0..."
+    },
+    {
+      "title": "a villain who's self-conscious about how his minion has a better evil laugh than him",
+      "platform": "YouTube",
+      "account_handle": "ProZD",
+      "url": "https://www.youtube.com/watch?v=kxULeLzgqxI",
+      "thumbnail_url": "https://i.ytimg.com/vi/kxULeLzgqxI/hqdefault.jpg",
+      "country": "TH",
+      "coordinates": {
+        "lat": 15.87,
+        "lng": 100.9925
+      },
+      "view_count": 7836564,
+      "description": "My Twitter: https://twitter.com/prozd My Let's Play channel, Press Buttons n Talk:\u00a0..."
+    },
+    {
+      "title": "surprise villain reveals in animated movies",
+      "platform": "YouTube",
+      "account_handle": "ProZD",
+      "url": "https://www.youtube.com/watch?v=p1_zJGvh4bA",
+      "thumbnail_url": "https://i.ytimg.com/vi/p1_zJGvh4bA/hqdefault.jpg",
       "country": "JP",
       "coordinates": {
         "lat": 36.2048,
         "lng": 138.2529
       },
-      "view_count": 2062418,
-      "description": "Tokyo Ghoul:Re (Tokyo ghoul re) has left a lot of people that only watch the anime of tokyo ghoul confused, so in this video we\u00a0..."
+      "view_count": 6814411,
+      "description": "My Twitter: https://twitter.com/prozdkp My Let's Play channel, Press Buttons n Talk:\u00a0..."
     },
     {
-      "title": "[Telegram] Tokyo Ghoul Re anime full episode \u2014 @free_movies_telegram/1",
+      "title": "[Telegram] When You Realize The VILLAIN Has A Point full movie \u2014 @free_movies_telegram/1",
       "platform": "Telegram",
       "account_handle": "@free_movies_telegram",
       "url": "https://t.me/free_movies_telegram/1",
       "thumbnail_url": "https://cdn5.telesco.pe/file/sqfdoEa-td60FpG2X8YQWss6FcfbACMgz5Usy1PXJqalQ2934vpMAYD5Mfk5u0GkOWwr2gQzV-tgF23jGQ1hM6KgHxz-i9o7TcmSU-7GjHUYyjP5vHves114W4RSSGPVY23-Kfg_5aGL90eM4YXzgib-Kw_DZ6NxtLiE4NkC-nMixc2uu-Si0k-klgof3pMDOXv9f9atFcr2nU4T4PquSSWu-CSEUEvsO--uFMpOI0RFEqgcIM3LsaVUBTfgeZxJTXOIKJYSruIvp9z1euFnxEGJZSIJ8qlXPEtfNr1dhwDH4ygcQkmMYU1BxsE-DCK-n6gyfxl4fX_8we_sbeMlpg.jpg",
-      "country": "ZA",
+      "country": "US",
       "coordinates": {
-        "lat": -30.5595,
-        "lng": 22.9375
+        "lat": 37.0902,
+        "lng": -95.7129
       },
       "view_count": 0,
-      "description": "Telegram @free_movies_telegram matching 'Tokyo Ghoul Re anime full episode'"
+      "description": "Telegram @free_movies_telegram matching 'When You Realize The VILLAIN Has A Point full movie'"
     },
     {
-      "title": "[Telegram] Tokyo Ghoul Re anime full episode \u2014 @free_movies_telegram/3",
+      "title": "[Telegram] When You Realize The VILLAIN Has A Point full movie \u2014 @free_movies_telegram/3",
       "platform": "Telegram",
       "account_handle": "@free_movies_telegram",
       "url": "https://t.me/free_movies_telegram/3",
       "thumbnail_url": "",
-      "country": "KR",
+      "country": "MX",
       "coordinates": {
-        "lat": 35.9078,
-        "lng": 127.7669
+        "lat": 23.6345,
+        "lng": -102.5528
       },
       "view_count": 0,
-      "description": "Telegram @free_movies_telegram matching 'Tokyo Ghoul Re anime full episode'"
+      "description": "Telegram @free_movies_telegram matching 'When You Realize The VILLAIN Has A Point full movie'"
     }
   ],
   "search_queries_used": [
-    "Tokyo Ghoul Re anime full episode",
-    "Tokyo Ghoul Re free watch online",
-    "Tokyo Ghoul Re leaked restream",
-    "Tokyo Ghoul Re full anime episode"
+    "When You Realize The VILLAIN Has A Point full movie",
+    "When You Realize The VILLAIN Has A Point free watch",
+    "When You Realize The VILLAIN Has A Point leaked online",
+    "When You Realize The VILLAIN Has A Point restream link"
   ],
   "platforms_searched": [
     "YouTube",

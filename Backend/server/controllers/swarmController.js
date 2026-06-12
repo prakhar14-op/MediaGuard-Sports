@@ -20,9 +20,8 @@ const broker    = axios.create({ baseURL: FASTAPI, timeout: 180_000 });
 
 // ─── Thresholds ────────────────────────────────────────────────────────────────
 // ADJ_CONFIDENCE_THRESHOLD: only adjudicate suspects at or above this score.
-// Lowered from 55 → 40 so we don't miss real threats with degraded thumbnails.
-// Below threshold → auto-cleared as "CLEAN" without wasting LLM quota.
-const ADJ_CONFIDENCE_THRESHOLD = 40;
+// Lowered to 30 for hackathon — ensures most suspects get adjudicated (LLM decides, not threshold).
+const ADJ_CONFIDENCE_THRESHOLD = 30;
 
 // PIRACY_CONFIRM_THRESHOLD: match_confirmed OR above this score → likely piracy
 const PIRACY_CONFIRM_THRESHOLD = 70;
