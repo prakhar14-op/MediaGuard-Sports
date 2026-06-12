@@ -18,8 +18,16 @@ export const DashboardProvider = ({ children }) => {
 
   const [incidents,      setIncidents]      = useState(MOCK_INCIDENTS);
   const [assets,         setAssets]         = useState([]);
-  const [dmcas,          setDmcas]          = useState([]);
-  const [contracts,      setContracts]      = useState([]);
+  const [dmcas,          setDmcas]          = useState([
+    { _id:'dm1', target_account:'@live_sports_hd', platform:'YouTube', confidence_score:'96', notice_text:'To: copyright@youtube.com\nFrom: MediaGuard IP Protection\nDate: 2026-06-12\nRe: DMCA Takedown Notice\n\nPursuant to 17 U.S.C. § 512(c), we notify you of copyright infringement on your platform.\n\nInfringing Content: "Champions League Final Full Restream" by @live_sports_hd\nFAISS Integrity Hash: 0xfa1c3d789abc12345\nSentinel Confidence: 96%\n\nWe demand immediate removal and account strike.\n\nSincerely,\nMediaGuard Legal Team', integrity_hash:'0xfa1c3d789abc12345', tier:'standard', offence_number:1, legal_contact:'copyright@youtube.com', status:'drafted', createdAt:'2026-06-12T10:00:00Z' },
+    { _id:'dm2', target_account:'@mma_clips_free', platform:'TikTok', confidence_score:'91', notice_text:'To: legal@tiktok.com\nFrom: MediaGuard IP Protection\nDate: 2026-06-12\nRe: DMCA Takedown — Repeat Infringer\n\nThis is the SECOND offence by @mma_clips_free.\nCiting 17 U.S.C. § 512(i) repeat infringer policy.\n\nFAISS Hash: 0xbc45ef912dead789\nConfidence: 91%\n\nExpedited removal requested.', integrity_hash:'0xbc45ef912dead789', tier:'expedited', offence_number:2, legal_contact:'legal@tiktok.com', status:'drafted', createdAt:'2026-06-12T10:15:00Z' },
+    { _id:'dm3', target_account:'@f1_leaks_live', platform:'Telegram', confidence_score:'94', notice_text:'To: dmca@telegram.org\nFrom: MediaGuard Legal\nDate: 2026-06-12\nRe: DMCA — 3rd Offence, Legal Referral\n\nThird violation by @f1_leaks_live. Referring to external legal counsel per 17 U.S.C. § 512(i).\n\nHash: 0x99aabb1234567890\nConfidence: 94%', integrity_hash:'0x99aabb1234567890', tier:'legal_referral', offence_number:3, legal_contact:'dmca@telegram.org', status:'sent', createdAt:'2026-06-11T18:00:00Z' },
+    { _id:'dm4', target_account:'@free_football', platform:'Dailymotion', confidence_score:'88', notice_text:'To: legal@dailymotion.com\nFrom: MediaGuard\nRe: DMCA Takedown\n\nUnauthorized full match upload detected with 88% confidence.\nFAISS proof attached.\n\nRemoval requested immediately.', integrity_hash:'0x112233445566', tier:'standard', offence_number:1, legal_contact:'feedback@dailymotion.com', status:'drafted', createdAt:'2026-06-12T09:30:00Z' },
+  ]);
+  const [contracts,      setContracts]      = useState([
+    { _id:'ct1', target_account:'@sports_explained', platform:'YouTube', video_title:'Match Commentary & Analysis', copyright_holder_share:25, creator_share:75, tx_hash:'0x2c26806418f4c377', tier:'Gold', estimated_monthly_revenue:90, status:'minted', createdAt:'2026-06-12T10:20:00Z' },
+    { _id:'ct2', target_account:'@cricket_vibes', platform:'Instagram', video_title:'Cricket World Cup Fan Reaction', copyright_holder_share:30, creator_share:70, tx_hash:'0xaabb11cc22dd33ee', tier:'Silver', estimated_monthly_revenue:12, status:'active', createdAt:'2026-06-11T14:00:00Z' },
+  ]);
   const [notifications,  setNotifications]  = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [backendOnline,  setBackendOnline]  = useState(false);
@@ -31,7 +39,8 @@ export const DashboardProvider = ({ children }) => {
   const [swarmComplete,  setSwarmComplete]  = useState(null);   // final summary
 
   // Live stream monitoring
-  const [liveStreams,     setLiveStreams]    = useState([]);   // active stream detections
+  const [liveStreams,     setLiveStreams]    = useState([]);
+  const [liveMonitorActive, setLiveMonitorActive] = useState(false);
 
   const [stats, setStats] = useState({
     totalDetections:  MOCK_INCIDENTS.length,
@@ -78,8 +87,8 @@ export const DashboardProvider = ({ children }) => {
       // Only show real data when backend is online; keep mocks as fallback
       setIncidents(realIncidents.length > 0 ? realIncidents : MOCK_INCIDENTS);
       setAssets(realAssets);
-      setDmcas(realDmcas);
-      setContracts(realContracts);
+      setDmcas(realDmcas.length > 0 ? realDmcas : dmcas);   // keep mock if no real data
+      setContracts(realContracts.length > 0 ? realContracts : contracts);
       setBackendOnline(true);
 
       const allInc = realIncidents.length > 0 ? realIncidents : MOCK_INCIDENTS;
@@ -366,7 +375,7 @@ export const DashboardProvider = ({ children }) => {
       // swarm state
       activeJobId, setActiveJobId, swarmPhase, swarmRunning, swarmComplete, setSwarmComplete,
       // live stream state
-      liveStreams,
+      liveStreams, liveMonitorActive, setLiveMonitorActive,
       // actions
       refresh: fetchData, addNotification, notify: addNotification,
       // socket helpers

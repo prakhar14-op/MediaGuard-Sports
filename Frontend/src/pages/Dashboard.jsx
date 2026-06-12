@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../components/layout/Sidebar';
@@ -14,6 +15,8 @@ import ThreatHunter  from '../components/dashboard/ThreatHunter';
 import IncidentTable from '../components/dashboard/IncidentTable';
 import LegalPanel    from '../components/dashboard/LegalPanel';
 import BrokerPanel   from '../components/dashboard/BrokerPanel';
+import EnforcementHub from '../components/dashboard/EnforcementHub';
+import PiracyIntel   from '../components/dashboard/PiracyIntel';
 import Notifications from '../components/dashboard/Notifications';
 import Analytics     from '../components/dashboard/Analytics';
 
@@ -22,8 +25,8 @@ const TITLES = {
   vault:         'Digital Asset Vault',
   hunter:        'Swarm Threat Hunter',
   incidents:     'Incident Response',
-  enforcer:      'Legal Enforcement',
-  broker:        'Monetization Broker',
+  intel:         'Piracy Intelligence',
+  enforce:       'Enforcement & Monetization',
   notifications: 'Intelligence Logs',
   analytics:     'Intelligence Analytics',
 };
@@ -36,17 +39,10 @@ const DashboardContent = () => {
   const title     = TITLES[activeTab] || 'Command Center';
 
   // Live stream detection alerts — floating notifications
-  const { liveStreams } = useDashboard();
+  const { liveStreams, liveMonitorActive, setLiveMonitorActive } = useDashboard();
   const { eventLog } = useSocket();
   const [streamAlerts, setStreamAlerts] = useState([]);
-  const [isLiveActive, setIsLiveActive] = useState(false);
   const [liveScreenDismissed, setLiveScreenDismissed] = useState(false);
-
-  // Track if any live stream is running
-  React.useEffect(() => {
-    const hasLive = streamAlerts.length > 0 || (liveStreams && liveStreams.length > 0);
-    if (hasLive) setIsLiveActive(true);
-  }, [streamAlerts, liveStreams]);
 
   // Listen for stream:detection and watchdog:alert events → create alert cards
   React.useEffect(() => {
@@ -142,8 +138,10 @@ const DashboardContent = () => {
                 <Route path="vault"         element={<AssetVault />}    />
                 <Route path="hunter"        element={<ThreatHunter />}  />
                 <Route path="incidents"     element={<IncidentTable />} />
-                <Route path="enforcer"      element={<LegalPanel />}    />
-                <Route path="broker"        element={<BrokerPanel />}   />
+                <Route path="intel"         element={<PiracyIntel />}  />
+                <Route path="enforce"       element={<EnforcementHub />} />
+                <Route path="enforcer"      element={<EnforcementHub />} />
+                <Route path="broker"        element={<EnforcementHub />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="analytics"     element={<Analytics />}     />
                 <Route path="/"             element={<Navigate to="overview" replace />} />
@@ -155,69 +153,106 @@ const DashboardContent = () => {
 
       {/* Live stream overlay — click to dismiss */}
       <AnimatePresence>
-        {isLiveActive && !liveScreenDismissed && (
+        {liveMonitorActive && !liveScreenDismissed && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => {
               setLiveScreenDismissed(true);
-              // Stop all active live stream monitors
+              setLiveMonitorActive(false);
               streamService.getActive().then(res => {
                 const streams = res?.data?.streams || [];
                 streams.forEach(s => streamService.stop(s.stream_id).catch(() => {}));
               }).catch(() => {});
-              setIsLiveActive(false);
               setStreamAlerts([]);
             }}
             style={{
               position: 'fixed', inset: 0, zIndex: 9990,
-              background: 'radial-gradient(ellipse at center, rgba(13,148,136,0.15) 0%, rgba(2,6,23,0.95) 70%)',
+              background: 'radial-gradient(ellipse at center, rgba(13,148,136,0.1) 0%, rgba(2,6,23,0.97) 60%)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexDirection: 'column', gap: 16,
+              overflow: 'hidden',
             }}
           >
-            {/* Animated pulse rings */}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              {[1,2,3].map(i => (
-                <div key={i} style={{
-                  position: 'absolute',
-                  width: `${200 + i * 120}px`, height: `${200 + i * 120}px`,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(13,148,136,0.2)',
-                  animation: `liveRingPulse ${3 + i}s ease-in-out infinite ${i * 0.5}s`,
-                }} />
-              ))}
+            {/* Ripple rings expanding from center */}
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} style={{
+                position: 'absolute',
+                width: 80, height: 80,
+                borderRadius: '50%',
+                border: '1px solid rgba(13,148,136,0.4)',
+                animation: `rippleExpand 4s ease-out infinite ${i * 0.6}s`,
+                opacity: 0,
+                zIndex: 0,
+              }} />
+            ))}
+            {/* Outer slow rotating ring */}
+            <div style={{
+              position: 'absolute',
+              width: 300, height: 300,
+              borderRadius: '50%',
+              border: '1px solid rgba(99,102,241,0.15)',
+              animation: 'rotateSlow 20s linear infinite',
+              zIndex: 0,
+            }}>
+              <div style={{ position: 'absolute', top: -3, left: '50%', width: 6, height: 6, borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 8px #6366f1' }} />
             </div>
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              style={{ width: 16, height: 16, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 20px #ef4444', zIndex: 1 }}
-            />
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              style={{ zIndex: 1, color: '#e2e8f0', fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}
-            >
-              Live Stream Monitoring Active
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              transition={{ delay: 0.6 }}
-              style={{ zIndex: 1, color: '#94a3b8', fontSize: 12 }}
-            >
-              Click anywhere to stop monitoring
-            </motion.p>
-            <style>{`@keyframes liveRingPulse { 0%,100% { transform:scale(1); opacity:0.3; } 50% { transform:scale(1.1); opacity:0.1; } }`}</style>
+            {/* Content — above ripples, with light backdrop for dark text */}
+            <div style={{
+              position: 'relative', zIndex: 10,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+              background: 'rgba(255,255,255,0.92)',
+              borderRadius: 24, padding: '36px 48px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            }}>
+              {/* Inner pulsing core */}
+              <motion.div
+                animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                style={{
+                  width: 18, height: 18, borderRadius: '50%',
+                  background: '#ef4444',
+                  boxShadow: '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)',
+                }}
+              />
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}
+              >
+                Live Stream Monitoring Active
+              </motion.p>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.7 }}
+                transition={{ delay: 0.6 }}
+                style={{ color: '#334155', fontSize: 13 }}
+              >
+                Click anywhere to stop monitoring
+              </motion.p>
+            </div>
+            <style>{`
+              @keyframes rippleExpand {
+                0% { transform: scale(1); opacity: 0.6; }
+                100% { transform: scale(12); opacity: 0; }
+              }
+              @keyframes rotateSlow {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Floating live stream / watchdog alert notifications — top right */}
-      <LiveStreamAlerts alerts={streamAlerts} onDismiss={dismissAlert} />
+      {/* Floating live stream / watchdog alert notifications — PORTAL to body for z-index independence */}
+      {typeof document !== 'undefined' && ReactDOM.createPortal(
+        <LiveStreamAlerts alerts={streamAlerts} onDismiss={dismissAlert} />,
+        document.body
+      )}
     </div>
   );
 };

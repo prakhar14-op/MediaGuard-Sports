@@ -15,6 +15,9 @@ const fastapiClient = axios.create({
   timeout: 30_000,
 });
 
+// Track polling intervals per stream so we can clear them on stop
+const _activePolls = {};
+
 // POST /api/stream/start — start monitoring a live stream
 router.post("/stream/start", wrapAsync(async (req, res) => {
   const { stream_url, stream_id = "" } = req.body;
@@ -23,8 +26,6 @@ router.post("/stream/start", wrapAsync(async (req, res) => {
   const io = getIO();
   const { data } = await fastapiClient.post("/stream/start", { stream_url, stream_id });
 
-  // Poll for results and emit Socket.IO events every 8s
-  // Emit ALL new segments (not just confirmed matches) for live visibility
   const sid = data.stream_id;
   let lastSegCount = 0;
 
@@ -33,7 +34,6 @@ router.post("/stream/start", wrapAsync(async (req, res) => {
       const r = await fastapiClient.get(`/stream/${sid}/results`);
       const results = r.data?.results || [];
 
-      // Emit new segments since last poll (all of them, not just matches)
       if (results.length > lastSegCount) {
         const newResults = results.slice(lastSegCount);
         lastSegCount = results.length;
@@ -48,19 +48,37 @@ router.post("/stream/start", wrapAsync(async (req, res) => {
         });
       }
     } catch {
+      // Stream ended or error — stop polling
       clearInterval(pollInterval);
+      delete _activePolls[sid];
     }
   }, 8_000);
 
-  // Auto-stop polling after 4 hours
-  setTimeout(() => clearInterval(pollInterval), 4 * 60 * 60 * 1000);
+  _activePolls[sid] = pollInterval;
+
+  // Auto-stop after 4 hours
+  setTimeout(() => {
+    clearInterval(pollInterval);
+    delete _activePolls[sid];
+  }, 4 * 60 * 60 * 1000);
 
   res.json({ success: true, stream_id: sid, message: "Stream monitoring started" });
 }));
 
 // DELETE /api/stream/:stream_id — stop monitoring
 router.delete("/stream/:stream_id", wrapAsync(async (req, res) => {
-  await fastapiClient.delete(`/stream/${req.params.stream_id}`).catch(() => {});
+  const sid = req.params.stream_id;
+
+  // Clear Node.js polling interval
+  if (_activePolls[sid]) {
+    clearInterval(_activePolls[sid]);
+    delete _activePolls[sid];
+    console.log(`[Stream] Polling stopped for ${sid}`);
+  }
+
+  // Stop FastAPI monitor
+  await fastapiClient.delete(`/stream/${sid}`).catch(() => {});
+
   res.json({ success: true, message: "Stream monitoring stopped" });
 }));
 

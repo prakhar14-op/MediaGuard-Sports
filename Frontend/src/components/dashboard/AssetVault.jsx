@@ -305,7 +305,7 @@ const AssetCard = ({ asset, onDelete }) => {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const AssetVault = () => {
-  const { assets, refresh } = useDashboard();
+  const { assets, refresh, setLiveMonitorActive } = useDashboard();
   const { eventLog, joinIngest } = useSocket();
 
   const [url,           setUrl]           = useState('');
@@ -383,6 +383,7 @@ const AssetVault = () => {
       try {
         const res = await streamService.start(url.trim());
         const { stream_id } = res.data;
+        setLiveMonitorActive(true);   // triggers overlay in Dashboard
         setProgress({ stage: 'processing', message: `🔴 Live monitoring active: ${stream_id}. Detections will appear as notifications.` });
         setUrl('');
         setTitle('');

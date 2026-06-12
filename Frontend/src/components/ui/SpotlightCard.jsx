@@ -1,3 +1,4 @@
+
 import { useRef, useState } from 'react';
 
 const SpotlightCard = ({ children, className = '', spotlightColor = 'rgba(13, 148, 136, 0.2)', style = {} }) => {
