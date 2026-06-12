@@ -1,0 +1,1075 @@
+================================================================================
+MEDIAGUARD SPORTS — COMPLETE FEATURES & AGENTS DOCUMENTATION
+================================================================================
+Platform: AI-Powered Piracy Detection & Enforcement System
+Version:  Production (June 2026)
+Stack:    Python FastAPI + Node.js + React/Vite + MongoDB + Redis + FAISS
+================================================================================
+
+
+TABLE OF CONTENTS
+─────────────────
+1.  System Overview
+2.  Architecture
+3.  Agent: Archivist
+4.  Agent: Sentinel
+5.  Agent: Audio Fingerprint
+6.  Agent: Spider
+7.  Agent: Adjudicator
+8.  Agent: Enforcer
+9.  Agent: Broker
+10. Agent: Evidence Vault
+11. Agent: Forensics
+12. Agent: Live Stream Monitor
+13. Swarm Orchestrator
+14. Platform Coverage
+15. API Endpoints Reference
+16. Configuration & Environment
+
+
+================================================================================
+1. SYSTEM OVERVIEW
+================================================================================
+
+MediaGuard Sports is a fully automated AI piracy detection and enforcement
+platform. It monitors any video content (sports broadcasts, movies, TV shows,
+music videos, live events, documentaries) across 12+ platforms simultaneously,
+detects unauthorized uploads using multi-layer ML detection, classifies them
+using LLM-powered legal analysis, and takes automated enforcement action.
+
+Core Problem Solved:
+  Content owners lose billions annually to piracy. Manual monitoring is
+  impossible at scale — a 90-minute match generates thousands of pirated copies
+  across YouTube, TikTok, Telegram, Reddit, Rumble, and torrent sites within
+  minutes of broadcast. MediaGuard automates this entire pipeline.
+
+Unique Capabilities:
+  - Detects piracy even when video is cropped, re-encoded, color-graded,
+    or filmed off a screen with a phone
+  - Catches pirates who keep original audio but change video visuals
+  - Reconstructs the distribution chain (how content leaked and spread)
+  - Generates legally defensible DMCA notices with cryptographic proof
+  - Offers fair-use creators a rev-share contract instead of takedown
+  - All evidence is SHA-256 sealed with immutable chain-of-custody
+
+
+================================================================================
+2. ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        MEDIAGUARD PIPELINE                                  │
+│                                                                             │
+│  [Official Video]                                                           │
+│       │                                                                     │
+│       ▼                                                                     │
+│  ARCHIVIST ──── downloads, extracts frames, builds FAISS vault              │
+│  (ingest)       + audio fingerprint + temporal DNA + forensic sig           │
+│       │                                                                     │
+│       ▼                                                                     │
+│  SPIDER ──────── crawls 12 platforms in parallel for suspects               │
+│  (hunt)          YouTube, TikTok, Reddit, Telegram, Torrents, etc.         │
+│       │                                                                     │
+│       ▼                                                                     │
+│  SENTINEL ──────  5-layer detection on each suspect                        │
+│  (scan)           CLIP + pHash + Temporal DNA + Audio FP + Forensics       │
+│       │                                                                     │
+│       ▼                                                                     │
+│  ADJUDICATOR ─── LLM classifies: SEVERE PIRACY vs FAIR USE                 │
+│  (classify)      Routes to Enforcer or Broker                              │
+│       │                                                                     │
+│  ┌────┴─────┐                                                               │
+│  ▼          ▼                                                               │
+│ ENFORCER   BROKER                                                           │
+│ DMCA draft Rev-share contract                                               │
+│       │          │                                                          │
+│       ▼          ▼                                                          │
+│  EVIDENCE VAULT ── SHA-256 sealed, chain-of-custody, GCS backup            │
+│                                                                             │
+│  LIVE STREAM MONITOR ── parallel segment pipeline, 30s detection latency   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Services:
+  FastAPI (port 8001) — ML pipeline, all Python agents
+  Node.js (port 8000) — Orchestration, MongoDB, Redis, Socket.IO
+  React/Vite          — Dashboard, real-time updates via WebSocket
+  MongoDB Atlas       — Incidents, DMCA records, contracts, jobs
+  Redis (Upstash)     — Velocity tracking, adjudicator cache, rate limits
+  FAISS               — Local vector database for visual embeddings
+  GCS (optional)      — Evidence bundle backup
+
+
+================================================================================
+3. AGENT: ARCHIVIST
+================================================================================
+
+File: Backend/agents/archivist.py
+Role: Official video ingestion — creates the fingerprint vault
+
+PURPOSE
+───────
+The Archivist is the first step. Before any detection can happen, an official
+video must be "ingested" — the system must learn what the official content
+looks like at every level (visual, audio, temporal, forensic).
+
+HOW IT WORKS — 9-Stage Pipeline
+─────────────────────────────────
+
+Stage 1: Scene Change Detection
+  Every video frame is sampled at 1-second intervals. For each sampled frame,
+  a 48-dimensional BGR histogram is computed and compared to the previous frame
+  using OpenCV's HISTCMP_CORREL metric. If correlation drops below 0.35, a
+  scene boundary is detected. Only the first frame of each new scene is
+  processed further — this eliminates 70-90% of redundant frames (e.g. a
+  commentator talking for 30 seconds produces identical frames, all skipped).
+
+Stage 2: I-Frame Selection
+  Scene detection effectively selects I-frames (keyframes) without needing
+  codec-level access. Only visually distinct frames are kept.
+
+Stage 3: Screen Capture Detection
+  Canny edge detection + contour analysis identifies if the frame was captured
+  by filming a screen (phone recording a TV broadcast). Detected when:
+  - Edge density > 12% of total pixels
+  - A quadrilateral contour covers > 15% of the frame
+  This catches the most common piracy method for live broadcasts.
+
+Stage 4: Perspective Correction
+  If screen capture detected, a four-point perspective transform (dewarp) is
+  applied to correct for camera angle, keystoning, and trapezoidal distortion.
+  This ensures CLIP gets a clean, undistorted image to embed.
+
+Stage 5: CLIP ViT-B/32 Embedding
+  Each selected frame is embedded using OpenAI's CLIP ViT-B/32 model:
+  - Produces a 512-dimensional float32 semantic feature vector
+  - L2 normalised for cosine similarity search
+  - Loaded in float16 (half precision) to save ~175MB RAM vs float32
+  - Optionally uses ONNX Runtime for 10-15x faster CPU inference
+  - Batch size: 4 (ONNX) or 16 (PyTorch) images per forward pass
+
+Stage 6: FAISS Vector Storage
+  All embeddings are stored in a FAISS IndexFlatIP (inner product / cosine
+  similarity) index. Each vector is stored with metadata:
+  - video_path: relative path to source video
+  - timestamp_sec: frame position in video
+  - scene_idx: sequential scene number
+  - screen_capture: whether perspective correction was applied
+  Vault is saved atomically (write-to-tmp then rename) to prevent corruption.
+
+Stage 7: Temporal Signature Building (Video DNA)
+  Groups of 5 consecutive scene embeddings form a "temporal signature".
+  These are stored as windows across the video. During detection, if a
+  suspect's frame matches not just one but a sequence of frames in order,
+  it proves not just visual similarity but sequential content match — much
+  harder for pirates to evade. This is the "Video DNA" concept.
+
+Stage 8: Audio Fingerprinting (concurrent)
+  Runs SIMULTANEOUSLY with the visual pipeline in a background thread.
+  Extracts 16kHz mono PCM audio via ffmpeg, computes:
+  - Layer 1: Chroma fingerprint (Shazam-style 32-bit hash segments)
+  - Layer 2: 128-dim Mel spectrogram FAISS embedding
+  Stored in separate audio vault files.
+
+Stage 9: Forensic Video Signature
+  Samples 10 representative frames from the video and runs the SND forensics
+  model to determine which platform the content originated from. Aggregates
+  platform probability scores across all frames. Stores a "platform signature"
+  for the official video — useful for understanding which platforms leak content.
+
+SUPPORTED INPUT FORMATS
+────────────────────────
+  YouTube URLs          — yt-dlp automatic download
+  Google Drive links    — /file/d/{id} or ?id={id} → direct download
+  Dropbox links         — ?dl=0 → ?dl=1 + domain normalization
+  OneDrive / 1drv.ms    — redirect follow + download param
+  Box.com               — shared file download
+  Direct .mp4/.webm     — CDN links, S3, GCS URLs
+  Any yt-dlp source     — Vimeo, Dailymotion, etc.
+
+PERFORMANCE
+───────────
+  Frame decode:    ~60 sampled frames/sec (OpenCV)
+  Scene detection: 0.8ms per frame
+  CLIP (PyTorch):  760ms per image (CPU)
+  CLIP (ONNX):     ~60ms per image (10x speedup)
+  FAISS add:       0.4ms per 100 vectors (batch)
+  Audio chroma:    0.14s for 60 seconds of audio (vectorized)
+  Total for 5min video: ~60-90s (PyTorch) / ~20-30s (ONNX)
+
+CONFIGURATION
+─────────────
+  CLIP_BATCH_SIZE=4         (ONNX) or 16 (PyTorch)
+  INGEST_SAMPLE_SEC=1.0     (sample interval, lower = more frames)
+  MAX_TEMPORAL_SIGS=200     (cap per video to prevent unbounded growth)
+  CLIP_ONNX_PATH=./clip_vision.onnx   (set after running export_clip_onnx.py)
+
+
+================================================================================
+4. AGENT: SENTINEL
+================================================================================
+
+File: Backend/agents/sentinel.py
+Role: Multi-layer piracy detection on suspect content
+
+PURPOSE
+───────
+The Sentinel is the detection engine. Given a suspect URL from the Spider,
+it downloads a clip of the video, extracts frames using the same pipeline as
+the Archivist, and compares them against the official vault using 5 detection
+layers. URL is irrelevant — only content matters.
+
+DETECTION PIPELINE
+──────────────────
+
+Full Mode (single suspect, URL available):
+  1. Download first 90 seconds via yt-dlp (platform agnostic)
+  2. Extract scene-boundary frames (same histogram detection as Archivist)
+  3. CLIP embed all frames → FAISS search → best match across all frames
+  4. Run all 5 detection layers
+  5. Return fused confidence score
+
+Batch Mode (20+ suspects, no download):
+  1. Fetch thumbnail URL only
+  2. Try multiple resolutions (YouTube: maxresdefault, hqdefault, mqdefault)
+  3. Run layers 1-2-3-5 (no audio — too slow for parallel)
+  4. Return fused confidence
+
+5 DETECTION LAYERS
+──────────────────
+
+Layer 1: CLIP Visual Similarity (weight: 45%)
+  - Downloads suspect clip, extracts ALL scene-boundary frames (not just thumbnail)
+  - Embeds each frame via CLIP ViT-B/32
+  - Searches FAISS vault for nearest neighbour
+  - Takes BEST match across ALL frames — pirates can't hide by changing one frame
+  - Returns cosine similarity (0.0–1.0)
+  - Confirmed match threshold: 0.82
+  - Suspect threshold: 0.65
+
+Layer 2: pHash Pixel Verification (weight: 10%)
+  - Perceptual hash comparison between best-matching frames
+  - Computes 64-bit perceptual hash of suspect frame vs vault frame
+  - Hash distance < 15 bits = pixel-level match
+  - Provides legal defensibility ("cryptographic proof of identical frames")
+  - Does NOT trigger on visually similar but different content
+
+Layer 3: Temporal DNA Matching (weight: 15%)
+  - Compares suspect embedding against stored window sequences (Video DNA)
+  - A suspect who keeps the original video sequence but changes individual frames
+    is still caught here
+  - Uses centroid pre-filter for speed (skip windows with cosine < 0.55)
+  - Returns best window score and matched timestamp range
+
+Layer 4: Audio Fingerprint + Mel Embedding (weight: 30%)
+  THE KILLER LAYER — pirates almost always keep the original audio even when
+  they crop, blur, add borders, or change aspect ratio.
+  - Layer 4a: Chroma fingerprint Jaccard similarity (Shazam-style)
+    Survives: re-encoding, recording through speakers, noise
+  - Layer 4b: Mel spectrogram FAISS embedding similarity
+    Survives: slight pitch shifts, speed changes ±5%
+  - Uses already-downloaded video file (no extra download in full mode)
+  - Combined: audio_confidence = fp_score×0.65 + mel_score×0.35
+
+Layer 5: Forensic Platform Chain (attribution only)
+  - Runs SND dual-stream forensics on the best-matching frame
+  - Identifies which platforms the content passed through before reaching suspect
+  - Returns: chain (e.g. ["Telegram", "WhatsApp"]), first_platform, leak_risk
+  - Only runs when CLIP similarity >= 0.65 (suspect threshold)
+
+CONFIDENCE FUSION
+──────────────────
+  fused = CLIP×0.45 + audio×0.30 + temporal×0.15 + phash×0.10
+  
+  Match confirmed if ANY of:
+    - CLIP similarity >= 0.82 (clear visual match)
+    - Audio confidence >= 70% (clear audio match)
+    - Fused confidence >= 82%
+
+ENDPOINTS
+──────────
+  POST /scan          — full pipeline scan (downloads video)
+  POST /scan/batch    — thumbnail-only scan for 20+ suspects
+  POST /scan/full     — explicit full video scan for single suspect
+  GET  /debug/sentinel?thumbnail_url=  — threshold tuning debug
+
+
+================================================================================
+5. AGENT: AUDIO FINGERPRINT
+================================================================================
+
+File: Backend/agents/audio_fingerprint.py
+Role: Two-layer audio matching system
+
+PURPOSE
+───────
+Audio is the strongest piracy signal. A pirate who crops the top 20% of video,
+adds borders, changes colors, and re-encodes at low quality will keep the
+original audio intact. This agent catches them.
+
+TWO-LAYER ARCHITECTURE
+───────────────────────
+
+Layer 1: Chromaprint Acoustic Fingerprint
+  Inspired by Shazam/AcoustID open-source algorithm.
+
+  How it works:
+  1. FFmpeg extracts 16kHz mono PCM WAV from video
+  2. Hanning-windowed FFT produces spectrogram (2048 window, 512 hop)
+  3. Chroma features computed: 12 pitch classes (C, C#, D... B)
+     Maps FFT bins to pitch classes regardless of octave (A4=440Hz)
+  4. Every 3 seconds of audio → one 32-bit fingerprint integer
+     Encodes: sign pattern of chroma differences (11 bits) + top-3 pitch mask (12 bits)
+  5. Comparison: Jaccard similarity between fingerprint sets
+
+  Robustness:
+  - Survives: mp3/aac re-encoding, recording through speakers, ±5% speed
+  - NOT robust to: >1 semitone pitch shift, full audio replacement
+
+Layer 2: Mel Spectrogram FAISS Embedding
+  For pitch-shifted or speed-modified content.
+
+  How it works:
+  1. 128-band Mel filterbank applied to spectrogram
+  2. Log-compressed for perceptual scale
+  3. Global average pooling → 128-dim embedding
+  4. L2 normalised, stored in FAISS IndexFlatIP(128)
+  5. Sliding windows (30s window, 15s hop) for timestamp localisation
+
+  Robustness:
+  - Survives: slight pitch changes, EQ modifications, noise addition
+  - Captures: tonal and rhythmic structure
+
+COMBINED CONFIDENCE
+────────────────────
+  audio_confidence = fp_score × 0.65 + mel_score × 0.35
+
+VECTORIZED IMPLEMENTATION (performance fix)
+────────────────────────────────────────────
+  Uses numpy stride_tricks for zero-copy frame matrix construction.
+  Batch FFT on 2D array instead of Python loop.
+  Result: 0.14s for 60s audio vs ~7.7s before optimization (54x speedup).
+
+VAULT STORAGE
+─────────────
+  vault/audio_fingerprints.json  — chroma fingerprint store
+  vault/audio_vault.index        — FAISS index for Mel embeddings
+  vault/audio_metadata.json      — index → {video_id, segment_start_sec}
+
+
+================================================================================
+6. AGENT: SPIDER
+================================================================================
+
+File: Backend/agents/spider.py
+Role: Multi-platform OSINT crawler for pirated content discovery
+
+PURPOSE
+───────
+The Spider searches 12 platforms simultaneously to find unauthorized copies
+of the ingested official content. It generates intelligent search queries
+using an LLM and runs all platform scrapers in parallel.
+
+PLATFORMS SUPPORTED
+────────────────────
+
+WORKING:
+  YouTube        — yt-dlp ytsearch5 (primary, most reliable)
+                   Returns: 5 results per query × 4 queries = up to 20 suspects
+  Dailymotion    — Dailymotion API (api.dailymotion.com/videos) + yt-dlp
+  Reddit         — old.reddit.com JSON API + Pushshift archive
+  Rumble         — HTML scraping of rumble.com/search/video
+  Vimeo          — Vimeo API (public search) + HTML scraping
+  Twitch         — yt-dlp TwitchSearch + clips page scraping
+  Telegram       — Google site:t.me search + public channel scanning
+  Torrents       — ThePirateBay API (apibay.org/q.php) + 1337x scraping
+
+PARTIAL (blocked on cloud IPs, works locally):
+  TikTok         — yt-dlp with 6s timeout (fast-fail, cloud IP blocked)
+  Instagram      — Google site:instagram.com + yt-dlp with cookies
+  Twitter/X      — Nitter public instances (no auth needed)
+  Facebook       — yt-dlp watch/?q= format + Google site:facebook.com
+
+INGEST-ONLY (URL normalization, not searchable):
+  Google Drive   — /file/d/{id} and ?id={id} → direct download URL
+  Dropbox        — ?dl=0 → ?dl=1 + domain swap to dl.dropboxusercontent.com
+  OneDrive       — redirect follow + /download? parameter
+  Box.com        — shared file download URL
+
+QUERY GENERATION
+─────────────────
+  Primary: LLM-powered (Groq llama-3.1-8b-instant or Gemini 2.0-flash-lite)
+  Generates 4 targeted queries based on content type:
+    Movies    → "full movie", "free watch", "HD upload"
+    TV Shows  → "full episode", "complete series"
+    Sports    → "restream", "full match", "leaked stream"
+    Music     → "official audio", "music video"
+  Fallback: Rule-based queries if LLM unavailable
+
+PARALLEL EXECUTION
+───────────────────
+  ThreadPoolExecutor with max_workers=8
+  All 12 scrapers run simultaneously
+  Results deduplicated by URL
+  Total time: ~30-60s for all platforms
+
+NODE DATA STRUCTURE
+────────────────────
+  Each suspect returns:
+    title:          video title
+    platform:       platform name
+    account_handle: uploader username
+    url:            direct video URL
+    thumbnail_url:  thumbnail image URL
+    country:        inferred country (ISO 2-letter)
+    coordinates:    lat/lng for world map
+    view_count:     total views
+    description:    first 300 chars
+
+
+================================================================================
+7. AGENT: ADJUDICATOR
+================================================================================
+
+File: Backend/agents/adjudicator.py
+Role: LLM-powered legal classification of detected infringement
+
+PURPOSE
+───────
+Not every match is piracy. The Adjudicator uses AI to analyze each detected
+incident and make a legal determination: SEVERE PIRACY or FAIR USE / FAN CONTENT.
+It routes cases to either the Enforcer (DMCA takedown) or Broker (rev-share).
+
+LLM BACKEND WITH FALLBACK CHAIN
+─────────────────────────────────
+  Attempt 1: Groq llama-3.1-8b-instant (20k TPM, fastest)
+  Attempt 2: Groq llama-3.3-70b-versatile (better reasoning, 15s rate-limit delay)
+  Attempt 3: Gemini 2.0-flash-lite (Google fallback)
+  Error if all fail.
+
+WHAT IT RECEIVES
+─────────────────
+  A rich sentinel report containing ALL detection layer results:
+  - CLIP visual confidence and similarity scores
+  - pHash pixel match result
+  - Temporal DNA match score and timestamp range
+  - Audio fingerprint confidence (if not in batch mode)
+  - Forensic platform chain reconstruction
+  - Suspect metadata: platform, account, view count, description, country
+  - Match confirmation status
+
+VERDICT OUTPUT
+───────────────
+  {
+    "classification": "SEVERE PIRACY" or "FAIR USE / FAN CONTENT",
+    "risk_score": 0-100 (100 = definite piracy),
+    "justification": "1-2 sentence explanation",
+    "routing": "Enforcer" or "Broker",
+    "legal_basis": "17 U.S.C. § 106, DMCA § 512",
+    "recommended_action": "specific action to take"
+  }
+
+SAFETY RULES
+─────────────
+  Low confidence override:
+    If Sentinel confidence < 70% AND routing = "Enforcer":
+    → Forced to "Broker" with human review flag
+    Prevents false DMCA notices for uncertain matches.
+
+CACHING
+────────
+  Redis cache (24h TTL) keyed by: platform + account + title
+  Same account re-uploading same content doesn't waste LLM quota.
+
+THRESHOLD
+──────────
+  Only suspects with confidence >= 40% are adjudicated.
+  Below 40%: auto-cleared as "CLEAN" with justification logged.
+  (Previous threshold was 55%, lowered to avoid missing real threats)
+
+
+================================================================================
+8. AGENT: ENFORCER
+================================================================================
+
+File: Backend/agents/enforcer.py
+Role: DMCA notice drafting and escalation
+
+PURPOSE
+───────
+For cases classified as SEVERE PIRACY, the Enforcer generates a formal,
+legally defensible DMCA takedown notice using LLM drafting.
+
+DMCA NOTICE CONTENTS
+─────────────────────
+  1. Formal header (To/From/Date/Re)
+  2. Statement of authority (IP holder representation)
+  3. Description of infringement with evidence:
+     - CLIP visual similarity percentage
+     - Audio fingerprint match details
+     - FAISS cryptographic proof hash
+     - Frame-level timestamp reference
+  4. Cryptographic FAISS proof reference
+     A SHA-256 hash computed from:
+       vault_index + similarity + source_video + timestamp_sec + clip_confidence
+     This proves the match existed at detection time.
+  5. Takedown request + account strike demand
+  6. Escalation clauses:
+     - 1st offence: standard DMCA § 512(c)
+     - 2nd offence: cites § 512(i) repeat infringer policy
+     - 3rd+ offence: adds legal counsel referral
+
+TIER SYSTEM
+────────────
+  Standard (offence 1):    routine DMCA notice
+  Expedited (offence 2):   priority handling, § 512(i) citation
+  Legal Referral (3+):     escalation to legal counsel
+
+LEGAL CONTACTS PER PLATFORM
+─────────────────────────────
+  YouTube:   copyright@youtube.com
+  TikTok:    legal@tiktok.com
+  Twitter/X: copyright@twitter.com
+  Instagram: ip@instagram.com
+  Telegram:  dmca@telegram.org
+  Reddit:    copyright@reddit.com
+
+REPEAT OFFENDER TRACKING
+─────────────────────────
+  Redis key: enforcer:offences:{platform}:{account_handle}
+  TTL: 90 days
+  Automatically increments with each detection.
+
+LLM MODEL
+──────────
+  Primary: Groq llama-3.3-70b-versatile (highest quality for legal writing)
+  Fallback: llama-3.1-8b-instant (rate limit), then Gemini 2.0-flash-lite
+
+
+================================================================================
+9. AGENT: BROKER
+================================================================================
+
+File: Backend/agents/broker.py
+Role: Revenue-share contract generation for fair-use content
+
+PURPOSE
+───────
+Not all infringing content should be taken down. Fan compilations, commentary
+videos, reaction content, and educational videos may qualify for fair use.
+Instead of DMCA, the Broker offers creators a revenue-share licensing deal.
+
+TIER SYSTEM (by view count)
+────────────────────────────
+  Bronze:   < 10,000 views   → 35% holder / 65% creator
+  Silver:   10k-100k views   → 30% holder / 70% creator
+  Gold:     100k-1M views    → 25% holder / 75% creator
+  Platinum: > 1M views       → 20% holder / 80% creator
+
+RISK SCORE ADJUSTMENT
+─────────────────────
+  Higher risk_score (0-100) → holder share increases
+  Every 10 points above 50 → +2% to holder share (max 49%)
+  Ensures IP holder gets appropriate compensation for higher-risk uses.
+
+REVENUE ESTIMATION
+───────────────────
+  CPM rates (IP holder share, not full ad revenue):
+    YouTube:   $0.60 per 1000 views (~13% of YouTube CPM)
+    TikTok:    $0.004 per 1000 views (TikTok pays very little)
+    Twitter:   $0.08 per 1000 views
+    Instagram: $0.20 per 1000 views
+  Monthly revenue capped at $500 per deal (realistic ceiling for UGC)
+
+CONTRACT CONTENTS (LLM-generated JSON)
+────────────────────────────────────────
+  contract_title:               descriptive name
+  copyright_holder_share:       percentage
+  creator_share:                percentage
+  duration_months:              6-24 months
+  payment_schedule:             "monthly"
+  terms:                        2-3 sentence agreement
+  dispute_resolution:           arbitration clause
+  special_clauses:              tier-specific terms
+  estimated_monthly_revenue_usd
+  ip_holder_monthly_cut_usd
+  network:                      "Polygon (Mock)"
+
+BLOCKCHAIN HASH
+────────────────
+  Each contract gets a SHA-256 integrity hash for tamper-proof storage.
+  tx_hash: mock Polygon transaction hash (production: real Web3 integration)
+
+
+================================================================================
+10. AGENT: EVIDENCE VAULT
+================================================================================
+
+File: Backend/agents/evidence_vault.py
+Role: Enterprise-grade evidence packaging, custody tracking, and storage
+
+PURPOSE
+───────
+Every detection must produce legally defensible evidence. The Evidence Vault
+ensures all artifacts are cryptographically sealed, tamper-evident, and
+accessible for legal proceedings.
+
+CONTENT-ADDRESSED STORAGE
+───────────────────────────
+  Each artifact stored by SHA-256 hash of its content.
+  Deduplication: same bytes = same hash = no re-upload needed.
+  Supports: JSON, JPEG, NPY (numpy arrays), text, binary.
+
+CHAIN OF CUSTODY
+─────────────────
+  Every action recorded as an immutable JSONL audit log entry:
+    DETECTED:          Sentinel found potential piracy
+    CLASSIFIED:        Adjudicator classified the incident
+    DMCA_DRAFTED:      Enforcer drafted notice
+    DMCA_APPROVED:     Human reviewer approved
+    DMCA_SENT:         Notice dispatched to platform
+    DMCA_REJECTED:     Human rejected the notice
+    CONTRACT_MINTED:   Broker created rev-share contract
+    CONTRACT_ACTIVATED: Human activated contract
+    CONTRACT_DISPUTED: Contract under dispute
+    ACCESSED:          Investigator accessed evidence
+    EXPORTED:          Bundle exported as ZIP
+    SYNCED:            Artifacts synced to GCS
+
+Each entry contains:
+  event_id:        UUID
+  incident_id:     case identifier
+  action:          one of above codes
+  actor:           agent name or reviewer email
+  timestamp:       ISO 8601 UTC
+  bundle_hash:     SHA-256 of entire evidence bundle at that moment
+  prev_event_hash: hash of previous event (chain integrity)
+  event_hash:      SHA-256 of this event (tamper detection)
+
+INTEGRITY VERIFICATION
+───────────────────────
+  verify_custody_chain() checks:
+  1. Each event's hash matches recomputed hash
+  2. Each event's prev_hash matches previous event's hash
+  3. Chain is unbroken from GENESIS to latest event
+  Any tampering breaks the chain at the modified point.
+
+ARTIFACTS STORED PER INCIDENT
+───────────────────────────────
+  sentinel_result.json    — full scan result with all layer scores
+  thumbnail.jpg           — suspect thumbnail image
+  clip_embedding.npy      — 512-dim CLIP visual embedding
+  audio_fingerprint.json  — audio scan result
+  forensics_chain.json    — platform chain analysis
+  dmca_notice.json        — full DMCA notice data
+  dmca_notice.txt         — plain text notice
+  adjudication_verdict.json — LLM classification result
+  contract.json           — rev-share contract data
+  leak_analysis.json      — leak source analysis
+
+STORAGE BACKENDS
+─────────────────
+  Local:  evidence_vault/{incident_id}/ (always written)
+  GCS:    gs://{EVIDENCE_BUCKET}/incidents/{incident_id}/ (if configured)
+  Both simultaneously for redundancy
+
+ZIP EXPORT
+───────────
+  export_evidence_bundle(incident_id) → creates ZIP archive
+  ZIP itself is SHA-256 hashed
+  EXPORTED custody event recorded
+
+LIVE STREAM EVIDENCE
+─────────────────────
+  Each 30-second stream segment packaged independently:
+  segment_id = {stream_id}_seg{index:06d}
+  Enables real-time evidence preservation without waiting for stream end.
+
+
+================================================================================
+11. AGENT: FORENSICS
+================================================================================
+
+File: Backend/agents/forensics.py
+Role: Platform sharing chain reconstruction via JPEG compression analysis
+
+PURPOSE
+───────
+When pirated content spreads from Telegram → WhatsApp → YouTube, each
+platform re-compresses the image/video with its own unique compression
+parameters. The Forensics agent reads these compression fingerprints to
+reconstruct the distribution chain.
+
+This answers: "HOW was this content distributed?" — not just "IS it pirated?"
+
+TECHNICAL FOUNDATION
+─────────────────────
+Based on: Su et al. 2025 — "Image Sharing Chain Detection via Dual-Stream
+Network with Length-Conditional Decoding"
+
+Dual-stream neural architecture (SND model):
+
+Stream 1: DCT Coefficient Analysis
+  - JPEG images store pixels as 8×8 DCT blocks
+  - Each platform uses a different quantization table:
+    Facebook:   Q ~85 (moderate compression)
+    WhatsApp:   Q ~65 (aggressive compression)
+    Telegram:   Q ~70 (similar to WhatsApp)
+    Twitter/X:  Q ~75 (fixed-width resize)
+    Instagram:  Q ~78 (with sharpening)
+    Flickr:     Q ~92 (mild compression)
+    YouTube:    Q ~87 (good quality)
+  - Extracts 21-channel DCT stereo volume + quantization table
+  - Modulated by Q-table for platform-specific fingerprint
+
+Stream 2: SRM Noise Residual Analysis
+  - Steganalysis Rich Model (SRM) fixed high-pass filters
+  - 3 kernels × 3 RGB channels = 9-channel noise residual map
+  - Platform-specific resizing, sharpening, chroma subsampling
+    leave unique patterns in noise domain
+  - Filters are fixed (not learned) — capture platform compression artifacts
+
+Fusion:
+  Both streams → 64 encoder tokens → AFT (Attention-Free Transformer)
+  → Length-Conditional Bias decoder → chain prediction
+
+NEURAL MODEL (best.pth)
+─────────────────────────
+  Architecture: SND (Su et al. 2025 adapted)
+  Size: ~1.12GB (455 model parameters)
+  Device: CPU
+  Mode: neural (when best.pth loaded) or heuristic (fallback)
+  Load time: ~8s on first call, cached for process lifetime
+
+  Model training: train_forensics.py (run on Colab with GPU)
+  Loading: FORENSICS_MODEL_PATH env var (local) or FORENSICS_MODEL_GCS (GCS)
+
+HEURISTIC FALLBACK
+───────────────────
+  When no model weights available, uses rule-based JPEG analysis:
+  - Q-table comparison to known platform signatures
+  - Image dimension analysis (Twitter: 1200px wide, Instagram: square)
+  - Aspect ratio analysis
+  Accuracy: ~70% single platform vs ~95% neural
+
+CHAIN RECONSTRUCTION
+─────────────────────
+  Returns:
+    chain:           ordered list of platforms (e.g. ["Facebook", "Telegram"])
+    chain_length:    number of platforms in chain
+    confidence:      0.0-1.0 reconstruction confidence
+    first_platform:  where content FIRST appeared after official source
+    leak_risk:       "critical" / "high" / "medium" / "low"
+    method:          "neural" or "heuristic"
+    jpeg_quality:    estimated JPEG quality factor
+
+PLATFORMS DETECTED
+───────────────────
+  Facebook, Twitter/X, Flickr, WhatsApp, Telegram, Instagram, YouTube
+
+
+================================================================================
+12. AGENT: LIVE STREAM MONITOR
+================================================================================
+
+File: Backend/agents/live_stream.py
+Role: Real-time piracy detection on live broadcasts
+
+PURPOSE
+───────
+Traditional detection works on recorded videos. For live sports or events,
+you need detection DURING the broadcast — not after. The Live Stream Monitor
+divides streams into 30-second segments and processes them in a parallel
+pipeline, achieving ~30-second detection latency.
+
+ARCHITECTURE
+─────────────
+
+  Live Stream URL
+       │
+       ▼
+  StreamMonitor thread
+       │  every 30s
+       ▼
+  SegmentQueue (thread-safe, max depth 10)
+       │
+  ┌────┴──────────────────────────┐
+  │  CLIP Workers (2 threads)     │
+  │  Audio Workers (2 threads)    │
+  └────────────────┬──────────────┘
+                   │
+                   ▼
+            Sentinel Scan
+                   │
+                   ▼
+          Evidence Vault + Socket.IO alert
+
+SEGMENT EXTRACTION
+───────────────────
+  HLS/RTMP streams: direct ffmpeg download with -t {SEGMENT_DURATION}
+  YouTube Live, Twitch, etc.: yt-dlp with external_downloader=ffmpeg -t flag
+
+PARALLEL PIPELINE
+──────────────────
+  Segment N:   [Download] → [CLIP Embed] → [Audio FP] → [Scan] → [Alert]
+  Segment N+1:              [Download]  → [CLIP Embed] → [Audio FP] → ...
+
+  EMBED_WORKERS = 2   (parallel CLIP embedding)
+  SCAN_WORKERS  = 2   (parallel sentinel scans)
+  DETECTION_THRESHOLD = 60%  (alert threshold)
+
+DETECTION LATENCY
+──────────────────
+  = one segment length = 30 seconds (vs full stream length without parallelism)
+
+STREAM REGISTRY
+────────────────
+  StreamRegistry maintains dict of active monitors
+  Thread-safe: {stream_id → StreamMonitor}
+  Each monitor runs independently
+
+SUPPORTED STREAM TYPES
+───────────────────────
+  HLS:    .m3u8 URLs
+  RTMP:   rtmp:// URLs
+  RTSP:   rtsp:// URLs
+  YouTube Live: youtube.com/live/... (yt-dlp)
+  Twitch Live:  twitch.tv/... (yt-dlp)
+  Any yt-dlp compatible URL
+
+API
+────
+  POST   /stream/start          — start monitoring a stream
+  DELETE /stream/{stream_id}    — stop monitoring
+  GET    /stream/{stream_id}/results  — get detection results
+  GET    /stream/active         — list all active monitors
+
+Node.js integration:
+  stream.js route polls /stream/{sid}/results every 10s
+  Emits Socket.IO event: stream:detection → frontend dashboard
+
+
+================================================================================
+13. SWARM ORCHESTRATOR
+================================================================================
+
+File: Backend/server/controllers/swarmController.js
+Role: Coordinates all agents through the full 5-phase detection pipeline
+
+PURPOSE
+───────
+The Swarm runs when a user triggers a hunt. It coordinates all agents in
+sequence, emitting real-time Socket.IO events to the frontend at each stage.
+
+5-PHASE PIPELINE
+─────────────────
+
+Phase 1: SPIDER
+  Calls FastAPI /hunt with official video URL
+  Spider runs all 12 platform scrapers in parallel
+  Returns: list of suspect nodes with URLs, thumbnails, metadata
+  Frontend event: spider:complete
+
+Phase 2: SENTINEL (Batch Scan)
+  Sends all suspect nodes to FastAPI /scan/batch
+  Thumbnail-only scan for speed (20+ suspects)
+  Each result stored as Incident in MongoDB
+  Frontend event: sentinel:threat_found (per incident)
+
+Phase 2b: FULL VIDEO SCAN (Upgrade)
+  Suspects with confidence >= 55% get full video scan via /scan/full
+  Downloads actual video, extracts frames, runs complete 5-layer detection
+  Replaces batch result with more accurate full-scan result
+  Frontend event: swarm:phase 2b
+
+Phase 2 (parallel): LEAK ANALYSIS
+  For suspects >= 40% confidence: async /leak/analyze call
+  Runs forensics to reconstruct platform distribution chain
+  Frontend event: leak:chain_detected
+
+Phase 3: ADJUDICATOR
+  Suspects >= 40% confidence sent to /adjudicate
+  LLM classifies each as SEVERE PIRACY or FAIR USE
+  Auto-clears suspects below threshold
+  Routes confirmed piracy → Enforcer queue
+  Routes fair use → Broker queue
+  Frontend event: adjudicator:verdict (per suspect)
+
+Phase 4: ENFORCER (for piracy cases)
+  Calls /enforce for each confirmed piracy case
+  Generates DMCA notice with real FAISS proof hash
+  Stores DMCARecord in MongoDB
+  Frontend event: enforcer:notice_ready
+
+Phase 5: BROKER (for fair use cases)
+  Calls /broker for each fair use case
+  Generates rev-share contract
+  Stores ContractRecord in MongoDB
+  Frontend event: broker:contract_ready
+
+VELOCITY TRACKING
+──────────────────
+  Redis key: sentinel:velocity:{account_handle}
+  TTL: 7 days
+  If same account uploads 3+ times in a week → severity escalated to CRITICAL
+
+CONFIDENCE THRESHOLD
+─────────────────────
+  ADJ_CONFIDENCE_THRESHOLD = 40%
+  Below: auto-cleared, status = "CLEARED", no LLM cost
+  Above: adjudicated, routed to Enforcer or Broker
+
+EVIDENCE PACKAGING
+───────────────────
+  For every incident: async POST /evidence/{incident_id}/package_detection
+  Fire-and-forget — never blocks swarm progress
+  Stores: scan_result, audio_result, forensics chain (all fields)
+
+
+================================================================================
+14. PLATFORM COVERAGE
+================================================================================
+
+┌──────────────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
+│ Platform         │ Scraper  │ Results  │ Thumb    │ URL      │ Notes    │
+├──────────────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+│ YouTube          │ ✅       │ ✅ 5/q   │ ✅       │ ✅       │ Primary  │
+│ Dailymotion      │ ✅       │ ✅       │ ✅       │ ✅       │ API+yt   │
+│ Reddit           │ ✅       │ ✅       │ partial  │ ✅       │ OAuth    │
+│ Rumble           │ ✅       │ ✅       │ ✅       │ ✅       │ HTML     │
+│ Vimeo            │ ✅       │ ✅       │ ✅       │ ✅       │ API      │
+│ Twitch           │ ✅       │ ✅       │ partial  │ ✅       │ yt-dlp   │
+│ TikTok           │ ⚠️       │ ⚠️       │ ⚠️       │ ⚠️       │ IP block │
+│ Instagram        │ ⚠️       │ ⚠️       │ ❌       │ ✅       │ Auth req │
+│ Twitter/X        │ ⚠️       │ ⚠️       │ ⚠️       │ ✅       │ Nitter   │
+│ Facebook         │ ⚠️       │ ⚠️       │ ❌       │ ✅       │ Auth req │
+│ Telegram         │ ✅       │ ✅       │ partial  │ ✅       │ Google   │
+│ Torrent/TPB      │ ✅       │ ✅       │ ❌       │ ✅       │ API      │
+│ Torrent/1337x    │ ✅       │ ✅       │ ❌       │ ✅       │ HTML     │
+│ Google Drive     │ partial  │ N/A      │ N/A      │ ✅       │ ingest   │
+│ Dropbox          │ partial  │ N/A      │ N/A      │ ✅       │ ingest   │
+└──────────────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
+
+✅ = Working   ⚠️ = Partial/blocked on cloud IPs   ❌ = Not supported
+
+
+================================================================================
+15. API ENDPOINTS REFERENCE
+================================================================================
+
+FastAPI (port 8001):
+
+HEALTH:
+  GET  /                          health + vault size
+  GET  /vault/status              vault vectors, temporal sigs, audio FP count
+  GET  /forensics/status          forensics model mode (neural/heuristic)
+  GET  /api/health               all services health check (via Node)
+
+INGEST:
+  POST /ingest                   start async video ingest (returns job_id)
+  GET  /ingest/status/{job_id}   poll ingest progress
+
+HUNT:
+  POST /hunt                     spider crawl + suspect list
+
+SCAN:
+  POST /scan                     full pipeline scan (downloads video)
+  POST /scan/batch               thumbnail-only batch scan
+  POST /scan/full                explicit full video scan
+
+ADJUDICATE:
+  POST /adjudicate               single incident adjudication
+  POST /adjudicate/batch         batch adjudication
+
+ENFORCE:
+  POST /enforce                  generate DMCA notice
+
+BROKER:
+  POST /broker                   generate rev-share contract
+
+FORENSICS:
+  POST /forensics/analyze        platform chain analysis
+  POST /leak/analyze             full leak source analysis
+  POST /leak/batch               batch leak analysis
+
+EVIDENCE:
+  GET  /evidence/{id}            evidence summary
+  GET  /evidence/{id}/custody    full chain of custody
+  POST /evidence/{id}/package_detection   package detection artifacts
+  POST /evidence/{id}/export     export as ZIP
+  POST /evidence/{id}/sync       sync to GCS
+
+LIVE STREAM:
+  POST   /stream/start           start stream monitoring
+  DELETE /stream/{id}            stop monitoring
+  GET    /stream/active          list active monitors
+  GET    /stream/{id}/results    get detection results
+
+Node.js (port 8000):
+
+  POST /api/swarm/run            launch full 5-phase swarm
+  GET  /api/hunt/{jobId}         swarm job status
+  GET  /api/incidents            list all incidents
+  GET  /api/incidents/{id}       single incident
+  GET  /api/ingest               list ingested assets
+  POST /api/ingest               ingest new asset
+  DELETE /api/ingest/{id}        remove asset from vault
+  GET  /api/enforce              list DMCA records
+  GET  /api/broker               list contracts
+  GET  /api/health               full system health
+  POST /api/leak/analyze         leak source analysis (proxied to FastAPI)
+  POST /api/stream/start         start stream (proxied + Socket.IO polling)
+
+
+================================================================================
+16. CONFIGURATION & ENVIRONMENT
+================================================================================
+
+Backend/.env variables:
+
+REQUIRED:
+  GROQ_API_KEY          Groq API key (adjudicator, enforcer, broker, spider)
+  GEMINI_API_KEY        Google Gemini API key (fallback for all LLM calls)
+  MONGO_URI             MongoDB Atlas connection string
+  REDIS_URL             Upstash Redis URL (rediss:// for TLS)
+  FASTAPI_URL           FastAPI internal URL (default: http://127.0.0.1:8001)
+  PORT                  Node.js port (default: 8000)
+
+OPTIONAL — PERFORMANCE:
+  CLIP_ONNX_PATH        Path to clip_vision.onnx (10-15x CLIP speedup)
+  CLIP_BATCH_SIZE       CLIP batch size (default: 4 ONNX, 16 PyTorch)
+  INGEST_SAMPLE_SEC     Frame sampling interval (default: 1.0s)
+  MAX_TEMPORAL_SIGS     Temporal signatures cap per video (default: 200)
+  SUSPECT_CLIP_DURATION Seconds of suspect video to download (default: 90)
+
+OPTIONAL — FORENSICS:
+  FORENSICS_MODEL_PATH  Local path to best.pth model weights
+  FORENSICS_MODEL_GCS   GCS path: gs://bucket/path/best.pth
+
+OPTIONAL — STORAGE:
+  EVIDENCE_BUCKET       GCS bucket for evidence backup
+  EVIDENCE_ENCRYPT      Encrypt evidence at rest (default: false)
+
+OPTIONAL — PROXY:
+  PROXY_URL             HTTP proxy for scrapers (helps TikTok/Instagram)
+  YOUTUBE_COOKIES_B64   Base64-encoded YouTube cookies for restricted content
+
+OPTIONAL — RUNTIME:
+  NODE_ENV              development / production
+  CLIENT_URL            Frontend URL for CORS
+  RENDER_EXTERNAL_URL   Render deployment URL (for keepalive)
+
+STARTING SERVICES:
+  FastAPI: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+  Node:    npm run dev  (from Backend/server/)
+  Frontend: npm run dev (from Frontend/)
+
+GENERATE CLIP ONNX (one-time, ~5 min):
+  cd Backend
+  python export_clip_onnx.py
+  # Produces clip_vision.onnx (~330MB)
+  # Add to .env: CLIP_ONNX_PATH=./clip_vision.onnx
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================

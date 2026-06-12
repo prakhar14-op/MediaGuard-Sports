@@ -1,0 +1,91 @@
+{
+  "evidence_id": "bd0535eb2caf4128914a2fc81efc82a2",
+  "timestamp": 1781187278,
+  "metadata": {
+    "payload": {
+      "thumbnail_url": "https://i.ytimg.com/vi/afiNbSxg7aw/maxresdefault.jpg",
+      "account_handle": "@test_account",
+      "platform": "YouTube",
+      "title": "Test Video",
+      "url": "https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu",
+      "country": "US"
+    },
+    "result": {
+      "match_confirmed": true,
+      "confidence_score": 71.87,
+      "severity": "WARNING",
+      "clip_similarity": 0.6589,
+      "clip_confidence": 65.89,
+      "l2_distance": 0.3411,
+      "top_matches": [
+        {
+          "vault_index": 173,
+          "similarity": 0.6589,
+          "l2_distance": 0.3411,
+          "confidence": 65.89,
+          "source_video": "assets\\official\\test_fdf7f6d5.mp4",
+          "timestamp_sec": 178,
+          "scene_idx": 50,
+          "screen_capture": false
+        },
+        {
+          "vault_index": 119,
+          "similarity": 0.6589,
+          "l2_distance": 0.3411,
+          "confidence": 65.89,
+          "source_video": "assets\\official\\test_8c84e918.mp4",
+          "timestamp_sec": 178,
+          "scene_idx": 50,
+          "screen_capture": false
+        },
+        {
+          "vault_index": 65,
+          "similarity": 0.6589,
+          "l2_distance": 0.3411,
+          "confidence": 65.89,
+          "source_video": "assets\\official\\test_5e6cbfe2.mp4",
+          "timestamp_sec": 178,
+          "scene_idx": 50,
+          "screen_capture": false
+        }
+      ],
+      "phash_match": false,
+      "phash_score": 0,
+      "temporal_score": 0.6589,
+      "temporal_match": {
+        "score": 0.6589,
+        "window_start_ts": 150.72,
+        "window_end_ts": 178.56,
+        "video_id": "test_5e6cbfe2"
+      },
+      "audio_match": true,
+      "audio_confidence": 85.82,
+      "audio_fp_score": 0.7818,
+      "audio_mel_score": 1.0,
+      "audio_best_video": "test_5e6cbfe2",
+      "audio_best_ts": 0.0,
+      "audio_skipped": false,
+      "forensics_chain": [
+        "Facebook",
+        "Flickr",
+        "Flickr"
+      ],
+      "forensics_chain_length": 3,
+      "forensics_confidence": 0.764,
+      "forensics_first_platform": "Facebook",
+      "forensics_leak_risk": "critical",
+      "forensics_method": "neural",
+      "forensics_jpeg_quality": 50.0,
+      "thumbnail_url": "https://i.ytimg.com/vi/afiNbSxg7aw/maxresdefault.jpg",
+      "suspect_video_url": "https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu"
+    }
+  },
+  "reviewer": "automated_agent",
+  "artifacts": [
+    {
+      "kind": "metadata",
+      "path": "metadata_tmpc51l4wwc.json",
+      "sha256": "b312cc597ae5fb5ae9e757a5fd8f71d0c44923bae8a80c4a38cdeb95f76fa4ca"
+    }
+  ]
+}

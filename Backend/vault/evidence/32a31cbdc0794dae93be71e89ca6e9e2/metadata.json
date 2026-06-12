@@ -1,0 +1,47 @@
+{
+  "evidence_id": "32a31cbdc0794dae93be71e89ca6e9e2",
+  "timestamp": 1781187362,
+  "metadata": {
+    "payload": {
+      "target_account": "@test_fair_use_creator",
+      "platform": "YouTube",
+      "video_title": "Test Video afiNbSxg7aw (Fan Edit)",
+      "video_url": "https://youtu.be/afiNbSxg7aw?si=VfrX5D31DRz-K-tu",
+      "justification": "Fair use fan compilation, monetized via rev-share",
+      "view_count": 150000,
+      "risk_score": 28
+    },
+    "result": {
+      "tx_hash": "0xb9effd2b52c0a1c1e0ce9732c6d185dab4e8c499ba964356546e74b2b788eccd",
+      "tier": "Gold",
+      "copyright_holder_share": 25,
+      "creator_share": 75,
+      "estimated_monthly_revenue": 90.0,
+      "contract_data": {
+        "contract_title": "Fair Use Fan Compilation Revenue Share Agreement",
+        "copyright_holder_share": 25,
+        "creator_share": 75,
+        "duration_months": 12,
+        "payment_schedule": "monthly",
+        "terms": "This agreement grants @test_fair_use_creator the right to monetize the Test Video afiNbSxg7aw (Fan Edit) on YouTube, with revenue split according to the specified shares. The agreement is non-exclusive and may be terminated with 30 days' notice. All parties agree to uphold the terms of this contract.",
+        "dispute_resolution": "Any disputes arising from this agreement will be resolved through arbitration by a neutral third-party mediator.",
+        "special_clauses": "As a Gold Engagement Tier creator, @test_fair_use_creator is eligible for priority content review and accelerated payment processing.",
+        "estimated_monthly_revenue_usd": 90.0,
+        "ip_holder_monthly_cut_usd": 22.5,
+        "network": "Polygon (Mock)",
+        "rationale": "This agreement is based on the principles of fair use, allowing for the monetization of fan-created content while ensuring fair compensation for the copyright holder."
+      },
+      "network": "Polygon (Mock)",
+      "target_account": "@test_fair_use_creator",
+      "platform": "YouTube"
+    }
+  },
+  "reviewer": "automated_agent",
+  "artifacts": [
+    {
+      "kind": "metadata",
+      "path": "metadata_tmpw4bm4fz5.json",
+      "sha256": "8c979a037cac8f23e75d5b7ec05cfab62c770189b77f20702a7d6e5e3c822817"
+    }
+  ]
+}

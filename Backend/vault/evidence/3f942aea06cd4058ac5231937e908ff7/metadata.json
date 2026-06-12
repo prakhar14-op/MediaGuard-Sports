@@ -1,0 +1,31 @@
+{
+  "evidence_id": "3f942aea06cd4058ac5231937e908ff7",
+  "timestamp": 1781187356,
+  "metadata": {
+    "payload": {
+      "sentinel_report": "[CRITICAL] Confidence: 71.87% | CLIP: 65.89%",
+      "platform": "YouTube",
+      "account_handle": "@test_pirate_account",
+      "video_title": "Test Video afiNbSxg7aw",
+      "description": "Unauthorized re-upload of official video",
+      "country": "US",
+      "confidence_score": 71.87
+    },
+    "verdict": {
+      "classification": "SEVERE PIRACY",
+      "risk_score": 95,
+      "justification": "Unauthorized re-upload of official video content without permission, indicating a clear infringement of the copyright holder's exclusive rights.",
+      "routing": "Enforcer",
+      "legal_basis": "17 U.S.C. § 106, DMCA § 512",
+      "recommended_action": "Immediate removal of the infringing content and a permanent ban on the infringing account."
+    }
+  },
+  "reviewer": "automated_agent",
+  "artifacts": [
+    {
+      "kind": "metadata",
+      "path": "metadata_tmpfg2jfhkk.json",
+      "sha256": "5065e985c2da52504160e962d836abd945c267c98b6f243b0ea0a6c859cd2fb6"
+    }
+  ]
+}

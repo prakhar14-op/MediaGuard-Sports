@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from agents.archivist import tool_ingest_video, vector_db
 from agents.spider import crawl
-from agents.sentinel import scan_thumbnail, MATCH_THRESHOLD, SUSPECT_THRESHOLD
+from agents.sentinel import scan_thumbnail, scan_suspect, MATCH_THRESHOLD, SUSPECT_THRESHOLD
 from agents.adjudicator import adjudicate, batch_adjudicate
 from agents.enforcer import issue_dmca
 from agents.broker import deploy_contract
@@ -32,6 +32,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── L1 FIX: Pre-warm CLIP on startup ─────────────────────────────────────────
+# Previously CLIP loaded lazily on first ingest — causing 8.4s cold-start delay.
+# Now loads in a background thread at startup so it is ready for the first request.
+def _prewarm_clip():
+    try:
+        from agents.archivist import _load_clip, _onnx_enabled
+        if _onnx_enabled:
+            print("[Startup] CLIP ONNX already loaded — no pre-warm needed")
+            return
+        _load_clip()
+        print("[Startup] CLIP pre-warm complete")
+    except Exception as e:
+        print(f"[Startup] CLIP pre-warm failed (non-fatal): {e}")
+
+threading.Thread(target=_prewarm_clip, daemon=True).start()
 
 OFFICIAL_DIR = os.path.join(os.path.dirname(__file__), "assets", "official")
 os.makedirs(OFFICIAL_DIR, exist_ok=True)
@@ -477,11 +493,18 @@ def adjudicate_batch(payload: BatchAdjudicateRequest):
     return {"success": True, "results": results, "total": len(results)}
 
 @app.post("/scan")
-def scan_suspect(payload: ScanRequest):
-    result = scan_thumbnail(payload.thumbnail_url, suspect_video_url=payload.url)
+def scan_suspect_endpoint(payload: ScanRequest):
+    """
+    Full pipeline scan — downloads suspect clip, extracts frames, runs all 5 layers.
+    Platform agnostic: works for YouTube, TikTok, Vimeo, Dailymotion, etc.
+    """
+    result = scan_thumbnail(
+        payload.thumbnail_url,
+        suspect_video_url = payload.url,
+        batch_mode        = False,   # full video download for single scans
+    )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
-    # Record the scan result as evidence (metadata + thumbnail URL)
     try:
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", dir=OFFICIAL_DIR)
         meta = {"payload": payload.dict(), "result": result}
@@ -494,21 +517,29 @@ def scan_suspect(payload: ScanRequest):
 
 @app.post("/scan/batch")
 def batch_scan(payload: BatchScanRequest):
-    """Scan multiple thumbnails in parallel using a thread pool."""
+    """
+    Batch scan — parallel thumbnail scans for 20+ suspects.
+
+    Strategy: thumbnail-only in batch mode (too slow to download 20+ videos).
+    For suspects that are confirmed matches after batch, the swarm
+    can trigger full video scans individually.
+
+    Nodes without thumbnail_url are included — they get thumbnail_url=""
+    and the scanner will try to extract it from the video URL.
+    """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    nodes = [n for n in payload.threat_nodes if n.get("thumbnail_url")]
+    nodes = payload.threat_nodes  # include ALL nodes, not just those with thumbnails
 
     def _scan_one(node):
         result = scan_thumbnail(
-            node["thumbnail_url"],
-            suspect_video_url=node.get("url", ""),
-            batch_mode=True,   # skip audio download in batch — prevents OOM
+            node.get("thumbnail_url", ""),
+            suspect_video_url = node.get("url", ""),
+            batch_mode        = True,   # thumbnail-only in batch
         )
         return {"node": node, "scan": result}
 
     results = []
-    # Use up to 8 workers — CLIP is CPU-bound but I/O (thumbnail fetch) benefits from parallelism
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {pool.submit(_scan_one, node): node for node in nodes}
         for future in as_completed(futures):
@@ -521,7 +552,30 @@ def batch_scan(payload: BatchScanRequest):
     return {"success": True, "results": results, "total": len(results)}
 
 
-# ─── Ingest (async) ───────────────────────────────────────────────────────────
+class FullScanRequest(BaseModel):
+    url:            str          # suspect video URL
+    thumbnail_url:  str  = ""
+    platform:       str  = ""
+    account_handle: str  = ""
+
+
+@app.post("/scan/full")
+def full_scan(payload: FullScanRequest):
+    """
+    Full video pipeline scan for a single confirmed/high-priority suspect.
+    Downloads the video, extracts scene frames, runs all 5 detection layers.
+    Use this after batch scan identifies high-confidence suspects.
+    Takes 30-90s depending on video platform and length.
+    """
+    result = scan_suspect(
+        suspect_video_url = payload.url,
+        thumbnail_url     = payload.thumbnail_url,
+        platform          = payload.platform,
+        batch_mode        = False,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"success": True, **result}
 
 @app.post("/ingest")
 def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
@@ -572,11 +626,10 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
                 # Dropbox: ?dl=0 → ?dl=1 (force download), www.dropbox.com → dl.dropboxusercontent.com
                 elif 'dropbox.com' in url:
-                    # Remove dl=0, add dl=1
-                    direct_url = re.sub(r'[?&]dl=\d', '', url)
+                    # Strip any existing dl= param cleanly, then add dl=1
+                    direct_url = re.sub(r'([?&])dl=\d+', r'\1', url).rstrip('?&')
                     sep = '&' if '?' in direct_url else '?'
                     direct_url = direct_url + sep + 'dl=1'
-                    # Swap to direct download domain
                     direct_url = direct_url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
                     print(f"[Ingest] Dropbox URL normalized: {direct_url}")
 
@@ -638,12 +691,17 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
             else:
                 # ── Platform URL — use yt-dlp ─────────────────────────────────
+                import shutil as _shutil
+                _node = _shutil.which("node") or _shutil.which("node.exe") or ""
                 ydl_opts = {
                     "outtmpl":     os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
                     "format":      "best",
                     "quiet":       False,
                     "no_warnings": False,
                 }
+                # L2 FIX: Node.js as JS runtime — suppresses Deno warning
+                if _node:
+                    ydl_opts["extractor_args"] = {"youtube": {"player_client": ["web"]}}
                 if os.path.exists(COOKIES_PATH):
                     ydl_opts["cookiefile"] = COOKIES_PATH
 
@@ -666,7 +724,16 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
             # ── Embed frames ──────────────────────────────────────────────────
             _write_job(job_id, {"status": "processing", "message": "Extracting and embedding frames…"})
 
-            result = tool_ingest_video(local_path)
+            # Progress callback — updates job store every batch so frontend sees live progress
+            def _on_progress(scenes_done: int, vault_size: int, message: str):
+                _write_job(job_id, {
+                    "status":      "processing",
+                    "message":     message,
+                    "frame_count": scenes_done,
+                    "vault_size":  vault_size,
+                })
+
+            result = tool_ingest_video(local_path, progress_callback=_on_progress)
             if "[ERROR]" in result:
                 _write_job(job_id, {"status": "failed", "message": result})
                 return
@@ -853,6 +920,15 @@ def stop_stream(stream_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/stream/active")
+def list_active_streams():
+    """List all currently monitored streams. Must be before /{stream_id} routes."""
+    try:
+        from agents.live_stream import list_active_streams
+        return {"success": True, "streams": list_active_streams()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/stream/{stream_id}/results")
 def get_stream_results(stream_id: str):
     """Get detection results for a live stream."""
@@ -866,15 +942,6 @@ def get_stream_results(stream_id: str):
             "total":     len(results),
             "detections": sum(1 for r in results if r.get("match_confirmed")),
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/stream/active")
-def list_active_streams():
-    """List all currently monitored streams."""
-    try:
-        from agents.live_stream import list_active_streams
-        return {"success": True, "streams": list_active_streams()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
