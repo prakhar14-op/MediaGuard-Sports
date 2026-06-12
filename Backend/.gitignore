@@ -1,13 +1,44 @@
-# Python virtual environments
+# Python
 .venv/
 env/
 __pycache__/
+*.pyc
 
-# Environment variables (NEVER COMMIT THIS)
+# Environment variables (NEVER COMMIT)
 .env
 
-# Downloaded videos and local FAISS databases
-assets/
+# Downloaded videos and local stores
+assets/official/
+assets/suspects/
 *.mp4
+*.webm
+
+# FAISS vault (regenerated from ingest)
+vault/
 *.faiss
 *.pkl
+
+# Model files (too large for git — store on GCS/Drive)
+best.pth
+clip_vision.onnx
+clip_vision.onnx.data
+*.pth
+*.onnx
+*.onnx.data
+
+# Evidence vault (local storage, not committed)
+evidence_vault/
+
+# Node
+server/node_modules/
+server/package-lock.json
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.cph/
+
+# Temp files
+/tmp/
+*.tmp

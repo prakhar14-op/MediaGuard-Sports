@@ -121,7 +121,7 @@ BATCH_SIZE = int(os.environ.get("CLIP_BATCH_SIZE", "4" if _onnx_enabled else "16
 SCENE_HIST_THRESHOLD       = 0.35
 TEMPORAL_WINDOW            = 5
 SCREEN_EDGE_DENSITY_THRESHOLD = 0.12
-INGEST_SAMPLE_SEC          = float(os.environ.get("INGEST_SAMPLE_SEC", "1.0"))
+INGEST_SAMPLE_SEC          = float(os.environ.get("INGEST_SAMPLE_SEC", "0.5"))
 
 
 def _load_clip():
@@ -248,6 +248,27 @@ def _is_scene_change(prev_hist: np.ndarray, curr_hist: np.ndarray) -> bool:
         cv2.HISTCMP_CORREL,
     )
     return float(correlation) < SCENE_HIST_THRESHOLD
+
+
+def _compute_motion_magnitude(prev_gray: np.ndarray, curr_gray: np.ndarray) -> float:
+    """
+    Compute motion magnitude between two consecutive frames using optical flow.
+    Returns a normalized value between 0 and 1 indicating how much motion there is.
+    """
+    if prev_gray is None:
+        return 0.5  # default to medium motion
+    
+    try:
+        # Compute dense optical flow using Farneback method
+        flow = cv2.calcOpticalFlowFarneback(prev_gray, curr_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+        # Calculate magnitude of flow vectors
+        mag, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        # Normalize to 0-1 range
+        max_mag = np.max(mag) if np.max(mag) > 0 else 1.0
+        avg_mag = np.mean(mag) / max_mag
+        return float(avg_mag)
+    except Exception:
+        return 0.5
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -627,6 +648,8 @@ def tool_ingest_video(video_path: str) -> str:
     skipped_similar  = 0
     screen_detections= 0
     prev_hist        = None
+    prev_gray        = None
+    last_sample_frame= 0
 
     # Accumulated scene embeddings for temporal signature building
     scene_embeddings_with_ts = []   # list of (embedding_1d, timestamp_sec)
@@ -670,7 +693,24 @@ def tool_ingest_video(video_path: str) -> str:
         if not ret:
             break
 
-        if frame_id % SAMPLE_INTERVAL == 0:
+        # Compute current grayscale frame for motion detection
+        curr_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # Compute motion magnitude between current and previous frame
+        motion = _compute_motion_magnitude(prev_gray, curr_gray)
+        
+        # Adaptive sampling: more frames when there's more motion
+        # High motion: sample every 0.5s, medium: 1s, low: 2s
+        if motion > 0.6:  # high motion
+            adaptive_interval = max(1, int(fps * 0.5))
+        elif motion > 0.3:  # medium motion
+            adaptive_interval = max(1, int(fps * 1.0))
+        else:  # low motion
+            adaptive_interval = max(1, int(fps * 2.0))
+
+        # Check if we should sample this frame
+        if (frame_id - last_sample_frame) >= adaptive_interval:
+            last_sample_frame = frame_id
             curr_hist = _bgr_histogram(frame)
 
             if _is_scene_change(prev_hist, curr_hist):
@@ -697,11 +737,46 @@ def tool_ingest_video(video_path: str) -> str:
                 prev_hist = curr_hist
             else:
                 skipped_similar += 1
+        
+        # Update previous grayscale frame for next iteration
+        prev_gray = curr_gray
 
         frame_id += 1
 
     cap.release()
     _flush_batch()
+
+    # ── Minimum Frame Guarantee ───────────────────────────────────────────────
+    # If scene detection found too few frames (< 10 for a video > 30s),
+    # force-sample at regular intervals. This handles music videos,
+    # single-shot content, and very consistent visual styles.
+    MIN_FRAMES = 10
+    duration_sec = frame_id / fps if fps > 0 else 0
+
+    if extracted_count < MIN_FRAMES and duration_sec > 30:
+        print(f"[Archivist] Only {extracted_count} scenes found — forcing uniform sampling for {duration_sec:.0f}s video")
+        # Force-sample every N seconds to get at least MIN_FRAMES
+        force_interval_sec = duration_sec / MIN_FRAMES
+        cap2 = cv2.VideoCapture(video_path)
+        if cap2.isOpened():
+            for i in range(MIN_FRAMES):
+                target_ms = i * force_interval_sec * 1000
+                cap2.set(cv2.CAP_PROP_POS_MSEC, target_ms)
+                ret, frame = cap2.read()
+                if not ret:
+                    continue
+                ts = target_ms / 1000.0
+                # Screen detection on forced frames too
+                screen_info = detect_screen_capture(frame)
+                if screen_info["is_screen_capture"] and screen_info["screen_corners"]:
+                    frame = correct_perspective(frame, screen_info["screen_corners"])
+                pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                batch_images.append(pil_image)
+                batch_timestamps.append(ts)
+                batch_screen_info.append(screen_info)
+            cap2.release()
+            _flush_batch()
+            print(f"[Archivist] Force-sampled {extracted_count} total frames (uniform interval={force_interval_sec:.1f}s)")
 
     if extracted_count == 0:
         return f"[ERROR] No frames extracted — video may be corrupted or have no scene changes"

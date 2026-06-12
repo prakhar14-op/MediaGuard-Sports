@@ -5,6 +5,7 @@ import Incident from "../models/Incident.js";
 import DMCARecord from "../models/DMCARecord.js";
 import ContractRecord from "../models/ContractRecord.js";
 import IngestedAsset from "../models/IngestedAsset.js";
+import Account from "../models/Account.js";
 import { getIO } from "../config/socket.js";
 import redis, { safeRedis } from "../config/redis.js";
 import { generateHash } from "../utils/blockchain.js";
@@ -96,7 +97,20 @@ function buildSentinelReport(scan, node) {
     lines.push(`Audio Fingerprint: skipped (batch mode)`);
   }
 
-  // Layer 5: Forensics chain
+  // Layer 5: Text/OCR
+  if (scan.text_score > 0) {
+    const textScorePct = (scan.text_score * 100).toFixed(1);
+    const hasSubtitles = scan.text_result?.has_subtitles ? "YES" : "NO";
+    const hasWatermark = scan.text_result?.has_watermark ? "YES" : "NO";
+    lines.push(`Text/OCR Analysis: ${textScorePct}% (subtitles=${hasSubtitles}, watermark=${hasWatermark})`);
+    if (scan.text_result?.detected_text?.length > 0) {
+      lines.push(`  → Detected text sample: "${scan.text_result.detected_text.slice(0, 3).join('", "')}"`);
+    }
+  } else {
+    lines.push(`Text/OCR Analysis: not performed`);
+  }
+
+  // Layer 6: Forensics chain
   if (scan.forensics_chain?.length > 0) {
     const chain = scan.forensics_chain.join(" → ");
     lines.push(`Forensic Leak Chain: ${chain} (first leak: ${scan.forensics_first_platform}, risk: ${scan.forensics_leak_risk})`);
@@ -253,11 +267,53 @@ export const runSwarm = async (req, res) => {
 
       detected_count++;
 
+      // ── Account tracking ───────────────────────────────────────────────────
+      let account;
+      try {
+        const platform = node.platform || "Other";
+        const handle = node.account_handle || "unknown";
+        
+        // Find or create account
+        account = await Account.findOneAndUpdate(
+          { platform, handle },
+          {
+            $setOnInsert: {
+              platform,
+              handle,
+              first_detected: new Date(),
+            },
+            $set: {
+              last_detected: new Date(),
+            },
+            $inc: { total_incidents: 1 },
+          },
+          { upsert: true, new: true }
+        );
+      } catch (err) {
+        console.log(`[Swarm] Account tracking failed: ${err.message}`);
+        account = null;
+      }
+
+      // ── Check for reupload ─────────────────────────────────────────────────
+      let isReupload = false;
+      if (node.url) {
+        const existingIncident = await Incident.findOne({
+          url: node.url,
+          jobId: { $ne: jobId },
+        });
+        isReupload = !!existingIncident;
+      }
+
+      // ── Check for repeat offender ──────────────────────────────────────────
+      const isRepeatOffender = account ? account.total_piracy > 0 : false;
+      const uploaderRiskScore = account ? account.risk_score : 10;
+
       const incident = await Incident.create({
         jobId,
         title:            node.title    || "Unknown",
         platform:         node.platform || "Other",
         account_handle:   node.account_handle || "unknown",
+        account_id:       account?._id,
         url:              node.url || "",
         thumbnail_url:    node.thumbnail_url || "",
         country:          node.country || "",
@@ -266,8 +322,11 @@ export const runSwarm = async (req, res) => {
         severity,
         classification:   "UNREVIEWED",
         status:           "detected",
+        is_reupload:      isReupload,
+        is_repeat_offender: isRepeatOffender,
+        uploader_risk_score: uploaderRiskScore,
       });
-      incidents.push({ incident, node, scan });
+      incidents.push({ incident, node, scan, account });
 
       // ── Evidence vault: package ALL detection artifacts ───────────────────
       try {
@@ -290,6 +349,7 @@ export const runSwarm = async (req, res) => {
             method:         scan.forensics_method,
             jpeg_quality:   scan.forensics_jpeg_quality,
           } : null,
+          text_result: scan.text_result ? scan.text_result : null,
         }).catch(() => {});
       } catch { /* non-blocking */ }
 
@@ -333,6 +393,10 @@ export const runSwarm = async (req, res) => {
         coordinates:      node.coordinates,
         velocity,
         view_count:       node.view_count || 0,
+        // Suspect identification fields
+        is_reupload:      isReupload,
+        is_repeat_offender: isRepeatOffender,
+        uploader_risk_score: uploaderRiskScore,
         // All detection layers
         clip_confidence:          scan.clip_confidence,
         clip_similarity:          scan.clip_similarity,
@@ -342,6 +406,8 @@ export const runSwarm = async (req, res) => {
         temporal_score:           scan.temporal_score,
         phash_match:              scan.phash_match,
         phash_score:              scan.phash_score,
+        text_score:               scan.text_score,
+        text_result:              scan.text_result,
         // Forensics chain
         forensics_chain:          scan.forensics_chain,
         forensics_chain_length:   scan.forensics_chain_length,
@@ -392,7 +458,7 @@ export const runSwarm = async (req, res) => {
     const toBroker  = [];
     let piracy_count = 0, fair_use_count = 0;
 
-    for (const { incident, node, scan } of adjudicatable) {
+    for (const { incident, node, scan, account } of adjudicatable) {
       io.to(`hunt:${jobId}`).emit("adjudicator:thinking", {
         incident_id: incident._id,
         message: `Analysing @${node.account_handle} [${node.platform}] — "${node.title?.slice(0, 40)}"…`,
@@ -422,6 +488,7 @@ export const runSwarm = async (req, res) => {
             description:      node.description || "",
             country:          node.country || "",
             confidence_score: scan.confidence_score || 0,
+            text_ocr:         scan.text_result || null,
           });
 
           if (!adj.success || !adj.verdict) {
@@ -444,6 +511,23 @@ export const runSwarm = async (req, res) => {
           status:                    newStatus,
         });
 
+        // ── Update account stats ─────────────────────────────────────────────────
+        if (account) {
+          let update = {};
+          if (verdict.classification === "SEVERE PIRACY") {
+            update.$inc = { total_piracy: 1 };
+            // Increase risk score by 20, max 100
+            update.$set = { risk_score: Math.min(100, account.risk_score + 20) };
+          } else if (verdict.classification === "FAIR USE / FAN CONTENT") {
+            update.$inc = { total_fair_use: 1 };
+            // Slightly decrease risk score (good behavior), min 0
+            update.$set = { risk_score: Math.max(0, account.risk_score - 5) };
+          }
+          if (Object.keys(update).length > 0) {
+            await Account.findByIdAndUpdate(account._id, update);
+          }
+        }
+
         io.to(`hunt:${jobId}`).emit("adjudicator:verdict", {
           incident_id:      incident._id,
           jobId,
@@ -456,10 +540,10 @@ export const runSwarm = async (req, res) => {
 
         if (verdict.routing === "Enforcer") {
           piracy_count++;
-          toEnforce.push({ incident, node, scan, verdict });
+          toEnforce.push({ incident, node, scan, verdict, account });
         } else {
           fair_use_count++;
-          toBroker.push({ incident, node, scan, verdict });
+          toBroker.push({ incident, node, scan, verdict, account });
         }
       } catch (err) {
         console.error(`[Swarm] Adjudicator failed for ${node.account_handle}:`, err.message);

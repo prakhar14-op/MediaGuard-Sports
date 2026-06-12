@@ -24,6 +24,7 @@ import swarmRouter from "./routes/swarm.js";
 import streamRouter from "./routes/stream.js";
 import evidenceRouter from "./routes/evidence.js";
 import leakRouter from "./routes/leak.js";
+import watchdogRouter from "./routes/watchdog.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ExpressError from "./utils/ExpressError.js";
 
@@ -32,7 +33,7 @@ global.redisClient = redis;
 
 const app = express();
 const httpServer = createServer(app);
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.NODE_PORT || process.env.PORT || 8000;
 
 initSocket(httpServer);
 
@@ -83,6 +84,7 @@ app.use("/api", swarmRouter);
 app.use("/api", streamRouter);
 app.use("/api", evidenceRouter);
 app.use("/api", leakRouter);
+app.use("/api", watchdogRouter);
 
 app.all("*", (_req, _res, next) => {
   next(new ExpressError(404, "Route not found"));

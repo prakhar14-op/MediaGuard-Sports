@@ -428,6 +428,7 @@ def package_detection_evidence(
     clip_embedding: Optional[np.ndarray] = None,
     audio_result: Optional[dict] = None,
     forensics_result: Optional[dict] = None,
+    text_result: Optional[dict] = None,
 ) -> dict:
     """
     Package all detection artifacts for an incident.
@@ -439,6 +440,7 @@ def package_detection_evidence(
     - clip_embedding.npy — CLIP visual embedding
     - audio_fingerprint.json — audio scan result
     - forensics_chain.json — platform sharing chain analysis
+    - text_ocr.json — OCR/subtitle/watermark detection results
 
     Returns the manifest record.
     """
@@ -470,6 +472,10 @@ def package_detection_evidence(
     if forensics_result:
         store_json_artifact(incident_id, "forensics_chain.json", forensics_result)
 
+    # Store text/OCR result
+    if text_result:
+        store_json_artifact(incident_id, "text_ocr.json", text_result)
+
     # Record custody event
     record_custody_event(
         incident_id, "DETECTED", "sentinel",
@@ -479,6 +485,7 @@ def package_detection_evidence(
             "match_confirmed":  sentinel_result.get("match_confirmed"),
             "clip_similarity":  sentinel_result.get("clip_similarity"),
             "audio_match":      sentinel_result.get("audio_match"),
+            "text_score":       sentinel_result.get("text_score"),
             "forensics_chain":  sentinel_result.get("forensics_chain"),
         },
     )

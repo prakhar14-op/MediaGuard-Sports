@@ -8,6 +8,7 @@ const incidentSchema = new mongoose.Schema(
     title:          { type: String, required: true },
     platform:       { type: String, enum: PLATFORMS },
     account_handle: { type: String },
+    account_id:     { type: mongoose.Schema.Types.ObjectId, ref: "Account" }, // Link to account
     url:            { type: String },
     thumbnail_url:  { type: String },
     country:        { type: String },
@@ -30,8 +31,19 @@ const incidentSchema = new mongoose.Schema(
     },
     dmca_record_id:     { type: mongoose.Schema.Types.ObjectId, ref: "DMCARecord" },
     contract_record_id: { type: mongoose.Schema.Types.ObjectId, ref: "ContractRecord" },
+    // Suspect identification
+    is_reupload:        { type: Boolean, default: false },
+    is_repeat_offender: { type: Boolean, default: false },
+    uploader_risk_score: { type: Number, default: 10 },
   },
   { timestamps: true }
 );
+
+// Indexes
+incidentSchema.index({ platform: 1, account_handle: 1 });
+incidentSchema.index({ url: 1 });
+incidentSchema.index({ jobId: 1 });
+incidentSchema.index({ status: 1 });
+incidentSchema.index({ severity: 1 });
 
 export default mongoose.model("Incident", incidentSchema);

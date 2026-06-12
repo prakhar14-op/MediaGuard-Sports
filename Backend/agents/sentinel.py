@@ -65,17 +65,37 @@ from agents.archivist import (
     BATCH_SIZE,
 )
 
+try:
+    from agents.audio_fingerprint import search_audio, search_audio_from_url, get_audio_vault_status
+except Exception:
+    search_audio = None
+    search_audio_from_url = None
+    get_audio_vault_status = None
+
+from agents.forensics import analyze_image_chain
+
+# OCR is optional — may not be installed
+try:
+    from agents.text_ocr import extract_text_from_video_path
+    _OCR_AVAILABLE = True
+except ImportError:
+    _OCR_AVAILABLE = False
+    def extract_text_from_video_path(path):
+        return {"has_subtitles": False, "has_watermark": False, "total_confidence": 0.0}
+
 # ─── Thresholds ───────────────────────────────────────────────────────────────
 MATCH_THRESHOLD           = 0.82
 SUSPECT_THRESHOLD         = 0.65
 TEMPORAL_MATCH_THRESHOLD  = 0.72
 AUDIO_MATCH_THRESHOLD     = 0.70
 
-# Fusion weights
-W_CLIP     = 0.45
-W_AUDIO    = 0.30
-W_TEMPORAL = 0.15
-W_PHASH    = 0.10
+# Fusion weights (configurable via environment variables)
+W_CLIP     = float(os.environ.get("FUSION_WEIGHT_CLIP", "0.40"))
+W_AUDIO    = float(os.environ.get("FUSION_WEIGHT_AUDIO", "0.28"))
+W_TEMPORAL = float(os.environ.get("FUSION_WEIGHT_TEMPORAL", "0.12"))
+W_PHASH    = float(os.environ.get("FUSION_WEIGHT_PHASH", "0.10"))
+W_TEXT     = float(os.environ.get("FUSION_WEIGHT_TEXT", "0.08"))
+W_SOURCE_REP = float(os.environ.get("FUSION_WEIGHT_SOURCE_REP", "0.02"))
 
 # How many seconds to sample from suspect video
 # 90s is enough to get ~10-20 scene boundaries and meaningful audio
@@ -95,24 +115,28 @@ def _download_suspect_clip(url: str, output_dir: str, duration_sec: int = SUSPEC
     Returns local file path, or None on failure.
     """
     import yt_dlp
-    import shutil as _shutil
 
     out_tmpl     = os.path.join(output_dir, "suspect.%(ext)s")
     cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
-    _node        = _shutil.which("node") or _shutil.which("node.exe") or ""
 
     ydl_opts = {
         "outtmpl":         out_tmpl,
-        "format":          "best[height<=480]/best",
+        "format":          "best",
         "quiet":           True,
         "noplaylist":      True,
         "socket_timeout":  12,
-        "external_downloader":      "ffmpeg",
-        "external_downloader_args": {"ffmpeg_i": ["-t", str(duration_sec)]},
     }
-    # L2 FIX: Use Node.js as JS runtime (no Deno needed)
-    if _node:
-        ydl_opts["extractor_args"] = {"youtube": {"player_client": ["web"]}}
+    # Add ffmpeg location
+    try:
+        from agents.audio_fingerprint import _get_ffmpeg_exe
+        _ffmpeg = _get_ffmpeg_exe()
+        if _ffmpeg:
+            ydl_opts["ffmpeg_location"] = os.path.dirname(_ffmpeg)
+            # Limit download to first N seconds
+            ydl_opts["external_downloader"] = _ffmpeg
+            ydl_opts["external_downloader_args"] = {"ffmpeg_i": ["-t", str(duration_sec)]}
+    except Exception:
+        pass
     if os.path.exists(cookies_path):
         ydl_opts["cookiefile"] = cookies_path
 
@@ -175,18 +199,42 @@ def _extract_scene_frames(video_path: str, sample_sec: float = 1.0) -> list[Imag
 
     fps   = cap.get(cv2.CAP_PROP_FPS) or 25.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    sample_interval = max(1, int(fps * sample_sec))
 
     frames   = []
     prev_hist = None
+    prev_gray = None
     frame_id  = 0
+    last_sample_frame = 0
 
     while frame_id < min(total, int(fps * SUSPECT_CLIP_DURATION * 1.5)):
         ret, frame = cap.read()
         if not ret:
             break
-
-        if frame_id % sample_interval == 0:
+        
+        # Compute current grayscale frame for motion detection
+        curr_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # Compute motion magnitude between current and previous frame
+        # For performance, we'll use a simpler version here for suspect scan
+        motion = 0.5
+        if prev_gray is not None:
+            try:
+                # Use frame difference as a simpler motion metric (faster than optical flow)
+                diff = cv2.absdiff(prev_gray, curr_gray)
+                motion = np.mean(diff) / 255.0
+            except Exception:
+                pass
+        
+        # Adaptive sampling
+        if motion > 0.3:  # high motion
+            adaptive_interval = max(1, int(fps * 0.5))
+        elif motion > 0.15:  # medium motion
+            adaptive_interval = max(1, int(fps * 1.0))
+        else:  # low motion
+            adaptive_interval = max(1, int(fps * 2.0))
+            
+        if (frame_id - last_sample_frame) >= adaptive_interval:
+            last_sample_frame = frame_id
             curr_hist = _bgr_histogram(frame)
             if _is_scene_change(prev_hist, curr_hist):
                 # Screen correction (same as archivist)
@@ -196,7 +244,8 @@ def _extract_scene_frames(video_path: str, sample_sec: float = 1.0) -> list[Imag
                 pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 frames.append(pil)
                 prev_hist = curr_hist
-
+        
+        prev_gray = curr_gray
         frame_id += 1
 
     cap.release()
@@ -361,13 +410,17 @@ def _fuse_confidence(
     temporal_score: float,
     phash_match: bool,
     clip_sim_raw: float,
+    text_score: float = 0.0,
+    source_rep_score: float = 1.0,
 ) -> float:
     phash_val = 1.0 if phash_match else clip_sim_raw
     fused = (
         clip_sim       * W_CLIP     +
         audio_score    * W_AUDIO    +
         temporal_score * W_TEMPORAL +
-        phash_val      * W_PHASH
+        phash_val      * W_PHASH    +
+        text_score     * W_TEXT     +
+        source_rep_score * W_SOURCE_REP
     )
     return round(max(0.0, min(100.0, fused * 100)), 2)
 
@@ -447,9 +500,14 @@ def scan_suspect(
     if vector_db.ntotal == 0:
         return {"error": "FAISS vault is empty. Ingest an official video first."}
 
-    scan_method  = "unknown"
-    best_pil     = None   # best matching frame (for pHash + forensics)
+    scan_method    = "unknown"
+    best_pil       = None
     frames_scanned = 0
+    local_path     = None          # ensure defined for all code paths
+    audio_result   = _run_audio_layer("", batch_mode=True)  # safe default
+    best_similarity = -1.0
+    top_matches    = []
+    best_emb       = None
 
     # ─── Strategy selection ──────────────────────────────────────────────────
     if not batch_mode and suspect_video_url:
@@ -506,7 +564,24 @@ def scan_suspect(
         best_similarity, top_matches, best_pil, best_emb = _scan_thumbnail_fallback(thumbnail_url)
         audio_result = _run_audio_layer(suspect_video_url, batch_mode=True)
         scan_method = "thumbnail_batch"
-
+    
+    # ─── Layer 6: Text/OCR ───────────────────────────────────────────────────
+    text_score = 0.0
+    text_result = {}
+    local_path_exists = 'local_path' in dir() and local_path and os.path.exists(str(local_path or ""))
+    if local_path_exists:
+        try:
+            text_result = extract_text_from_video_path(local_path)
+            # Score based on detected subtitles/watermarks and text confidence
+            if text_result.get("has_subtitles"):
+                text_score += 0.3
+            if text_result.get("has_watermark"):
+                text_score += 0.3
+            text_score += text_result.get("total_confidence", 0.0) * 0.4
+            text_score = min(1.0, text_score)
+        except Exception as e:
+            print(f"[Sentinel] Text OCR skipped: {e}")
+    
     # ─── Layer 2: pHash ──────────────────────────────────────────────────────
     phash_match = False
     phash_score = 0
@@ -580,6 +655,7 @@ def scan_suspect(
         temporal_score = temporal_score,
         phash_match    = phash_match,
         clip_sim_raw   = best_similarity,
+        text_score     = text_score,
     )
 
     match_confirmed = (
@@ -613,6 +689,9 @@ def scan_suspect(
         "audio_best_video":   audio_result.get("best_video_id"),
         "audio_best_ts":      audio_result.get("best_timestamp_sec"),
         "audio_skipped":      bool(audio_result.get("skipped", True)),
+
+        "text_score":         float(round(text_score, 4)),
+        "text_result":        text_result,
 
         "forensics_chain":          forensics_result.get("chain", []),
         "forensics_chain_length":   int(forensics_result.get("chain_length", 0)),

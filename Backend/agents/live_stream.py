@@ -72,6 +72,91 @@ from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# ─── Redis Persistence ───────────────────────────────────────────────────────
+_redis_client = None
+_redis_available = False
+_redis_prefix = "mediaguard:stream_monitor:"
+
+def _init_redis():
+    """Initialize Redis connection for monitor persistence."""
+    global _redis_client, _redis_available
+    if _redis_available:
+        return
+    try:
+        import redis
+        redis_url = os.getenv("REDIS_URL", "")
+        if not redis_url:
+            print("[LiveStream] REDIS_URL not set, persistence disabled")
+            return
+        _redis_client = redis.from_url(redis_url)
+        _redis_client.ping()
+        _redis_available = True
+        print(f"[LiveStream] Redis persistence initialized")
+        _restore_monitors()
+    except Exception as e:
+        print(f"[LiveStream] Redis not available, persistence disabled: {e}")
+        _redis_available = False
+
+def _save_monitor(monitor):
+    """Save monitor state to Redis."""
+    if not _redis_available or not _redis_client:
+        return
+    try:
+        key = f"{_redis_prefix}{monitor.stream_id}"
+        state = {
+            "stream_id": monitor.stream_id,
+            "stream_url": monitor.stream_url,
+            "started_at": monitor._started_at.isoformat() if hasattr(monitor, "_started_at") else datetime.now(timezone.utc).isoformat(),
+            "segment_index": monitor._segment_idx,
+            "cookies_path": monitor.cookies_path,
+        }
+        _redis_client.setex(key, 86400 * 7, json.dumps(state))  # 7-day TTL
+    except Exception as e:
+        print(f"[LiveStream] Failed to save monitor: {e}")
+
+def _remove_monitor(stream_id):
+    """Remove monitor state from Redis."""
+    if not _redis_available or not _redis_client:
+        return
+    try:
+        key = f"{_redis_prefix}{stream_id}"
+        _redis_client.delete(key)
+    except Exception as e:
+        print(f"[LiveStream] Failed to remove monitor: {e}")
+
+def _restore_monitors():
+    """Restore active monitors from Redis on startup."""
+    if not _redis_available or not _redis_client:
+        return
+    try:
+        keys = _redis_client.keys(f"{_redis_prefix}*")
+        restored = 0
+        for key in keys:
+            try:
+                state = json.loads(_redis_client.get(key))
+                # Recreate the monitor
+                monitor = StreamMonitor(
+                    stream_url=state["stream_url"],
+                    stream_id=state["stream_id"],
+                    cookies_path=state.get("cookies_path", ""),
+                )
+                monitor._segment_idx = state.get("segment_index", 0)
+                monitor._started_at = datetime.fromisoformat(state["started_at"])
+                with _registry_lock:
+                    if state["stream_id"] not in _active_monitors:
+                        _active_monitors[state["stream_id"]] = monitor
+                        monitor.start()
+                        restored += 1
+            except Exception as e:
+                print(f"[LiveStream] Failed to restore monitor {key}: {e}")
+        if restored > 0:
+            print(f"[LiveStream] Restored {restored} active stream monitors")
+    except Exception as e:
+        print(f"[LiveStream] Failed to restore monitors: {e}")
+
+# Initialize Redis on module load
+_init_redis()
+
 # ─── Pipeline config ──────────────────────────────────────────────────────────
 SEGMENT_DURATION    = 30        # seconds per segment
 MAX_QUEUE_DEPTH     = 10        # max segments waiting to be processed
@@ -143,14 +228,18 @@ def _extract_segment(stream_url: str, segment_index: int, output_dir: str, cooki
 
     # Fall back to yt-dlp (YouTube Live, Twitch, etc.)
     try:
+        import shutil as _shutil
+        from agents.audio_fingerprint import _get_ffmpeg_exe
+        ffmpeg_path = _get_ffmpeg_exe()
+
         ydl_opts = {
             "outtmpl":      out_path.replace(".mp4", ".%(ext)s"),
             "format":       "best[height<=720]",
             "quiet":        True,
             "noplaylist":   True,
             # Live stream: download only SEGMENT_DURATION seconds
-            "external_downloader":      "ffmpeg",
-            "external_downloader_args": ["-t", str(SEGMENT_DURATION)],
+            "external_downloader":      ffmpeg_path,
+            "external_downloader_args": {"ffmpeg_i": ["-t", str(SEGMENT_DURATION)]},
         }
         if cookies_path and os.path.exists(cookies_path):
             ydl_opts["cookiefile"] = cookies_path
@@ -248,8 +337,9 @@ def _fingerprint_segment_audio(segment: StreamSegment) -> StreamSegment:
 
 def _scan_segment(segment: StreamSegment) -> StreamSegment:
     """
-    Scan segment against FAISS vault using available embeddings.
-    Uses the best embedding from the segment as the representative.
+    Scan segment against FAISS vault using all detection layers.
+    Runs: CLIP similarity + Temporal DNA + Audio fusion + Forensic leak chain.
+    Everything runs on the same segment — piracy, leaks, plagiarism detected together.
     """
     if segment.embeddings is None or len(segment.embeddings) == 0:
         return segment
@@ -257,13 +347,12 @@ def _scan_segment(segment: StreamSegment) -> StreamSegment:
     try:
         import faiss as _faiss
         from agents.archivist import vector_db, metadata_store, temporal_similarity, get_temporal_signatures_for_scan
-        import imagehash
 
         if vector_db.ntotal == 0:
             return segment
 
-        # Use centroid of segment embeddings as the scan query
-        # This is more robust than a single frame
+        # ── Layer 1: CLIP Visual Similarity ──────────────────────────────────
+        # Use centroid of segment embeddings (more robust than single frame)
         centroid = segment.embeddings.mean(axis=0).reshape(1, -1).astype(np.float32)
         _faiss.normalize_L2(centroid)
 
@@ -283,21 +372,49 @@ def _scan_segment(segment: StreamSegment) -> StreamSegment:
                 "source_video":  meta.get("video_path", ""),
             })
 
-        # Temporal matching
+        # ── Layer 2: Temporal DNA Matching ───────────────────────────────────
         temporal_score = 0.0
-        if best_sim >= 0.65:
+        temporal_match = None
+        if best_sim >= 0.55:
             sigs = get_temporal_signatures_for_scan()
             if sigs:
                 t_result = temporal_similarity(centroid, sigs)
                 temporal_score = t_result.get("best_score", 0.0)
+                if t_result.get("best_signature"):
+                    temporal_match = {
+                        "score":      float(round(temporal_score, 4)),
+                        "video_id":   t_result["best_signature"].get("video_id"),
+                        "window_ts":  t_result["best_signature"].get("window_start_ts"),
+                    }
 
-        # Audio fusion
+        # ── Layer 3: Audio fusion ────────────────────────────────────────────
         audio_confidence = 0.0
+        audio_match = False
         if segment.audio_result:
             audio_confidence = (segment.audio_result.get("audio_confidence") or 0.0) / 100.0
+            audio_match = segment.audio_result.get("audio_match", False)
 
-        # Fuse: CLIP 0.50 + audio 0.35 + temporal 0.15
-        fused = best_sim * 0.50 + audio_confidence * 0.35 + temporal_score * 0.15
+        # ── Layer 4: Forensic Leak Chain (runs on best frame) ────────────────
+        forensics_result = {
+            "chain": [], "chain_length": 0, "confidence": 0.0,
+            "first_platform": None, "leak_risk": "low", "method": "skipped",
+        }
+        if best_sim >= 0.60 and segment.frames:
+            try:
+                from agents.forensics import analyze_image_chain
+                forensics_result = analyze_image_chain(segment.frames[0])
+            except Exception as e:
+                forensics_result["error"] = str(e)
+
+        # ── Confidence Fusion ────────────────────────────────────────────────
+        # CLIP=0.45, Audio=0.30, Temporal=0.15, Forensics=0.10
+        forensics_boost = min(forensics_result.get("confidence", 0.0), 1.0) if forensics_result.get("chain") else 0.0
+        fused = (
+            best_sim         * 0.45 +
+            audio_confidence * 0.30 +
+            temporal_score   * 0.15 +
+            forensics_boost  * 0.10
+        )
         fused_confidence = round(min(100.0, fused * 100), 2)
 
         match_confirmed = (
@@ -312,27 +429,60 @@ def _scan_segment(segment: StreamSegment) -> StreamSegment:
             "INFO"
         )
 
+        # ── Determine detection type ────────────────────────────────────────
+        detection_types = []
+        if best_sim >= 0.65 or match_confirmed:
+            detection_types.append("PIRACY")
+        if audio_match:
+            detection_types.append("AUDIO_MATCH")
+        if forensics_result.get("chain"):
+            detection_types.append("LEAK_CHAIN")
+            if forensics_result.get("leak_risk") in ("critical", "high"):
+                detection_types.append("HIGH_RISK_LEAK")
+        if temporal_score >= 0.72:
+            detection_types.append("TEMPORAL_DNA_MATCH")
+
         segment.scan_result = {
             "segment_id":       segment.segment_id,
             "stream_id":        segment.stream_id,
             "segment_index":    segment.segment_index,
             "timestamp_sec":    segment.timestamp_sec,
+
+            # Detection summary
             "match_confirmed":  match_confirmed,
             "confidence_score": fused_confidence,
-            "clip_similarity":  float(round(best_sim, 4)),
-            "temporal_score":   float(round(temporal_score, 4)),
-            "audio_match":      bool(segment.audio_result and segment.audio_result.get("audio_match")),
-            "audio_confidence": float(round(audio_confidence * 100, 2)),
             "severity":         severity,
+            "detection_types":  detection_types,
+
+            # Layer 1: Visual
+            "clip_similarity":  float(round(best_sim, 4)),
             "top_matches":      top_matches,
+
+            # Layer 2: Temporal DNA
+            "temporal_score":   float(round(temporal_score, 4)),
+            "temporal_match":   temporal_match,
+
+            # Layer 3: Audio
+            "audio_match":      audio_match,
+            "audio_confidence": float(round(audio_confidence * 100, 2)),
+
+            # Layer 4: Forensic Leak Chain
+            "forensics_chain":          forensics_result.get("chain", []),
+            "forensics_first_platform": forensics_result.get("first_platform"),
+            "forensics_leak_risk":      forensics_result.get("leak_risk", "low"),
+            "forensics_confidence":     float(forensics_result.get("confidence", 0.0)),
+            "forensics_method":         forensics_result.get("method", "skipped"),
         }
 
+        # ── Logging ──────────────────────────────────────────────────────────
         if match_confirmed:
-            print(f"[LiveStream] 🚨 MATCH CONFIRMED in segment {segment.segment_index}: "
-                  f"{fused_confidence:.1f}% confidence")
+            chain_str = " → ".join(forensics_result.get("chain", [])) or "N/A"
+            print(f"[LiveStream] 🚨 DETECTION in segment {segment.segment_index}: "
+                  f"{fused_confidence:.1f}% | types={detection_types} | "
+                  f"leak_chain={chain_str}")
         elif fused_confidence >= 60:
             print(f"[LiveStream] ⚠️  SUSPECT in segment {segment.segment_index}: "
-                  f"{fused_confidence:.1f}% confidence")
+                  f"{fused_confidence:.1f}% | CLIP={best_sim:.2f} audio={audio_confidence:.2f}")
 
     except Exception as e:
         print(f"[LiveStream] Scan error for segment {segment.segment_index}: {e}")
@@ -380,10 +530,21 @@ class StreamMonitor:
     def start(self):
         """Start the live stream monitoring pipeline."""
         self._running = True
+        self._started_at = datetime.now(timezone.utc)
         self._tmpdir  = tempfile.mkdtemp(prefix=f"mediaguard_stream_{self.stream_id}_")
-
+        # Save initial state
+        _save_monitor(self)
+        
         # Worker 1: Segment extractor (producer)
         t = threading.Thread(target=self._extraction_loop, daemon=True)
+        t.start(); self._workers.append(t)
+        
+        # Worker 2: Periodic state saver
+        def _save_loop():
+            while self._running:
+                time.sleep(30)  # Save every 30 seconds
+                _save_monitor(self)
+        t = threading.Thread(target=_save_loop, daemon=True)
         t.start(); self._workers.append(t)
 
         # Workers 2-3: Embed + audio (parallel per segment)
@@ -401,6 +562,8 @@ class StreamMonitor:
     def stop(self):
         """Stop the monitoring pipeline gracefully."""
         self._running = False
+        # Remove from persistence
+        _remove_monitor(self.stream_id)
         # Poison pills to unblock workers
         for _ in range(EMBED_WORKERS + 2):
             try: self._raw_queue.put(None, timeout=2)
@@ -458,26 +621,32 @@ class StreamMonitor:
         """Embed frames + fingerprint audio for segments in parallel."""
         while True:
             segment = self._raw_queue.get()
-            if segment is None:   # poison pill
+            if segment is None:
                 self._scan_queue.put(None)
                 break
 
-            # Run embed and audio in parallel sub-threads
-            embed_thread = threading.Thread(target=lambda: _embed_segment(segment))
-            audio_thread = threading.Thread(target=lambda: _fingerprint_segment_audio(segment))
+            # Run embed and audio in parallel — both mutate segment in-place
+            def _do_embed():
+                _embed_segment(segment)
+
+            def _do_audio():
+                _fingerprint_segment_audio(segment)
+
+            embed_thread = threading.Thread(target=_do_embed, daemon=True)
+            audio_thread = threading.Thread(target=_do_audio, daemon=True)
             embed_thread.start()
             audio_thread.start()
-            embed_thread.join()
-            audio_thread.join()
+            embed_thread.join(timeout=60)
+            audio_thread.join(timeout=60)
 
             # Package to evidence vault immediately (don't wait for scan)
             try:
                 from agents.evidence_vault import package_stream_segment
                 package_stream_segment(
-                    stream_id        = self.stream_id,
-                    segment_index    = segment.segment_index,
-                    segment_ts       = segment.timestamp_sec,
-                    frame_embeddings = segment.embeddings,
+                    stream_id         = self.stream_id,
+                    segment_index     = segment.segment_index,
+                    segment_ts        = segment.timestamp_sec,
+                    frame_embeddings  = segment.embeddings,
                     audio_fingerprint = segment.audio_result,
                 )
             except Exception as e:

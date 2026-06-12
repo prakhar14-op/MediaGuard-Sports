@@ -84,6 +84,18 @@ INCIDENT CONTEXT:
 - Country: {country}
 - Sentinel Confidence: {confidence_score}%
 - Low Confidence Flag: {low_confidence}
+- OCR Detected Text: {text_ocr}
+
+CRITICAL: For fair use analysis, explicitly check for these fair use indicators:
+1. Commentary or criticism of the original content
+2. Reaction videos that add original analysis
+3. Educational or instructional use
+4. News reporting or documentary purposes
+5. Transformative works that add new creative value
+6. Parody or satire that comments on the original
+7. Non-commercial use (especially by small creators)
+8. Only a small portion of the original work used
+9. No harm to the market for the original work
 
 The content may be any media type: movie, TV show, music video, sports broadcast,
 documentary, news segment, podcast, live event, or other video content.
@@ -120,8 +132,20 @@ def adjudicate(
     description: str = "",
     country: str = "",
     confidence_score: float = 100.0,
+    text_ocr: dict = None,
 ) -> dict:
     low_confidence = confidence_score < 70.0
+    
+    # Process OCR text
+    ocr_text = ""
+    if text_ocr:
+        detected = text_ocr.get("detected_text", [])
+        if detected:
+            ocr_text = ", ".join(detected[:20])  # limit to first 20 for context
+        has_subtitles = text_ocr.get("has_subtitles", False)
+        has_watermark = text_ocr.get("has_watermark", False)
+        if has_subtitles or has_watermark:
+            ocr_text += f" (Subtitles: {has_subtitles}, Watermark: {has_watermark})"
 
     prompt = _VERDICT_PROMPT.format(
         sentinel_report=sentinel_report,
@@ -132,6 +156,7 @@ def adjudicate(
         country=country or "Unknown",
         confidence_score=confidence_score,
         low_confidence=low_confidence,
+        text_ocr=ocr_text or "No OCR text detected",
     )
 
     raw_text = _call_llm(prompt)

@@ -19,6 +19,7 @@ from agents.sentinel import scan_thumbnail, scan_suspect, MATCH_THRESHOLD, SUSPE
 from agents.adjudicator import adjudicate, batch_adjudicate
 from agents.enforcer import issue_dmca
 from agents.broker import deploy_contract
+from agents.watchdog import start_watchdog, stop_watchdog, get_watchdog_status, get_scan_history, trigger_immediate_scan, pause_watchdog, resume_watchdog
 from evidence_vault import create_evidence
 import tempfile
 import pathlib
@@ -34,8 +35,6 @@ app.add_middleware(
 )
 
 # ── L1 FIX: Pre-warm CLIP on startup ─────────────────────────────────────────
-# Previously CLIP loaded lazily on first ingest — causing 8.4s cold-start delay.
-# Now loads in a background thread at startup so it is ready for the first request.
 def _prewarm_clip():
     try:
         from agents.archivist import _load_clip, _onnx_enabled
@@ -48,6 +47,11 @@ def _prewarm_clip():
         print(f"[Startup] CLIP pre-warm failed (non-fatal): {e}")
 
 threading.Thread(target=_prewarm_clip, daemon=True).start()
+
+# ── Watchdog — Continuous Monitoring (Dropbox-like sync) ──────────────────────
+# Start watchdog background thread — scans all vault assets periodically.
+# Disabled by setting WATCHDOG_ENABLED=false in .env
+start_watchdog()
 
 OFFICIAL_DIR = os.path.join(os.path.dirname(__file__), "assets", "official")
 os.makedirs(OFFICIAL_DIR, exist_ok=True)
@@ -72,13 +76,10 @@ def _setup_cookies():
 _setup_cookies()
 
 # ── Persistent job store ──────────────────────────────────────────────────────
-# File-backed so jobs survive Render restarts / process crashes.
-# On Render free tier the in-memory dict is wiped on every cold start, causing
-# the Node poller to receive 404s forever.  Writing to /tmp is ephemeral but
-# survives within the same deployment lifecycle (minutes–hours), which is long
-# enough for any ingest job to complete.
-
-_JOBS_DIR = os.path.join("/tmp", "mediaguard_jobs")
+# File-backed so jobs survive server restarts / process crashes.
+# Use tempfile.gettempdir() to get OS-appropriate temp dir (works on Windows/Linux/Mac).
+import tempfile
+_JOBS_DIR = os.path.join(tempfile.gettempdir(), "mediaguard_jobs")
 os.makedirs(_JOBS_DIR, exist_ok=True)
 
 def _job_path(job_id: str) -> str:
@@ -135,6 +136,7 @@ class AdjudicateRequest(BaseModel):
     description:      str = ""
     country:          str = ""
     confidence_score: float = 100.0
+    text_ocr:         dict = None
 
 class BatchAdjudicateRequest(BaseModel):
     incidents: list
@@ -163,8 +165,17 @@ class BrokerRequest(BaseModel):
 # ─── Health & debug ───────────────────────────────────────────────────────────
 
 @app.get("/")
-def health():
+def root():
     return {"status": "MediaGuard ML API online", "vault_size": vector_db.ntotal}
+
+@app.get("/health")
+def health():
+    """Health check endpoint for monitoring."""
+    return {
+        "status": "healthy",
+        "vault_size": vector_db.ntotal,
+        "vault_status": "ready" if vector_db.ntotal > 0 else "empty"
+    }
 
 @app.get("/vault/status")
 def vault_status():
@@ -470,6 +481,7 @@ def adjudicate_incident(payload: AdjudicateRequest):
             description      = payload.description,
             country          = payload.country,
             confidence_score = payload.confidence_score,
+            text_ocr         = payload.text_ocr,
         )
         # Record adjudicator decision
         try:
@@ -591,6 +603,8 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
     def _run():
         import yt_dlp
+        # Pause watchdog during ingest to avoid CPU contention
+        pause_watchdog()
         try:
             # ── Detect direct file URL vs platform URL ────────────────────────
             url_clean = url.lower().split("?")[0]
@@ -691,23 +705,35 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
 
             else:
                 # ── Platform URL — use yt-dlp ─────────────────────────────────
-                import shutil as _shutil
-                _node = _shutil.which("node") or _shutil.which("node.exe") or ""
                 ydl_opts = {
                     "outtmpl":     os.path.join(OFFICIAL_DIR, f"{job_id}.%(ext)s"),
+                    # "best" selects the best single-file format — no merge needed
+                    # This works WITHOUT JS runtime or special client configs
                     "format":      "best",
                     "quiet":       False,
                     "no_warnings": False,
+                    "noplaylist":  True,
                 }
-                # L2 FIX: Node.js as JS runtime — suppresses Deno warning
-                if _node:
-                    ydl_opts["extractor_args"] = {"youtube": {"player_client": ["web"]}}
+                # Add ffmpeg location for any post-processing
+                try:
+                    from agents.audio_fingerprint import _get_ffmpeg_exe
+                    _ffmpeg = _get_ffmpeg_exe()
+                    if _ffmpeg:
+                        ydl_opts["ffmpeg_location"] = os.path.dirname(_ffmpeg)
+                except Exception:
+                    pass
                 if os.path.exists(COOKIES_PATH):
                     ydl_opts["cookiefile"] = COOKIES_PATH
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info  = ydl.extract_info(url, download=True)
-                    title = provided_title or info.get("title", "Unknown")
+                    # FIX: Always prefer yt-dlp extracted title over user-provided generic
+                    # "Official Video X" title should never override the real video title
+                    real_title = info.get("title", "")
+                    if real_title and len(real_title) > 5:
+                        title = real_title
+                    else:
+                        title = provided_title or "Unknown"
 
                 matches = glob.glob(os.path.join(OFFICIAL_DIR, f"{job_id}.*"))
                 if not matches:
@@ -724,16 +750,8 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
             # ── Embed frames ──────────────────────────────────────────────────
             _write_job(job_id, {"status": "processing", "message": "Extracting and embedding frames…"})
 
-            # Progress callback — updates job store every batch so frontend sees live progress
-            def _on_progress(scenes_done: int, vault_size: int, message: str):
-                _write_job(job_id, {
-                    "status":      "processing",
-                    "message":     message,
-                    "frame_count": scenes_done,
-                    "vault_size":  vault_size,
-                })
-
-            result = tool_ingest_video(local_path, progress_callback=_on_progress)
+            # Call ingest without callback (archivist doesn't support it yet)
+            result = tool_ingest_video(local_path)
             if "[ERROR]" in result:
                 _write_job(job_id, {"status": "failed", "message": result})
                 return
@@ -770,6 +788,9 @@ def ingest_asset(payload: IngestRequest, background_tasks: BackgroundTasks):
         except Exception as e:
             print(f"[Ingest] Error: {e}")
             _write_job(job_id, {"status": "failed", "message": str(e)})
+        finally:
+            # Always resume watchdog after ingest (success or failure)
+            resume_watchdog()
 
     threading.Thread(target=_run, daemon=True).start()
 
@@ -828,6 +849,7 @@ class PackageDetectionRequest(BaseModel):
     thumbnail_url:   str  = ""
     audio_result:    Optional[dict] = None
     forensics:       Optional[dict] = None
+    text_result:     Optional[dict] = None
 
     class Config:
         # Allow extra fields from swarmController
@@ -848,6 +870,7 @@ def package_detection(incident_id: str, payload: PackageDetectionRequest):
             sentinel_result  = payload.scan_result or {},
             audio_result     = payload.audio_result,
             forensics_result = payload.forensics,
+            text_result      = payload.text_result,
         )
         return {"success": True}
     except Exception as e:
@@ -944,6 +967,44 @@ def get_stream_results(stream_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Watchdog — Continuous Monitoring API ─────────────────────────────────────
+
+@app.get("/watchdog/status")
+def watchdog_status():
+    """Get watchdog continuous monitoring status."""
+    return {"success": True, **get_watchdog_status()}
+
+@app.post("/watchdog/trigger")
+def watchdog_trigger(asset_title: str = "", asset_url: str = ""):
+    """
+    Trigger an immediate scan outside the regular schedule.
+    If asset_title provided: scans that specific asset.
+    If empty: triggers full sweep of all protected assets.
+    """
+    try:
+        result = trigger_immediate_scan(asset_title, asset_url)
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/watchdog/history")
+def watchdog_history(limit: int = 50):
+    """Get recent scan history — shows all detected piracy instances."""
+    return {"success": True, "history": get_scan_history(limit), "total": len(get_scan_history(limit))}
+
+@app.post("/watchdog/stop")
+def watchdog_stop_endpoint():
+    """Stop continuous monitoring (use for maintenance windows)."""
+    stop_watchdog()
+    return {"success": True, "message": "Watchdog stopped"}
+
+@app.post("/watchdog/start")
+def watchdog_start_endpoint():
+    """Restart continuous monitoring after maintenance."""
+    start_watchdog()
+    return {"success": True, "message": "Watchdog started"}
 
 
 if __name__ == "__main__":

@@ -87,10 +87,6 @@ _SCRAPER_HEADERS = {
 
 
 def _ydl_opts(extra: dict = {}) -> dict:
-    # Find node.js executable for yt-dlp JS runtime (fixes YouTube JS warning)
-    import shutil as _shutil
-    _node = _shutil.which("node") or _shutil.which("node.exe") or ""
-
     opts = {
         "quiet":          True,
         "noplaylist":     True,
@@ -98,11 +94,6 @@ def _ydl_opts(extra: dict = {}) -> dict:
         "socket_timeout": 8,
         **extra,
     }
-    # L2 FIX: Tell yt-dlp to use Node.js as JS runtime so YouTube extraction
-    # works without Deno installed. Suppresses "No supported JS runtime" warning.
-    if _node:
-        opts["extractor_args"] = {"youtube": {"player_client": ["web"]}}
-
     if _PROXY_URL:
         opts["proxy"] = _PROXY_URL
     cookies_path = os.path.join(os.path.dirname(__file__), "..", "yt_cookies.txt")
@@ -120,6 +111,20 @@ def _make_node(entry: dict, platform: str, override_url: str = "") -> dict:
     if not country or country not in COUNTRY_CENTROIDS:
         country = _rand_country()
     url = override_url or entry.get("webpage_url", "") or entry.get("url", "")
+
+    # Construct thumbnail URL — yt-dlp sometimes doesn't return it
+    thumbnail = entry.get("thumbnail", "")
+    if not thumbnail and platform == "YouTube":
+        # Extract video ID and construct YouTube thumbnail URL
+        yt_id = entry.get("id") or entry.get("display_id", "")
+        if not yt_id and url:
+            # Extract from URL
+            m = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', url)
+            if m:
+                yt_id = m.group(1)
+        if yt_id:
+            thumbnail = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
+
     return {
         "title":          entry.get("title", "Unknown Title"),
         "platform":       platform,
@@ -131,7 +136,7 @@ def _make_node(entry: dict, platform: str, override_url: str = "") -> dict:
             or "Unknown"
         ),
         "url":            url,
-        "thumbnail_url":  entry.get("thumbnail", ""),
+        "thumbnail_url":  thumbnail,
         "country":        country,
         "coordinates":    COUNTRY_CENTROIDS[country],
         "view_count":     entry.get("view_count") or 0,
@@ -200,16 +205,18 @@ def _scrape_youtube(queries: list[str]) -> list[dict]:
     nodes, seen = [], set()
     for query in queries:
         try:
-            with yt_dlp.YoutubeDL(_ydl_opts()) as ydl:
+            with yt_dlp.YoutubeDL(_ydl_opts({"extract_flat": True})) as ydl:
                 r = ydl.extract_info(f"ytsearch5:{query}", download=False)
-                for e in (r or {}).get("entries", []):
-                    url = e.get("webpage_url", "")
-                    if not url or url in seen:
-                        continue
-                    seen.add(url)
-                    nodes.append(_make_node(e, "YouTube"))
+                entries = (r or {}).get("entries", [])
+                for e in entries:
+                    if e:
+                        url = e.get("webpage_url", "") or e.get("url", "")
+                        if not url or url in seen:
+                            continue
+                        seen.add(url)
+                        nodes.append(_make_node(e, "YouTube"))
         except Exception as ex:
-            print(f"[Spider][YouTube] '{query}': {ex}")
+            print(f"[Spider][YouTube] '{query}': {str(ex)[:100]}")
     return nodes
 
 
