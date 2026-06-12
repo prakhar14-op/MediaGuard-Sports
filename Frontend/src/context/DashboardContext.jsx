@@ -325,6 +325,35 @@ export const DashboardProvider = ({ children }) => {
         break;
       }
 
+      // ── Watchdog — Continuous Monitoring Alerts ────────────────────────────
+      case 'watchdog:alert': {
+        const alerts = payload.alerts || [];
+        if (alerts.length > 0) {
+          // Add each watchdog detection as a new incident
+          for (const alert of alerts) {
+            const newInc = {
+              _id:              `wd_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+              title:            alert.title || 'Watchdog Detection',
+              platform:         alert.platform || 'Unknown',
+              account_handle:   alert.account_handle || 'unknown',
+              confidence_score: alert.confidence || 0,
+              severity:         alert.severity || 'WARNING',
+              status:           'detected',
+              source:           'watchdog',
+            };
+            setIncidents(prev => [newInc, ...prev]);
+          }
+          addNotification({
+            type:    'threat',
+            title:   `🛡️ Watchdog Alert: ${alerts.length} new piracy detected`,
+            message: `${payload.asset_title} — ${alerts.length} unauthorized copies found on ${(payload.platforms || []).join(', ')}`,
+          });
+          // Refresh data to get MongoDB records
+          setTimeout(() => fetchData(), 2000);
+        }
+        break;
+      }
+
       default:
         break;
     }

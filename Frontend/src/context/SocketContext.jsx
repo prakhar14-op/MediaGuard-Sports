@@ -14,6 +14,7 @@ const SWARM_EVENTS = [
   'hunt:started', 'hunt:complete', 'hunt:error',
   'stream:detection',     // live stream piracy detection
   'leak:chain_detected',  // leak source / platform chain analysis result
+  'watchdog:alert',       // continuous monitoring — new piracy found automatically
 ];
 
 export const SocketProvider = ({ children }) => {

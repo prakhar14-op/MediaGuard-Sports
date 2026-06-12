@@ -57,6 +57,8 @@ const LOG_CFG = {
   'ingest:progress':          { icon: '📥', color: '#6366f1' },
   'ingest:complete':          { icon: '✅', color: G.teal    },
   'stream:detection':         { icon: '📡', color: '#ef4444' },
+  'leak:chain_detected':      { icon: '🔗', color: '#a855f7' },
+  'watchdog:alert':           { icon: '🛡️', color: '#f59e0b' },
 };
 
 const logText = (type, payload) => ({
@@ -79,6 +81,8 @@ const logText = (type, payload) => ({
   'ingest:progress':          payload?.message,
   'ingest:complete':          `Vaulted: "${payload?.title}" — ${payload?.frame_count} frames`,
   'stream:detection':         `🔴 Live stream ${payload?.stream_id?.slice(0,8)} — ${payload?.total_detections || 0} detections`,
+  'leak:chain_detected':      `Leak: ${payload?.first_leak_platform} → ${(payload?.leak_chain || []).join(' → ')} (${payload?.leak_risk})`,
+  'watchdog:alert':           `🛡️ Watchdog: ${(payload?.alerts || []).length} piracy found for "${payload?.asset_title}"`,
 }[type] || type);
 
 // ─── Custom tooltip for chart ─────────────────────────────────────────────────

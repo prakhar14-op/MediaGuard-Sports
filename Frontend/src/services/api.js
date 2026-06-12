@@ -86,6 +86,15 @@ export const streamService = {
   getActive:  ()                           => api.get('/stream/active'),
 };
 
+// ─── Watchdog — Continuous Monitoring (Dropbox-like sync) ─────────────────────
+export const watchdogService = {
+  getStatus:  ()                        => api.get('/watchdog/status'),
+  getHistory: (limit = 50)              => api.get('/watchdog/history', { params: { limit } }),
+  trigger:    (asset_title, asset_url)   => api.post('/watchdog/trigger', { asset_title, asset_url }),
+  stop:       ()                        => api.post('/watchdog/stop'),
+  start:      ()                        => api.post('/watchdog/start'),
+};
+
 // ─── System ───────────────────────────────────────────────────────────────────
 export const systemService = {
   getHealth: () => api.get('/health'),
