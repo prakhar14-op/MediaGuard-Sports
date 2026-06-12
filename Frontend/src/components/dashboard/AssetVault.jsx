@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDashboard } from '../../context/DashboardContext';
 import { useSocket } from '../../context/SocketContext';
-import { archivistService } from '../../services/api';
+import { archivistService, streamService } from '../../services/api';
 import {
   Plus, Link as LinkIcon, Database, CheckCircle, ExternalLink,
   Loader2, AlertTriangle, Hash, Shield, Layers, Clock, RefreshCw, Trash2, X,
@@ -369,9 +369,39 @@ const AssetVault = () => {
       setError('Please enter the video title — required for non-YouTube URLs so the Spider can search for pirated copies.');
       return;
     }
+
+    // ── Detect live stream URLs ──────────────────────────────────────────────
+    const isLive = url.includes('/live') || url.includes('live_stream')
+      || url.includes('.m3u8') || url.includes('rtmp://');
+
     setError('');
-    setProgress({ stage: 'queued', message: 'Starting ingest job… (this takes 2–10 min for long videos)' });
     setLoading(true);
+
+    if (isLive) {
+      // LIVE STREAM: use /stream/start for continuous monitoring
+      setProgress({ stage: 'processing', message: '🔴 Starting live stream monitor — detection runs every 30s…' });
+      try {
+        const res = await streamService.start(url.trim());
+        const { stream_id } = res.data;
+        setProgress({ stage: 'processing', message: `🔴 Live monitoring active: ${stream_id}. Detections will appear as notifications.` });
+        setUrl('');
+        setTitle('');
+        // Don't clear loading — live monitoring runs indefinitely
+        // Show persistent indicator
+        setTimeout(() => {
+          setProgress({ stage: 'complete', message: `🔴 Live stream ${stream_id} is being monitored. Piracy alerts will appear as pop-up notifications.` });
+          setLoading(false);
+        }, 3000);
+      } catch (err) {
+        setError(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to start live stream monitor.');
+        setProgress(null);
+        setLoading(false);
+      }
+      return;
+    }
+
+    // ── Regular video: use /ingest ───────────────────────────────────────────
+    setProgress({ stage: 'queued', message: 'Starting ingest job… (this takes 2–10 min for long videos)' });
     try {
       const res = await archivistService.ingest(url.trim(), title.trim());
       const { jobId, assetId } = res.data;
@@ -460,7 +490,7 @@ const AssetVault = () => {
               <LinkIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: G.muted }} />
               <input
                 type="url" value={url} onChange={e => setUrl(e.target.value)}
-                placeholder="YouTube URL or direct .mp4 link (Google Drive, Dropbox…)"
+                placeholder="YouTube URL, live stream, or direct .mp4 link (Dropbox, GDrive…)"
                 disabled={loading} required
                 style={{
                   width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
