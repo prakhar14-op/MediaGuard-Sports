@@ -23,27 +23,34 @@ router.post("/stream/start", wrapAsync(async (req, res) => {
   const io = getIO();
   const { data } = await fastapiClient.post("/stream/start", { stream_url, stream_id });
 
-  // Poll for results and emit Socket.IO events every 10s
-  // (FastAPI background threads can't emit directly to Node's Socket.IO)
+  // Poll for results and emit Socket.IO events every 8s
+  // Emit ALL new segments (not just confirmed matches) for live visibility
   const sid = data.stream_id;
+  let lastSegCount = 0;
+
   const pollInterval = setInterval(async () => {
     try {
       const r = await fastapiClient.get(`/stream/${sid}/results`);
       const results = r.data?.results || [];
-      const newDetections = results.filter(r => r.match_confirmed);
-      if (newDetections.length > 0) {
+
+      // Emit new segments since last poll (all of them, not just matches)
+      if (results.length > lastSegCount) {
+        const newResults = results.slice(lastSegCount);
+        lastSegCount = results.length;
+
         io.emit("stream:detection", {
-          stream_id:  sid,
+          stream_id:        sid,
           stream_url,
-          detections: newDetections,
-          total_detections: r.data?.detections || 0,
+          detections:       newResults,
+          total_segments:   results.length,
+          total_detections: results.filter(s => s.match_confirmed).length,
+          latest_confidence: newResults[newResults.length - 1]?.confidence_score || 0,
         });
       }
     } catch {
-      // Stream may have ended
       clearInterval(pollInterval);
     }
-  }, 10_000);
+  }, 8_000);
 
   // Auto-stop polling after 4 hours
   setTimeout(() => clearInterval(pollInterval), 4 * 60 * 60 * 1000);

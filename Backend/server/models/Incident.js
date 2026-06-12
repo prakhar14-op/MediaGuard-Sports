@@ -42,7 +42,6 @@ const incidentSchema = new mongoose.Schema(
 // Indexes
 incidentSchema.index({ platform: 1, account_handle: 1 });
 incidentSchema.index({ url: 1 });
-incidentSchema.index({ jobId: 1 });
 incidentSchema.index({ status: 1 });
 incidentSchema.index({ severity: 1 });
 

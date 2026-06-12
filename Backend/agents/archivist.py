@@ -688,60 +688,45 @@ def tool_ingest_video(video_path: str) -> str:
         batch_timestamps.clear()
         batch_screen_info.clear()
 
-    while True:
+    # ── SEEK-BASED SAMPLING (fast — skips directly to target frames) ─────────
+    # Instead of reading every frame sequentially (slow for long videos),
+    # seek to each sample position directly. 5x-10x faster for 4+ min videos.
+    total_samples = int(total_frames / SAMPLE_INTERVAL)
+    print(f"[Archivist] Seek-sampling {total_samples} positions ({INGEST_SAMPLE_SEC}s intervals)")
+
+    for sample_idx in range(total_samples):
+        target_frame = sample_idx * SAMPLE_INTERVAL
+        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Compute current grayscale frame for motion detection
-        curr_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
-        # Compute motion magnitude between current and previous frame
-        motion = _compute_motion_magnitude(prev_gray, curr_gray)
-        
-        # Adaptive sampling: more frames when there's more motion
-        # High motion: sample every 0.5s, medium: 1s, low: 2s
-        if motion > 0.6:  # high motion
-            adaptive_interval = max(1, int(fps * 0.5))
-        elif motion > 0.3:  # medium motion
-            adaptive_interval = max(1, int(fps * 1.0))
-        else:  # low motion
-            adaptive_interval = max(1, int(fps * 2.0))
+        frame_id = target_frame
+        curr_hist = _bgr_histogram(frame)
 
-        # Check if we should sample this frame
-        if (frame_id - last_sample_frame) >= adaptive_interval:
-            last_sample_frame = frame_id
-            curr_hist = _bgr_histogram(frame)
+        if _is_scene_change(prev_hist, curr_hist):
+            scene_count += 1
+            ts = target_frame / fps
 
-            if _is_scene_change(prev_hist, curr_hist):
-                # ── Scene boundary detected ────────────────────────────────
-                scene_count += 1
-                ts = frame_id / fps
+            # Stage 3: Screen detection
+            screen_info = detect_screen_capture(frame)
 
-                # Stage 3: Screen detection
-                screen_info = detect_screen_capture(frame)
+            # Stage 4: Perspective correction if screen capture detected
+            if screen_info["is_screen_capture"] and screen_info["screen_corners"]:
+                screen_detections += 1
+                frame = correct_perspective(frame, screen_info["screen_corners"])
 
-                # Stage 4: Perspective correction if screen capture detected
-                if screen_info["is_screen_capture"] and screen_info["screen_corners"]:
-                    screen_detections += 1
-                    frame = correct_perspective(frame, screen_info["screen_corners"])
+            pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            batch_images.append(pil_image)
+            batch_timestamps.append(ts)
+            batch_screen_info.append(screen_info)
 
-                pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                batch_images.append(pil_image)
-                batch_timestamps.append(ts)
-                batch_screen_info.append(screen_info)
+            if len(batch_images) >= BATCH_SIZE:
+                _flush_batch()
 
-                if len(batch_images) >= BATCH_SIZE:
-                    _flush_batch()
-
-                prev_hist = curr_hist
-            else:
-                skipped_similar += 1
-        
-        # Update previous grayscale frame for next iteration
-        prev_gray = curr_gray
-
-        frame_id += 1
+            prev_hist = curr_hist
+        else:
+            skipped_similar += 1
 
     cap.release()
     _flush_batch()
@@ -847,62 +832,69 @@ def tool_ingest_video(video_path: str) -> str:
 
     # ── Stage 8: Audio Fingerprinting (wait for concurrent thread) ────────────
     # Launched at start of ingest — by now it should be done or nearly done.
-    print(f"[Archivist] Waiting for audio fingerprinting to complete…")
-    _audio_done.wait(timeout=300)   # max 5 min — should finish well before this
+    # Timeout after 30s — if audio is still running, report partial success.
+    print(f"[Archivist] Waiting for audio fingerprinting...")
+    _audio_done.wait(timeout=30)
     audio_result = _audio_result
-    if audio_result.get("success"):
+    if not _audio_done.is_set():
+        print(f"[Archivist] Audio still running after 30s — continuing without it")
+        audio_result = {"success": False, "fingerprint_length": 0, "embeddings_stored": 0, "error": "timeout"}
+    elif audio_result.get("success"):
         print(f"[Archivist] Audio: {audio_result['fingerprint_length']} fingerprint segments, "
               f"{audio_result['embeddings_stored']} Mel embeddings, "
               f"{audio_result.get('duration_sec', 0):.1f}s")
     else:
         print(f"[Archivist] Audio skipped: {audio_result.get('error', 'unknown')}")
 
-    # ── Stage 9: Video Forensic Signature ─────────────────────────────────────
-    # FIX M3: Uses same video handle — no second open needed since we
-    # already have timestamps from scene_embeddings_with_ts.
+    # ── Stage 9: Video Forensic Signature (optional — slow on CPU) ─────────────
+    # Skip by default during ingest — forensics runs on-demand during scan/leak.
+    # Set INGEST_FORENSICS=true to enable (adds 2-5 min for 1.12GB model on CPU).
+    SKIP_FORENSICS = os.environ.get("INGEST_FORENSICS", "false").lower() != "true"
     forensic_sig = {}
-    try:
-        from agents.forensics import analyze_image_chain
-        sample_step = max(1, len(scene_embeddings_with_ts) // 10)
-        sample_frames_ts = [
-            scene_embeddings_with_ts[i][1]
-            for i in range(0, len(scene_embeddings_with_ts), sample_step)
-        ][:10]
+    if SKIP_FORENSICS:
+        print(f"[Archivist] Forensic signature skipped (set INGEST_FORENSICS=true to enable)")
+    else:
+        try:
+            from agents.forensics import analyze_image_chain
+            sample_step = max(1, len(scene_embeddings_with_ts) // 10)
+            sample_frames_ts = [
+                scene_embeddings_with_ts[i][1]
+                for i in range(0, len(scene_embeddings_with_ts), sample_step)
+            ][:10]
 
-        cap2 = cv2.VideoCapture(video_path)
-        if cap2.isOpened():
-            platform_votes: dict = {}
-            for ts in sample_frames_ts:
-                cap2.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
-                ret2, frame2 = cap2.read()
-                if not ret2:
-                    continue
-                pil2 = Image.fromarray(cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB))
-                f_result = analyze_image_chain(pil2)
-                for plat, score in f_result.get("platform_scores", {}).items():
-                    platform_votes.setdefault(plat, []).append(score)
-            cap2.release()
+            cap2 = cv2.VideoCapture(video_path)
+            if cap2.isOpened():
+                platform_votes: dict = {}
+                for ts in sample_frames_ts:
+                    cap2.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
+                    ret2, frame2 = cap2.read()
+                    if not ret2:
+                        continue
+                    pil2 = Image.fromarray(cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB))
+                    f_result = analyze_image_chain(pil2)
+                    for plat, score in f_result.get("platform_scores", {}).items():
+                        platform_votes.setdefault(plat, []).append(score)
+                cap2.release()
 
-            forensic_sig = {
-                plat: float(round(float(np.mean(scores)), 3))
-                for plat, scores in platform_votes.items()
-                if scores
-            }
-            temporal_store[f"{video_id}__forensics"] = {
-                "video_id":           video_id,
-                "platform_signature": forensic_sig,
-                "frames_analyzed":    len(sample_frames_ts),
-            }
-            tmp_t = VAULT_TEMPORAL_PATH + ".tmp"
-            with open(tmp_t, "w") as _f:
-                json.dump(temporal_store, _f)
-            os.replace(tmp_t, VAULT_TEMPORAL_PATH)
+                forensic_sig = {
+                    plat: float(round(float(np.mean(scores)), 3))
+                    for plat, scores in platform_votes.items()
+                    if scores
+                }
+                temporal_store[f"{video_id}__forensics"] = {
+                    "video_id":           video_id,
+                    "platform_signature": forensic_sig,
+                    "frames_analyzed":    len(sample_frames_ts),
+                }
+                tmp_t = VAULT_TEMPORAL_PATH + ".tmp"
+                with open(tmp_t, "w") as _f:
+                    json.dump(temporal_store, _f)
+                os.replace(tmp_t, VAULT_TEMPORAL_PATH)
 
-            top_platform = max(forensic_sig, key=forensic_sig.get) if forensic_sig else None
-            print(f"[Archivist] Forensic signature: {forensic_sig} (top: {top_platform})")
-
-    except Exception as e:
-        print(f"[Archivist] Forensic signature (non-fatal): {e}")
+                top_platform = max(forensic_sig, key=forensic_sig.get) if forensic_sig else None
+                print(f"[Archivist] Forensic signature: {forensic_sig} (top: {top_platform})")
+        except Exception as e:
+            print(f"[Archivist] Forensic signature (non-fatal): {e}")
 
     return (
         f"[SUCCESS] Scene-aware ingest complete. "

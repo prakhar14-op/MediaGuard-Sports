@@ -399,7 +399,7 @@ def _scan_segment(segment: StreamSegment) -> StreamSegment:
             "chain": [], "chain_length": 0, "confidence": 0.0,
             "first_platform": None, "leak_risk": "low", "method": "skipped",
         }
-        if best_sim >= 0.60 and segment.frames:
+        if segment.frames:
             try:
                 from agents.forensics import analyze_image_chain
                 forensics_result = analyze_image_chain(segment.frames[0])
@@ -673,6 +673,12 @@ class StreamMonitor:
                         "confidence_score": segment.scan_result.get("confidence_score", 0),
                         "match_confirmed":  segment.scan_result.get("match_confirmed", False),
                         "severity":         segment.scan_result.get("severity", "INFO"),
+                        "forensics_chain":  segment.scan_result.get("forensics_chain", []),
+                        "forensics_first_platform": segment.scan_result.get("forensics_first_platform"),
+                        "forensics_leak_risk":      segment.scan_result.get("forensics_leak_risk", "low"),
+                        "clip_similarity":  segment.scan_result.get("clip_similarity", 0),
+                        "audio_match":      segment.scan_result.get("audio_match", False),
+                        "detection_types":  segment.scan_result.get("detection_types", []),
                     })
 
                 # Alert on detection

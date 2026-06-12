@@ -13,6 +13,17 @@ import re
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+# ── Ensure ffmpeg is on PATH (imageio-ffmpeg bundled binary) ──────────────────
+# yt-dlp needs ffmpeg on PATH for m3u8/HLS live stream downloads.
+try:
+    import imageio_ffmpeg
+    _ffmpeg_dir = os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
+    if _ffmpeg_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+        print(f"[Startup] Added ffmpeg to PATH: {_ffmpeg_dir}")
+except Exception:
+    pass
+
 from agents.archivist import tool_ingest_video, vector_db
 from agents.spider import crawl
 from agents.sentinel import scan_thumbnail, scan_suspect, MATCH_THRESHOLD, SUSPECT_THRESHOLD

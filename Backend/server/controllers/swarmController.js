@@ -272,14 +272,16 @@ export const runSwarm = async (req, res) => {
       try {
         const platform = node.platform || "Other";
         const handle = node.account_handle || "unknown";
+        const platform_handle = `${platform}:${handle}`.toLowerCase();
         
         // Find or create account
         account = await Account.findOneAndUpdate(
-          { platform, handle },
+          { platform_handle },
           {
             $setOnInsert: {
               platform,
               handle,
+              platform_handle,
               first_detected: new Date(),
             },
             $set: {
